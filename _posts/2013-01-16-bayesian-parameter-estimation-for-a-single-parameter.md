@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Bayesian parameter estimation for a single parameter
-categorys: [video]
+category: [video]
 tags: [parameter estimation]
 ---
 {% include JB/setup %}

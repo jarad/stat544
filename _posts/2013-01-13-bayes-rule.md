@@ -2,7 +2,7 @@
 layout: post
 title: Bayes' rule
 subtitle: A simplified introduction to Bayes' rule
-categorys : [video]
+category : [video]
 tags : [Bayes' rule, introduction]
 ---
 {% include JB/setup %}
