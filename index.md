@@ -33,7 +33,7 @@ Specification of probability models; subjective, conjugate, and noninformative p
 
 ## Team-Based Learning
 
-The course is being taught using a Team-Based Learning approach which involves extensive in-class team work throughout the semester. If you are interested in learning more about this approach please see http://www.teambasedlearning.org especially the "Getting started" link.
+The course is being taught using a Team-Based Learning approach which involves extensive in-class team work throughout the semester. If you are interested in learning more about this approach please see <http://www.teambasedlearning.org> especially the "Getting started" link.
 
 ## Prerequisite
 
