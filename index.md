@@ -11,7 +11,7 @@ Instructor: [Jarad Niemi](http://niemiconsulting.com). TA: [Yihui Xie](http://yi
 - on Tuesdays and Thursdays from 8am until 9:20
 - in Gilman 2104
 
-The textbook for the course is Bayesian Data Analysis by Gelman et al. 2nd edition.
+The textbook for the course is Bayesian Data Analysis by Gelman et al. 2nd edition covering chapters 1-7, 10-11, and 14-16.
 
 ## Latest Posts
 
