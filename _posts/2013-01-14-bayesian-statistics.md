@@ -2,7 +2,7 @@
 layout: post
 title: Bayesian statistics
 subtitle: An introduction to Bayesian statistics
-categories : [video]
+categorys : [video]
 tags : [Bayesian statistics, introduction]
 ---
 {% include JB/setup %}
