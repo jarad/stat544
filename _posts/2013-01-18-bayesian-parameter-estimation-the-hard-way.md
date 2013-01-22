@@ -3,7 +3,7 @@ layout: post
 title: "Bayesian parameter estimation the hard way"
 description: ""
 categories: [video]
-tags: [parameter estimation]
+tags: [parameter estimation, binomial model]
 ---
 {% include JB/setup %}
 

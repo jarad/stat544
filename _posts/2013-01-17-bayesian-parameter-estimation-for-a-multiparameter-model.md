@@ -2,7 +2,7 @@
 layout: post
 title: Bayesian parameter estimation for a multiparameter model
 categories: [video]
-tags: [parameter estimation]
+tags: [parameter estimation, binomial model]
 ---
 {% include JB/setup %}
 

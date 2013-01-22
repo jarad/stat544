@@ -3,7 +3,7 @@ layout: post
 title: "Conjugacy of prior distributions"
 description: ""
 categories: [video]
-tags: [parameter estimation]
+tags: [parameter estimation, binomial model]
 ---
 {% include JB/setup %}
 
