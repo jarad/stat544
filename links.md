@@ -5,7 +5,7 @@ description: "Links to anything STAT 544 related"
 ---
 {% include JB/setup %}
 
-On this page I hope to link to anything that will be relevant for STAT 544:
+On this page I hope to link to anything that will be relevant for STAT 544 split into categories: Course related, RSS feeds, R and packages, and Bayesian software.
 
 ### Course related
 - [Course](http://jarad.github.com/stat544)
@@ -22,10 +22,17 @@ On this page I hope to link to anything that will be relevant for STAT 544:
 - [My short course](http://niemiconsulting.com/blog/includes/class/IntroR.zip)
 - [Bayesian packages](http://cran.r-project.org/web/views/Bayesian.html)
 
-### Bayesian software
+###Bayesian software
+
+The main purpose of this section are links to non-R software that allow you to perform Bayesian inference. But often these software have an R interface and are given below the software themselves. In addition, some of the R interfaces can be used for multiple software options, but (for brevity) I have only listed them here once. 
+
 - [JAGS](http://mcmc-jags.sourceforge.net/)
-- [Stan](http://mc-stan.org/)
+  - [rjags](http://cran.r-project.org/web/packages/rjags/index.html)
+  - [R2jags](http://cran.r-project.org/web/packages/R2jags/index.html)
 - [OpenBUGS](http://www.openbugs.info/w/)
+  - [R2WinBUGS](http://cran.r-project.org/web/packages/R2WinBUGS/index.html)
+  - [iBUGS](http://cran.r-project.org/web/packages/iBUGS/index.html)
 - [WinBUGS](http://www.mrc-bsu.cam.ac.uk/bugs/winbugs/contents.shtml) (not actively developed)
+- [Stan](http://mc-stan.org/)
 - [SAS Proc MCMC](http://support.sas.com/documentation/cdl/en/statug/63033/HTML/default/viewer.htm#mcmc_toc.htm)
 
