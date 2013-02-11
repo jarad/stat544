@@ -27,4 +27,5 @@ On this page I hope to link to anything that will be relevant for STAT 544:
 - [Stan](http://mc-stan.org/)
 - [OpenBUGS](http://www.openbugs.info/w/)
 - [WinBUGS](http://www.mrc-bsu.cam.ac.uk/bugs/winbugs/contents.shtml) (not actively developed)
+- [SAS Proc MCMC](http://support.sas.com/documentation/cdl/en/statug/63033/HTML/default/viewer.htm#mcmc_toc.htm)
 
