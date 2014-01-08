@@ -6,6 +6,8 @@
 
 Test \cite{gelman2003bayesian}.
 
+\include{chapter01}
+\include{chapter02}
 
 \bibliographystyle{plain}
 \bibliography{bib}

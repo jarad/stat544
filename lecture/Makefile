@@ -1,21 +1,25 @@
 .SUFFIXES: .tex .pdf .Rnw .R
 
 MAIN = master
-RNWINCLUDES = chapter1 chapter2 chapter3
+RNWINCLUDES = chapter01 chapter02
 TEX = $(RNWINCLUDES:=.tex)
 RFILES = $(RNWINCLUDES:=.R)
 RNWFILES = $(INCLUDES:=.Rnw)
 
 all: $(MAIN).pdf
-	$(MAIN).pdf: $(TEX) $(MAIN).tex
+
+$(MAIN).pdf: $(TEX) $(MAIN).tex
 
 R: $(RFILES)
 
 view: all
-	acroread $(MAIN).pdf &
+	evince $(MAIN).pdf &
 
 .Rnw.R:
 	R CMD Stangle $<
+
+chapter%.tex: chapter%.Rnw
+	R CMD Sweave $<
 
 .Rnw.tex:
 	R CMD Sweave $<
