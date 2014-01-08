@@ -1,7 +1,10 @@
 \documentclass{book}
 
+\usepackage{natbib}
+
 \begin{document}
 
-Test
+\bibliographystyle{plain}
+\bibliography{master}
 
 \end{document}
