@@ -7,28 +7,28 @@ RFILES = $(RNWINCLUDES:=.R)
 RNWFILES = $(INCLUDES:=.Rnw)
 
 all: $(MAIN).pdf
-    $(MAIN).pdf: $(TEX) $(MAIN).tex
+	$(MAIN).pdf: $(TEX) $(MAIN).tex
 
 R: $(RFILES)
 
 view: all
-    acroread $(MAIN).pdf &
+	acroread $(MAIN).pdf &
 
 .Rnw.R:
-    R CMD Stangle $<
+	R CMD Stangle $<
 
 .Rnw.tex:
-    R CMD Sweave $<
+	R CMD Sweave $<
 
 .tex.pdf:
-    pdflatex $<
-    bibtex $*
-    pdflatex $<
-    pdflatex $<
+	pdflatex $<
+	bibtex $*
+	pdflatex $<
+	pdflatex $<
 
 clean:
-    rm -fv $(MAIN).pdf $(MAIN).tex $(TEX) $(RFILES)
-    rm -fv *.aux *.dvi *.log *.toc *.bak *~ *.blg *.bbl *.lot *.lof
-    rm -fv *.nav *.snm *.out *.pyc \#*\# _region_* _tmp.* *.vrb
-    rm -fv Rplots.pdf *.RData
+	rm -fv $(MAIN).pdf $(MAIN).tex $(TEX) $(RFILES)
+	rm -fv *.aux *.dvi *.log *.toc *.bak *~ *.blg *.bbl *.lot *.lof
+	rm -fv *.nav *.snm *.out *.pyc \#*\# _region_* _tmp.* *.vrb
+	rm -fv Rplots.pdf *.RData
 
