@@ -4,7 +4,10 @@
 
 \begin{document}
 
+Test \cite{gelman2003bayesian}.
+
+
 \bibliographystyle{plain}
-\bibliography{master}
+\bibliography{bib}
 
 \end{document}
