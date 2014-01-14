@@ -97,3 +97,37 @@ where $\mbox{Beta}(a,b) = \Gamma(a)\Gamma(b)/\Gamma(a+b)$ is the Beta function. 
 
 From the discussion here, we can see that Bayesian statistics often uses Bayes' rule for its analysis, but what really defines Bayesian statistics is the use of conditional probabilities, e.g. $p(\theta|y)$, $p(H_0|y)$ and $p(\ypred|y)$. In every case, the conditional probability is of the form $p(K|U)$ where $K$ is everything that is known and $U$ is everything that is unknown. The unknowns are model parameters, models themselves, and predictions. The knowns are the observed data as well as a model or model class. The notation could be expanded to include all the knowns, but this typically makes the notation overly cumbersome. 
 
+
+\subsection{Why Bayesian?}
+
+Compared to the predominent statistical philosophy based on pvalues and confidence intervals, the Bayesian perspective has some advantages and some disadvantages. 
+The advantages are that the Bayesian philosophy is coherent, interpretable, incorporates learning, no data asymptotics. 
+The disadvantages are computation, not the standard, 
+In the remainder of this section, we take a brief look at each of these advantages and disadvantages. 
+
+\subsubsection{Advantages}
+
+
+\paragraph{Coherence} 
+Bayesian statistics is coherent in that your goal is always the probability [distribution] of the unknowns conditional on the knowns, i.e. $p(K|U)$. 
+
+\paragraph{Interpretation} 
+Bayesian results including parameter estimation, model probabilities, and predictions are all directly interpretable through probabilities. 
+For example, in constructing a 95\% interval from a parameter posterior the interpretation is that there is 95\% probability that the parameter is in that interval. 
+A model probability is the probability that model is true.
+A 95\% prediction interval states that there is 95\% probability the prediction while lie in that interval. 
+These are all inherently interpretable quantities.
+
+\paragraph{Statistical learning}
+
+Bayesian statistics offers a natural way of learning as data are collected. 
+Suppose we have a data sequence $y_1,y_2,\ldots$ with $y_i\iid p(y|\theta)$ and we are interested in updating our information after each observation. 
+If we also have a prior, then we have the following sequence of posteriors
+\begin{equation}
+p(\theta|y_1) = \frac{p(y_1|\theta)p(\theta)}{p(y_1)}  \qquad p(\theta|y_1,\ldots,y_{i+1}) = \frac{p(y_{i+1}|\theta)p(\theta|y_1,\ldots,y_i)}{p(y_{i+1}|y_1,\ldots,y_i)}
+\end{equation}
+
+
+
+
+

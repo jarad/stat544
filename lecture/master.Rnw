@@ -4,6 +4,8 @@
 
 
 %% Commands
+\newcommand{\iid}{\stackrel{iid}{\sim}}
+\newcommand{\ind}{\stackrel{ind}{\sim}}
 \newcommand{\I}{\mbox{I}}
 \newcommand{\ypred}{\tilde{y}}
 
