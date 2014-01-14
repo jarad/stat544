@@ -1,6 +1,14 @@
 \chapter{A quick introduction}
 
-Test \cite{gelman2003bayesian}.
+Through-out the chapter the simple coin-flip example is used where the coin flips are assumed to have a Bernoulli distribution with an unknown probability of flipping a heads. 
+Rather than providing the mathematical detail, the chapter focuses on the intuition involved in setting up a Bayesian analysis and interpreting the results. 
+
+The reader is expected to have a solid understanding of probabilities including marginal, joint, and conditional probabilities, i.e. the material through chapter 4 of \cite{casella2002statistical}. 
+To understand the remainder of the book an understanding of random samples and data reduction will be necessary, i.e. chapters 5-6 of \citep{casella2002statistical}.
+To compare Bayesian approaches to non-Bayesian approaches, an understanding of both is required. 
+The expectation is that the reader will learn the Bayesian approach by reading this text, but a understanding point and interval estimation, hypothesis testing, and prediction from non-Bayesian perspectives will be necessary, i.e. chapters 7-10 of \citep{casella2002statistical}.
+Finally, exposure to modeling including ANOVA and regression will be extremely useful, i.e. chapters 11-12 of \citep{casella2002statistical}.
+
 
 \section{Bayes' rule}
 
