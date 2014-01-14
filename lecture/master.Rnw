@@ -1,13 +1,12 @@
 \documentclass{book}
 
-\usepackage{natbib}
+\usepackage{natbib,amsmath}
 
 \begin{document}
 
-Test \cite{gelman2003bayesian}.
-
-\include{chapter01}
-\include{chapter02}
+\include{chapter00}
+%\include{chapter01}
+%\include{chapter02}
 
 \bibliographystyle{plain}
 \bibliography{bib}

@@ -1,0 +1,45 @@
+\chapter{A quick introduction}
+
+Test \cite{gelman2003bayesian}.
+
+\section{Bayes' rule}
+
+Bayes' rule as usually presented is 
+\begin{equation}
+P(A|B) = \frac{P(B|A)P(A)}{P(B)} 
+\end{equation}
+
+where $A$ and $B$ are events.
+
+As an example, consider a pregnant woman has a screening test for Down syndrome and the test is positive. The woman will likely wonder what the probability is that the baby will have Down syndrome. The relevant quantities of interest are the test's sensitivity and specificity which are 0.94 and 0.77 respectively, as well as the prevalence of Down syndrome in the U.S. which is 0.001. The prevalence is the probability the baby will have Down syndrome before we knew the results of the test. 
+
+Let $D$ indicate a child with Down syndrome and $D^c$ the opposite. Let `+' indicate a positive test result and `-' a negative result. Using this notation, we have $P(+|D) = 0.94$, $P(-|D^c) = 0.77$,  and $P(D) = 0.001.$ 
+
+Using Bayes' rule and quantities, we can update the probability to 
+
+\begin{align*}
+P(D|+) &= \frac{P(+|D)P(D)}{P(+)} \\
+&= \frac{P(+|D)P(D)}{P(+|D)P(D)+P(+|D^c)P(D^c)} \\
+&= \frac{0.94\cdot 0.001}{0.94\cdot 0.001+0.23\cdot 0.999} \\
+&\approx 1/250 
+\end{align*}
+
+So \emph{if the baby had a 1/1000 chance of having Down syndrome without knowledge of the test}, then the baby's probability is now 1/250. The emphasis is added here because the probability after the test depends on the probability before the test.\footnote{The probability also depends on the sensitivity and specificity of the test, but for now we are assuming these are known.} If, for example, the mother is over 35 (a risk factor for Down syndrome), the prevalence in the general population is not appropriate. Instead, we would need the prevalence in the population for those mothers over 35.                                  
+
+%Similarly, we could calculate the probability of having Down syndrome if the test was negative, i.e. $P(D|-)\approx 1/10,000$.
+
+\section{Bayesian statistics}
+
+Bayes' rule is typically introduced as applying to events, but the mathematics are the same for probability mass and density functions. So, if $\theta$ and $y$ are random variables, then the following Bayes' rule applies
+
+\begin{equation}
+p(\theta|y) = \frac{p(y|\theta)p(\theta)}{p(y)} =  \frac{p(y|\theta)p(\theta)}{\int p(y|\theta)p(\theta) d \theta} \label{eqn:bayesrule}
+\end{equation}
+
+where the probability mass or density functions are determined by their arguments. The integral is understood to be an integral if $\theta$ is continuous or a summation if $\theta$ is discrete. 
+
+\subsection{Parameter estimation}
+
+Equation \eqref{eqn:bayesrule} provides the foundation for Bayesian parameter estimation. In this equation $\theta$ represents the unknown parameter vector and $y$ is the data. The probability mass or density functions are the statistical model $p(y|\theta)$ (often referred to as the likelihood), the prior [distribution] $p(\theta)$, and the posterior [distribution] $p(\theta|y)$. 
+
+

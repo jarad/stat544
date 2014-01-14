@@ -1,7 +1,8 @@
 .SUFFIXES: .tex .pdf .Rnw .R
 
 MAIN = master
-RNWINCLUDES = chapter01 \
+RNWINCLUDES = chapter00 \
+              chapter01 \
               chapter02
 TEX = $(RNWINCLUDES:=.tex)
 RFILES = $(RNWINCLUDES:=.R)
