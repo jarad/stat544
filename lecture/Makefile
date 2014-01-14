@@ -33,7 +33,7 @@ chapter%.tex: chapter%.Rnw
 	pdflatex $<
 
 clean:
-	rm -fv $(MAIN).pdf $(MAIN).tex $(TEX) $(RFILES)
+	rm -fv $(MAIN).pdf $(TEX) $(RFILES)
 	rm -fv *.aux *.dvi *.log *.toc *.bak *~ *.blg *.bbl *.lot *.lof
 	rm -fv *.nav *.snm *.out *.pyc \#*\# _region_* _tmp.* *.vrb
 	rm -fv Rplots.pdf *.RData
