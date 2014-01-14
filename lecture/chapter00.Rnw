@@ -87,14 +87,13 @@ where $y=(y_1,\ldots,y_n)$ and $p(\theta|y)$ is obtained via equation \eqref{eqn
 \begin{example}
 Suppose you have observed 2 heads and 0 tails for a possibly biased coin, what is the prediction for the next coin flip. Let $\theta\sim \Unif(0,1)$ and $y_1,\ldots,y_n,\ypred \stackrel{iid}{\sim} \Ber(\theta)$ where $y_i=1$ represents heads for the $i$th coin flip. From example \ref{exa:coinflip}, we have $\theta|y \sim \Beta(3,1)$. The predictive distribution is 
 \begin{equation}
-p(\ypred|y) = \frac{\mbox{Beta}(\ypred+3,1-ypred+1}{\mbox{Beta}(3,1)}
+p(\ypred|y) = \frac{\mbox{Beta}(\ypred+3,1-\ypred+1)}{\mbox{Beta}(3,1)}
 \end{equation}
-where $\mbox{Beta}(a,b) = \Gamma(a)\Gamma(b)/\Gamma(a+b)$ is the Beta function. Since $\ypred$ is either 0 or 1, we can calculate $P(\ypred=1|y) = p(1|y) = 0.75$, so the predictive distribution says there is 0.75 probability that the next flip is a heads. 
+where $\mbox{Beta}(a,b) = \Gamma(a)\Gamma(b)/\Gamma(a+b)$ is the Beta function. To determine the predictive probability of the next flip being a heads, calculate $P(\ypred=1|y) = p(1|y) = 0.75$. The predictive distribution says there is 0.75 probability that the next flip is a heads. 
+\end{example}
+
 
 \subsection{Bayesian statistics}
 
-From the discussion here, we can see that Bayesian statistics often uses Bayes' rule for its analysis, but what really defines Bayesian statistics is the use of conditional probabilities, e.g. $p(\theta|y)$, $p(H_0|y)$ and $p(\ypred|y)$. In every case, the conditional probability is of the form $p(K|U)$ where $K$ is everything that is known and $U$ is everything that is unknown. The notation has been simplified for parsimonious presentation by eliminating anything that is considered known for the entire analysis, e.g. the model. We could make the notation more exact via, for example, $p(\theta|y,M)$ where $M$ represents the assumed model, e.g. Bernoulli. 
-
-
-\end{example}
+From the discussion here, we can see that Bayesian statistics often uses Bayes' rule for its analysis, but what really defines Bayesian statistics is the use of conditional probabilities, e.g. $p(\theta|y)$, $p(H_0|y)$ and $p(\ypred|y)$. In every case, the conditional probability is of the form $p(K|U)$ where $K$ is everything that is known and $U$ is everything that is unknown. The unknowns are model parameters, models themselves, and predictions. The knowns are the observed data as well as a model or model class. The notation could be expanded to include all the knowns, but this typically makes the notation overly cumbersome. 
 
