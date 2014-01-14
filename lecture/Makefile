@@ -1,40 +1,73 @@
-.SUFFIXES: .tex .pdf .Rnw .R
+################################################################################
+# Copyright 2011
+# Andrew Redd
+# 11/23/2011
+#
+# Description of File:
+# Makefile for knitr compiling
+#
+################################################################################
+all:pdf # default rule DO NOT EDIT
+################################################################################
+MAINFILE := master
+INCLUDES := chapter00
+RNWFILES = $(INCLUDES:=.Rnw)
+RFILES :=
+TEXFILES :=
+CACHEDIR := cache
+FIGUREDIR := figures
+LATEXMK_FLAGS :=
+##### Explicit Dependencies #####
+################################################################################
+RNWTEX     = $(RNWFILES:.Rnw=.tex)
+ROUTFILES  = $(RFILES:.R=.Rout)
+RDATAFILES = $(RFILES:.R=.Rdata)
+MAINTEX    = $(MAINFILE:=.tex)
+MAINPDF    = $(MAINFILE:=.pdf)
+ALLTEX     = $(MAINTEX) $(RNWTEX) $(TEXFILES)
+ 
+# Dependencies
+$(RNWTEX): $(RDATAFILES)
+$(MAINTEX): $(RNWTEX) $(TEXFILES)
+$(MAINPDF): $(ALLTEX)
+ 
+.PHONY:pdf tex clean clearcache cleanall
+pdf: $(MAINPDF)
+tex: $(RDATAFILES) $(ALLTEX)
+ 
+$(CACHEDIR):
+	mkdir $(CACHEDIR)
 
-MAIN = master
-RNWINCLUDES = chapter00 \
-              chapter01 \
-              chapter02
-TEX = $(RNWINCLUDES:=.tex)
-RFILES = $(RNWINCLUDES:=.R)
-RNWFILES = $(RNWINCLUDES:=.Rnw)
-
-all: $(MAIN).pdf
-
-$(MAIN).pdf: $(TEX) $(MAIN).tex
-
-R: $(RFILES)
-
-view: all
-	evince $(MAIN).pdf &
-
-.Rnw.R:
-	R CMD Stangle $<
-
-chapter%.tex: chapter%.Rnw
-	R CMD Sweave $<
-
-.Rnw.tex:
-	R CMD Sweave $<
-
-.tex.pdf:
-	pdflatex $<
-	bibtex $*
-	pdflatex $<
-	pdflatex $<
+$(FIGUREDIR):
+	mkdir $(FIGUREDIR)
+ 
+%.tex:%.Rnw
+	Rscript \
+	-e "library(knitr)" \
+	-e "knitr::opts_chunk[['set']](fig.path='$(FIGUREDIR)/$*-')" \
+	-e "knitr::opts_chunk[['set']](cache.path='$(CACHEDIR)/$*-')" \
+	-e "knitr::knit('$<','$@')"
+ 
+ 
+%.R:%.Rnw
+	Rscript -e "Sweave('$^', driver=Rtangle())"
+ 
+%.Rout:%.R
+	R CMD BATCH "$^" "$@"
+ 
+%.pdf: %.tex
+#	pdflatex $<
+	latexmk -pdf $<
 
 clean:
-	rm -fv $(MAIN).pdf $(TEX) $(RFILES)
-	rm -fv *.aux *.dvi *.log *.toc *.bak *~ *.blg *.bbl *.lot *.lof
-	rm -fv *.nav *.snm *.out *.pyc \#*\# _region_* _tmp.* *.vrb
-	rm -fv Rplots.pdf *.RData
+	-latexmk -c -quiet $(MAINTEX)
+	-rm -f $(RNWTEX) $(MAINTEX)
+	-rm -rf $(FIGUREDIR)
+	-rm *tikzDictionary
+	-rm $(MAINPDF)
+
+clearcache:
+	-rm -rf cache
+
+cleanall: clean clearcache
 
