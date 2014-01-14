@@ -6,7 +6,7 @@ RNWINCLUDES = chapter00 \
               chapter02
 TEX = $(RNWINCLUDES:=.tex)
 RFILES = $(RNWINCLUDES:=.R)
-RNWFILES = $(INCLUDES:=.Rnw)
+RNWFILES = $(RNWINCLUDES:=.Rnw)
 
 all: $(MAIN).pdf
 
