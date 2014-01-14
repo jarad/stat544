@@ -1,6 +1,20 @@
 \documentclass{book}
 
-\usepackage{natbib,amsmath}
+\usepackage{natbib,amsmath,amsthm}
+
+
+%% Commands
+\newcommand{\I}{\mbox{I}}
+\newcommand{\ypred}{\tilde{y}}
+
+
+% Distributions
+\newcommand{\Ber}{\mbox{Ber}}
+\newcommand{\Beta}{\mbox{Be}}
+\newcommand{\Unif}{\mbox{Unif}}
+
+
+\newtheorem{example}{Example}
 
 \begin{document}
 
