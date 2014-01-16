@@ -137,6 +137,8 @@ Consider a binomial experiment with probability of success $\theta$ where $y$ he
 In particular, if $y$ is 0 or n, then the standard error is zero and the 95\% credible interval is a single point at 0 or 1, respectively. 
 \end{example}
 
+In simple models, data asymptotics can be evaluated by determining whether the likelihood is approximately quadratic, i.e. approximately normal, but in more complex models this is hard or impossible.
+
 \paragraph{Statistical learning}
 
 Bayesian statistics offers a natural way of learning as data are collected. 
@@ -155,8 +157,8 @@ The likelihoods for the two experiments are
 \mbox{Bin: } L(\theta|X=3) = {12 \choose 3} \theta^3 (1-\theta)^9 \qquad \mbox{NegBin: } {11\choose 2} \theta^3 (1-\theta)^3.
 \end{equation}
 Since these likelihoods are proportional to each other, the likelihood principle states that an inference should be the same.
-If we are interested in the hypotheses $H_0: \theta=0.5$ vs $H_1: \theta<0.5$, then the pvalue for the experiments are 0.03 and 0.07. 
-And if we stick with the standard 0.05 cutoff, we would make different decisions about $\theta$ even though are data are exactly the same, i.e. 3 heads and 9 tails.  
+If we are interested in the hypotheses $H_0: \theta=0.5$ vs $H_1: \theta<0.5$, then the pvalue for the experiments are 0.07 and 0.03 for the binomial and negative binomial experiments respectively. 
+And if we stick with the standard 0.05 cutoff, we would make different decisions about $\theta$ even though our data are exactly the same, i.e. 3 heads and 9 tails.  
 \end{example}
 
 
@@ -165,8 +167,17 @@ And if we stick with the standard 0.05 cutoff, we would make different decisions
 \paragraph{Computation}
 
 We will see that Bayesian analyses typically require much more computation time than the associated non-Bayesian analyses. 
+In addition, methods such as Markov chain Monte Carlo or importance sampling are based on asymptotic arguments as the number of samples tends to infinity.
+Even worse we are rarely sure whether these asymptotics are met. 
+Fortunately, we can increase the samples at the, relatively cheap, cost of computation time. 
 
 \paragraph{Not the standard}
 
 For historical reasons primarily relating to computation (in my opinion), frequentist approaches via pvalues and confidence intervals have become the predominant statistical tools in the 1900s. 
 Therefore, in promoting a Bayesian approach to statistics there is considerable momentum to overcome. 
+
+\subsection{Misconceptions}
+
+It is commonly stated that ``Bayesian treat parameters as random while non-Bayesians treat parameters as fixed.'' While this is true, most Bayesian believe that the value of a parameter in a particular model has a fixed, but unknown. Since it is unknown, Bayesians assign it a probability distribution and thereby \emph{treat it as random} just as we treat data prior to its collection as random. 
+
+A better quote may be ``Bayesians treat parameters as unknown while frequentists treat parameters as known.'' 
