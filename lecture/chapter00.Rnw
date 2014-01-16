@@ -110,8 +110,8 @@ From the discussion here, we can see that Bayesian statistics often uses Bayes' 
 
 Compared to the predominent statistical philosophy based on pvalues and confidence intervals, the Bayesian perspective has some advantages and some disadvantages. 
 The advantages are that the Bayesian philosophy is coherent, interpretable, incorporates learning, no data asymptotics, and adheres (better) to the likelihood principle. 
-The disadvantages are computation, not the standard, 
-In the remainder of this section, we take a brief look at each of these advantages and disadvantages. 
+The disadvantages are computation, specifying a prior, and Bayesian not the standard.
+In the remainder of this section, we take a brief look at each of these advantages and disadvantages, so that readers will be consciously thinking about them as they read the remainder of the text. 
 
 \subsubsection{Advantages}
 
@@ -166,18 +166,32 @@ And if we stick with the standard 0.05 cutoff, we would make different decisions
 
 \paragraph{Computation}
 
-We will see that Bayesian analyses typically require much more computation time than the associated non-Bayesian analyses. 
+We will see that Bayesian analyzes typically require much more computation time than the associated non-Bayesian analyzes. 
 In addition, methods such as Markov chain Monte Carlo or importance sampling are based on asymptotic arguments as the number of samples tends to infinity.
 Even worse we are rarely sure whether these asymptotics are met. 
 Fortunately, we can increase the samples at the, relatively cheap, cost of computation time. 
+
+\paragraph{Specifying a prior}
+
+Science strives toward a notion of \emph{objectivity}. 
+Objectivity means that, aside from randomness in the world, two scientists who conduct the same experiment should arrive at the same conclusions. 
+This means that there should not be bias in the way the experiment is conducted and there should not be bias in the way the data are analyzed. 
+The former is best accomplished by blinding the researchers and the latter can be accomplished by researchers having standard statistical tools for analysis.
+
+These statistical tools require the specification of a statistical model which is generally made up but if researchers can agree to it, then we can have comparable results.
+Bayesians have the added complication of specification of a prior which is also generally made up, but this additional assumption appears to have more disagreement than models have. 
 
 \paragraph{Not the standard}
 
 For historical reasons primarily relating to computation (in my opinion), frequentist approaches via pvalues and confidence intervals have become the predominant statistical tools in the 1900s. 
 Therefore, in promoting a Bayesian approach to statistics there is considerable momentum to overcome. 
 
+
+
 \subsection{Misconceptions}
 
-It is commonly stated that ``Bayesian treat parameters as random while non-Bayesians treat parameters as fixed.'' While this is true, most Bayesian believe that the value of a parameter in a particular model has a fixed, but unknown. Since it is unknown, Bayesians assign it a probability distribution and thereby \emph{treat it as random} just as we treat data prior to its collection as random. 
+It is commonly stated that ``Bayesians treat parameters as random while non-Bayesians treat parameters as fixed.'' While this is true, most Bayesian believe that the value of a parameter in a particular model has a fixed, but unknown. Since it is unknown, Bayesians assign it a probability distribution and thereby \emph{treat it as random} just as we treat data prior to its collection as random. 
 
 A better quote may be ``Bayesians treat parameters as unknown while frequentists treat parameters as known.'' 
+While perhaps a bit inflammatory for frequentists, it makes reference to the fact that pvalues are constructed based on the null hypothesis being true, confidence intervals are often constructed by plugging the maximum likelihood estimate into the Hessian, and prediction is often based on plugging in point estimates for some parameters, notably variances.
+
