@@ -1,0 +1,27 @@
+\documentclass{article}
+
+\begin{document}
+
+STAT 544 - Homework 1 - Due 23 Jan
+
+
+\begin{enumerate}
+\item Suppose $\phi\sim Ga(\alpha,\beta)$. 
+	\begin{enumerate}
+	\item Derive the probability density function for $\sigma^2 = 1/\phi$ and $\sigma = \sqrt{\sigma^2}$. 
+	\item For $\alpha=\beta=1$, plot the density for $\phi$, $\sigma^2$, and $\sigma$ in different figures. Simulate 1,000 realizations for $\phi$ and calculate $\sigma^2$ and $\sigma$, then plot histograms with their associated densities. Repeat this procedure for $\alpha=\beta=10$ and $\alpha=\beta=0.1$. Ideally, you will have a $3\times 3$ grid of figures.
+	\end{enumerate}
+
+\item Suppose $Y_i\stackrel{iid}{\sim} Po(\lambda)$ with $\lambda \sim Ga(\alpha,\beta)$, i.e. $p(\lambda) = \beta^{\alpha} \lambda^{\alpha-1}e^{-\beta \lambda}/\Gamma(\alpha)$.
+	\begin{enumerate}
+	\item Derive $p(\lambda|y)$ where $y=(y_1,\ldots,y_n)$. 
+	\item For $y=(4, 4, 5, 8, 3)$ and with $\alpha=\beta=1$, plot the prior and the posterior for $\lambda$. 
+%	\item Consider the hypotheses $H_h:\lambda=h$ for $h=1,\ldots,10$ with $p(H_h) = 1/10$. Calculate $p(H_h|y)$, i.e. the posterior probability of each hypothesis for the data in part (b). Add this posterior to the previous plot. 
+	\item Derive $p(\tilde{y})$ and $p(\tilde{y}|y)$, the prior and posterior predictive distribution respectively. For the data and prior in part (b), plot the prior and posterior predictive distribution on the same plot. 
+	\end{enumerate}
+
+\end{enumerate}
+
+
+
+\end{document}
