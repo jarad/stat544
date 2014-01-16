@@ -109,7 +109,7 @@ From the discussion here, we can see that Bayesian statistics often uses Bayes' 
 \subsection{Why Bayesian?}
 
 Compared to the predominent statistical philosophy based on pvalues and confidence intervals, the Bayesian perspective has some advantages and some disadvantages. 
-The advantages are that the Bayesian philosophy is coherent, interpretable, incorporates learning, no data asymptotics. 
+The advantages are that the Bayesian philosophy is coherent, interpretable, incorporates learning, no data asymptotics, and adheres (better) to the likelihood principle. 
 The disadvantages are computation, not the standard, 
 In the remainder of this section, we take a brief look at each of these advantages and disadvantages. 
 
@@ -118,6 +118,8 @@ In the remainder of this section, we take a brief look at each of these advantag
 
 \paragraph{Coherence} 
 Bayesian statistics is coherent in that your goal is always the probability [distribution] of the unknowns conditional on the knowns, i.e. $p(K|U)$. 
+As statisiticians, we are accustomed to putting probability distributions on quantities that are unknown, e.g. data before an experiment has been run. 
+A Bayesian is just being consistent by assuming a probability distribution on parameters which are also unknown. 
 
 \paragraph{Interpretation} 
 Bayesian results including parameter estimation, model probabilities, and predictions are all directly interpretable through probabilities. 
@@ -125,6 +127,15 @@ For example, in constructing a 95\% interval from a parameter posterior the inte
 A model probability is the probability that model is true.
 A 95\% prediction interval states that there is 95\% probability the prediction while lie in that interval. 
 These are all inherently interpretable quantities.
+
+\paragraph{No data asymptotics}
+
+Much of the development of confidence intervals are based on asymptotic results that require sample sizes to be large. 
+
+\begin{example}
+Consider a binomial experiment with probability of success $\theta$ where $y$ heads are observed out of $n$ trials. Using standard methods, a 95\% confidence interval is constructed based on asymptotic normality via $\hat{\theta} \pm 1.96 \sqrt{\hat{\theta}(1-\hat{\theta})/n}$ where $\hat{\theta}=y/n$. A clear issue with this interval is when $y$ is extremely small or large. 
+In particular, if $y$ is 0 or n, then the standard error is zero and the 95\% credible interval is a single point at 0 or 1, respectively. 
+\end{example}
 
 \paragraph{Statistical learning}
 
@@ -135,7 +146,27 @@ If we also have a prior, then we have the following sequence of posteriors
 p(\theta|y_1) = \frac{p(y_1|\theta)p(\theta)}{p(y_1)}  \qquad p(\theta|y_1,\ldots,y_{i+1}) = \frac{p(y_{i+1}|\theta)p(\theta|y_1,\ldots,y_i)}{p(y_{i+1}|y_1,\ldots,y_i)}
 \end{equation}
 
+\paragraph{Likelihood principle}
+
+\begin{example}
+Consider two coin-flipping experiments. In the first experiment, the scientist flips the coin 20 times and records 7 heads. In the second experiment, the scientist flips until reaching 7 heads and records a total of 20 coin flips. Assuming iid observations, the experiments are modeled with a binomial and negative binomial, respectively. 
+The likelihoods for the two experiments are 
+\begin{equation}
+\mbox{Bin: } L(\theta|X=3) = {12 \choose 3} \theta^3 (1-\theta)^9 \qquad \mbox{NegBin: } {11\choose 2} \theta^3 (1-\theta)^3.
+\end{equation}
+Since these likelihoods are proportional to each other, the likelihood principle states that an inference should be the same.
+If we are interested in the hypotheses $H_0: \theta=0.5$ vs $H_1: \theta<0.5$, then the pvalue for the experiments are 0.03 and 0.07. 
+And if we stick with the standard 0.05 cutoff, we would make different decisions about $\theta$ even though are data are exactly the same, i.e. 3 heads and 9 tails.  
+\end{example}
 
 
+\subsubsection{Disadvantages}
 
+\paragraph{Computation}
 
+We will see that Bayesian analyses typically require much more computation time than the associated non-Bayesian analyses. 
+
+\paragraph{Not the standard}
+
+For historical reasons primarily relating to computation (in my opinion), frequentist approaches via pvalues and confidence intervals have become the predominant statistical tools in the 1900s. 
+Therefore, in promoting a Bayesian approach to statistics there is considerable momentum to overcome. 
