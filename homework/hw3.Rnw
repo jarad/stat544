@@ -1,0 +1,59 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,syntonly,lastpage,hyperref,enumitem,graphicx}
+
+\hypersetup{colorlinks=true,urlcolor=black}
+
+\topmargin      -1.5cm   % read Lamport p.163
+\oddsidemargin  -0.04cm  % read Lamport p.163
+\evensidemargin -0.04cm  % same as oddsidemargin but for left-hand pages
+\textwidth      16.59cm
+\textheight     23.94cm
+\parskip         7.2pt   % sets spacing between paragraphs
+\parindent         0pt   % sets leading space for paragraphs
+\pagestyle{empty}        % Uncomment if don't want page numbers
+\pagestyle{fancyplain}
+
+
+\begin{document}
+\lhead{Homework 3}
+\chead{PSTAT 544 - Bayesian statistics}
+\rhead{Page \thepage\ of \pageref{LastPage}}
+
+This homework is due on Blackboard Learn by 8:00am on 6 Feb 2014. There will be a total of 10 points available. 
+
+\begin{enumerate}
+\item The data set below is the radon measurement in pCi/L for a random sample of houses in Minnesota. Provide a Bayesian estimate and credible interval for the probability that a randomly selected house will be at or above the federal limit of 4 pCi/L. 
+
+<<radon_data>>=
+radon = c(3.8,  1.7,  5.5,  2.1,  1.6,  6.5,  2.2,  4,  3.6,  3.5,  
+          10.1,  7,  5.5,  5.5,  2.7,  5.2,  3.1,  2.5,  8.6,  1.2,  
+          6.2,  4.2,  0.7,  2.8,  1.2,  2.7,  1.2,  4.9,  1,  2.6,  
+          1.2,  3.5,  3.5,  30.9,  0.5,  2.8,  2.2,  11.6,  3.1,  
+          3.9,  9.3,  5)
+@
+
+\item Consider the following data set.
+
+<<airline_fatalities>>=
+d = data.frame(year=1976:1985, 
+              fatal_accidents = c(24,25,31,31,22,21,26,20,16,22),
+              passenger_deaths = c(734,516,754,877,814,362,764,809,223,1066),
+              death_rate = c(0.19,0.12,0.15,0.16,0.14,0.06,0.13,0.13,0.03,0.15))
+d$miles_flown = d$passenger_deaths/d$death_rate # 100 million miles
+d
+@
+
+\begin{enumerate}
+\item Consider the model $Y_i\stackrel{iid}{\sim} Po(x_i \lambda)$ where $x_i$ are known \emph{exposures} and $\lambda$ is the rate. Model the rate of fatal accidents per miles flown, i.e. $y_i$ is the number of fatal accidents in year $i$ and $x_i$ are the number of miles flown (using 100 million miles is fine). Provide a 95\% credible interval for $\lambda$ and a 95\% prediction interval for the number of fatal accidents in 1986 assuming $8\times 10^{11}$ million miles are flown. 
+\item Consider the model $Y_i\stackrel{iid}{\sim} Po(x_i\lambda_i)$ where $\lambda_i$ is the rate for year $i$. Assume independent priors for $\lambda_i$ and calculate the probability that the rate in 1985 is greater than the rate in each of the years before it (there will be 9 probabilities). 
+
+\end{enumerate}
+
+
+
+\end{enumerate}
+
+
+
+
+\end{document}
