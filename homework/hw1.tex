@@ -1,0 +1,94 @@
+\documentclass[12pt]{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,syntonly,lastpage,hyperref,enumitem,graphicx}
+
+\hypersetup{colorlinks=true,urlcolor=black}
+
+\topmargin      -1.5cm   % read Lamport p.163
+\oddsidemargin  -0.04cm  % read Lamport p.163
+\evensidemargin -0.04cm  % same as oddsidemargin but for left-hand pages
+\textwidth      16.59cm
+\textheight     23.94cm
+\parskip         7.2pt   % sets spacing between paragraphs
+\parindent         0pt   % sets leading space for paragraphs
+\pagestyle{empty}        % Uncomment if don't want page numbers
+\pagestyle{fancyplain}
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+
+
+\begin{document}
+\lhead{Homework 1}
+\chead{PSTAT 544 - Bayesian statistics}
+\rhead{Page \thepage\ of \pageref{LastPage}}
+
+This homework is due on Blackboard Learn by 8:00am on 23 Jan. There will be a total of 10 points available. 
+
+\begin{enumerate}
+\item Suppose $\phi\sim Ga(\alpha,\beta)$. 
+	\begin{enumerate}
+	\item Derive the probability density function for $\sigma^2 = 1/\phi$ and $\sigma = \sqrt{\sigma^2}$. 
+	\item For $\alpha=\beta=1$, plot the density for $\phi$, $\sigma^2$, and $\sigma$ in different figures. Simulate 1,000 realizations for $\phi$ and calculate $\sigma^2$ and $\sigma$, then plot histograms with their associated densities. Repeat this procedure for $\alpha=\beta=10$ and $\alpha=\beta=0.1$. Ideally, you will have a $3\times 3$ grid of figures.
+	\end{enumerate}
+
+\item Suppose $Y_i\stackrel{iid}{\sim} Po(\lambda)$ with $\lambda \sim Ga(\alpha,\beta)$, i.e. $p(\lambda) = \beta^{\alpha} \lambda^{\alpha-1}e^{-\beta \lambda}/\Gamma(\alpha)$.
+	\begin{enumerate}
+	\item Derive $p(\lambda|y)$ where $y=(y_1,\ldots,y_n)$. 
+	\item For $y=(4, 4, 5, 8, 3)$ and with $\alpha=\beta=1$, plot the prior and the posterior for $\lambda$. 
+%	\item Consider the hypotheses $H_h:\lambda=h$ for $h=1,\ldots,10$ with $p(H_h) = 1/10$. Calculate $p(H_h|y)$, i.e. the posterior probability of each hypothesis for the data in part (b). Add this posterior to the previous plot. 
+	\item Derive $p(\tilde{y})$ and $p(\tilde{y}|y)$, the prior and posterior predictive distribution respectively. For the data and prior in part (b), plot the prior and posterior predictive distribution on the same plot. 
+	\end{enumerate}
+
+\end{enumerate}
+
+
+
+
+\end{document}

@@ -1,0 +1,152 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,syntonly,lastpage,hyperref,enumitem,graphicx}
+
+\hypersetup{colorlinks=true,urlcolor=black}
+
+\topmargin      -1.5cm   % read Lamport p.163
+\oddsidemargin  -0.04cm  % read Lamport p.163
+\evensidemargin -0.04cm  % same as oddsidemargin but for left-hand pages
+\textwidth      16.59cm
+\textheight     23.94cm
+\parskip         7.2pt   % sets spacing between paragraphs
+\parindent         0pt   % sets leading space for paragraphs
+\pagestyle{empty}        % Uncomment if don't want page numbers
+\pagestyle{fancyplain}
+
+
+\begin{document}
+\lhead{Homework 1}
+\chead{PSTAT 544 - Bayesian statistics}
+\rhead{Page \thepage\ of \pageref{LastPage}}
+
+This homework is due on Blackboard Learn by 8:00am on 23 Jan. There will be a total of 10 points available. 
+
+<<echo=FALSE>>=
+opts_chunk$set(fig.width=5, fig.height=5, size="scriptsize")
+@
+
+\begin{enumerate}
+\item Suppose $\phi\sim Ga(a,b)$. 
+	\begin{enumerate}
+	\item Derive the probability density function for $\sigma^2 = 1/\phi$ and $\sigma = \sqrt{\sigma^2}$. 
+
+\paragraph{Solution}
+
+Using the Jacobian approach on the bottom of page 21 in BDA, we have 
+\begin{align*}
+p(\sigma^2) &= \frac{b^a}{\Gamma(a)} (1/\sigma^2)^{a-1} \exp(-b/\sigma^2) |(\sigma^2)^{-2}| \\
+&= \frac{b^a}{\Gamma(a)} (\sigma^2)^{-a-1} \exp(-b/\sigma^2). \\
+\end{align*}
+This is known as the inverse-gamma distribution. 
+
+The standard deviation pdf can be derived via 
+
+\begin{align*}
+p(\sigma) &= \frac{b^a}{\Gamma(a)} (\sigma^2)^{-a-1} \exp(-b/\sigma^2) (2 \sigma).
+\end{align*}
+
+
+
+	\item For $a=b=1$, plot the density for $\phi$, $\sigma^2$, and $\sigma$ in different figures. Simulate 1,000 realizations for $\phi$ and calculate $\sigma^2$ and $\sigma$, then plot histograms with their associated densities. Repeat this procedure for $a=b=10$ and $a=b=0.1$. Ideally, you will have a $3\times 3$ grid of figures.
+
+\paragraph{Solution}
+
+The R code below performs the simulation. 
+
+<<>>=
+library(plyr)
+library(ggplot2)
+library(reshape2)
+
+n = 10000
+
+d = data.frame(a=10^(-1:1), b=10^(-1:1))
+
+# inverse gamma
+dinvgamma = function(x,a,b) dgamma(1/x,a,b)/x^2
+dsqrtinvgamma = function(x, a, b) dinvgamma(x^2, a, b)*2*x
+
+par(mfrow=c(3,3), mar=c(5,4,0,0)+.1)
+d_ply(d, .(a), function(x) {
+  a = x$a; b = x$b
+  phi = rgamma(n,a,b)
+  sigma2 = 1/phi
+  sigma = sqrt(sigma2)
+
+  hist(phi, 100, freq=F, main="", ylab=paste("a=b=",a))
+  curve(dgamma(x,a,b), add=TRUE, col="red", lwd=2)
+
+  hist(sigma2, 100, freq=F, main="", ylab="")
+  curve(dinvgamma(x,a,b), add=TRUE, col="red", lwd=2)
+
+  hist(sigma, 100, freq=F, main="", ylab="")
+  curve(dsqrtinvgamma(x, a, b), add=TRUE, col="red", lwd=2)
+}, .inform=TRUE)
+@
+
+
+
+	\end{enumerate}
+
+\item Suppose $Y_i\stackrel{iid}{\sim} Po(\lambda)$ with $\lambda \sim Ga(a,b)$, i.e. $p(\lambda) = b^{a} \lambda^{a-1}e^{-b \lambda}/\Gamma(a)$.
+	\begin{enumerate}
+	\item Derive $p(\lambda|y)$ where $y=(y_1,\ldots,y_n)$. 
+
+\paragraph{Solution}
+
+\begin{align*}
+p(\lambda|y) &\propto p(y|\lambda) p(\lambda) \\
+&= \left[ \prod_{i=1}^n \lambda^{y_i} e^{-\lambda} \right] \lambda^{a-1} e^{-\lambda b} \\
+&= \lambda^{n\overline{y} + a + 1}e^{-\lambda[b+n]}
+\end{align*}
+Thus $\lambda|y \sim Ga(a+n\overline{y}, b+n)$. 
+
+	\item For $y=(4, 4, 5, 8, 3)$ and with $a=b=1$, plot the prior and the posterior for $\lambda$. 
+
+\paragraph{Solution}
+
+The posterior is $\lambda|y \sim Ga(1+24,1+5)$.
+
+<<>>=
+a=b=1
+y = c(4, 4, 5, 8, 3)
+curve(dgamma(x, a+sum(y), b+length(y)), 0, 10, col="red", lwd=2, main="Poisson model, gamma prior",
+      xlab=expression(lambda), ylab="Density", ylim=c(0,1))
+curve(dgamma(x, 1, 1), col="blue", lwd=2, add=TRUE)
+legend("topright", c("Prior","Posterior"), col=c("blue","red"), lwd=2)
+@
+
+%	\item Consider the hypotheses $H_h:\lambda=h$ for $h=1,\ldots,10$ with $p(H_h) = 1/10$. Calculate $p(H_h|y)$, i.e. the posterior probability of each hypothesis for the data in part (b). Add this posterior to the previous plot. 
+	\item Derive $p(\tilde{y})$ and $p(\tilde{y}|y)$, the prior and posterior predictive distribution respectively. For the data and prior in part (b), plot the prior and posterior predictive distribution on the same plot. 
+
+\paragraph{Solution}
+
+\begin{align*}
+p(\tilde{y}) &= \int p(\tilde{y}|\lambda) p(\lambda) d\lambda \\
+&\propto \int \frac{\lambda^{\tilde{y}} e^{-\lambda} }{ \tilde{y}! } \lambda^{a-1} e^{-\lambda b} d\lambda \\
+&= \frac{1}{ \tilde{y}! } \int \lambda^{\tilde{y}+a-1} e^{-\lambda[b+1]} d\lambda \\
+&= \frac{1}{ \tilde{y}! } \frac{\Gamma(a+\tilde{y})}{[b+1]^{\tilde{y}+a}} \\
+&\propto \frac{\Gamma(a+\tilde{y})}{ \tilde{y}! } \left( \frac{1}{b+1} \right)^{\tilde{y}}
+\end{align*}
+This is the kernel of a negative binomial distribution with probability of successes $p = 1/(b+1)$ (thus $b=(1-p)/p$) and number of failures $a$.
+
+<<>>=
+xx = 0:15
+an = a+sum(y)
+bn = b+length(y)
+# Be careful with the parameterization,  
+# size is the number of successful, rather than unsuccessful, trails.
+# I fix this by taking prob = 1-p = b/(b+1)
+plot(xx, dnbinom(xx, a, b/(b+1)), pch=19, col="blue", main="Negative binomial", xlab=expression(tilde(y)), ylab="PMF")
+points(xx, dnbinom(xx, an, bn/(bn+1)), pch=19, col="red")
+legend("topright", c("Prior","Posterior"), col=c("blue","red"), pch=19)
+@
+
+	\end{enumerate}
+
+\end{enumerate}
+
+
+
+
+\end{document}
