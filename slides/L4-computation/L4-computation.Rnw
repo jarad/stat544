@@ -1,0 +1,351 @@
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\title{Bayesian computation}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE>>=
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+#############################
+# L4 - Bayesian computation #
+#############################
+@
+
+\frame{\titlepage}
+
+\section{Monte Carlo methods}
+\frame{\frametitle{Monte Carlo integration}
+\small
+  Consider evaluating the integral
+	\[ E_f[h(X)] = \int_{\mathcal{X}} h(x) f(x) dx \]
+	\pause using the Monte Carlo estimate
+	\[ \hat{h}_J = \frac{1}{J} \sum_{j=1}^J h\left(x^{(j)}\right) \]
+	\pause where $x^{(j)} \stackrel{iid}{\sim} f(x)$.  \pause We know
+	\begin{itemize}
+	\item SLLN: $\hat{h}_J$ converges almost surely to $E_f[h(X)]$. \pause 
+	\item CLT: if $h^2$ has finite expectation under $f$, \pause then 
+	\[ \hat{h}_J \stackrel{d}{\to} N(E_f[h(X)], v_J) \pause \]
+	where 
+	\[ v_J = \frac{1}{J} \widehat{V_f[h(X)]} \pause \approx \frac{1}{J^2} \sum_{s=1}^J \left[ h\left(x^{(j)}\right) - \hat{h}_J \right]^2. \]
+	\end{itemize}
+}
+
+\subsection{Definite integral}
+\frame{\frametitle{Definite integral}
+	Suppose you are interested in evaluating
+	\[ \mathrm{I} = \int_0^1 e^{-x^2/2} dx. \]
+	\pause Then set
+	\begin{itemize}
+	\item $h(x) = e^{-x^2/2}$ \pause and
+	\item $f(x) = 1$\pause, i.e. $x\sim \mbox{Unif}(0,1)$. \pause
+	\end{itemize}
+  and approximate by a Monte Carlo estimate via
+  \begin{enumerate}[<+->]
+  \item For $j=1,\ldots,J$, 
+    \begin{enumerate}
+    \item sample $x^{(j)} \sim Unif(0,1)$ and 
+    \item calculate $h\left(x^{(j)}\right)$.
+    \end{enumerate}
+  \item Calculate 
+  \[ \mathrm{I} \approx \frac{1}{J} \sum_{j=1}^J h(x^{(j)}). \]
+  \end{enumerate}
+}
+
+
+
+\begin{frame}[fragile]
+\frametitle{Strong law of large numbers}
+<<uniform, fig.height=3>>=
+f = function(x) exp(-x^2/2)
+
+# Monte Carlo integration
+set.seed(1)
+n = 1e3
+x = runif(n)
+fx = f(x)
+
+par(mfrow=c(1,2))
+n_points = 20; curve(f, main=paste(n_points, "samples"))
+segments(x[1:n_points], 0, x[1:n_points], fx[1:n_points])
+n_points = 200; curve(f, main=paste(n_points, "samples"))
+segments(x[1:n_points], 0, x[1:n_points], fx[1:n_points])
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Strong law of large numbers}
+<<uniform2, fig.height=4>>=
+
+# Monte Carlo integration
+cummean = function(x) return(cumsum(x)/(1:length(x)))
+plot(cmfx<-cummean(fx), type='l', ylab="Estimate", main="Monte Carlo estimate", xlab="Number of samples")
+abline(h=h<-diff(pnorm(c(0,1)))*sqrt(2*pi), col="red")
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Central limit theorem}
+<<uniform3, eval=FALSE>>=
+cumvar = function(x) { 
+  J = length(x)
+  cumvar = numeric(J)
+  for (j in 1:J) { cumvar[j] = var(x[1:j])/j }
+  return(cumvar)
+}
+
+cvfx = cumvar(fx)
+uci  = cmfx+qnorm(.975)*sqrt(cvfx)
+lci  = cmfx-qnorm(.975)*sqrt(cvfx)
+plot(cmfx, main="Monte Carlo estimate", type="n", 
+     ylim=range(uci,lci,na.rm=T), xlab="Number of samples", ylab="Estimate")
+abline(h=h, col="red",lwd=2)
+lines(cmfx,lwd=2)
+lines(uci, lty=2)
+lines(lci, lty=2)
+legend("bottomright", c("Truth","Estimate","95% CI"), 
+       lwd=c(2,2,1), lty=c(1,1,2), col=c("red","black","black"))
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Central limit theorem}
+<<uniform3_plot, echo=FALSE>>=
+<<uniform3>>
+@
+\end{frame}
+
+
+\subsection{Infinite bounds}
+\frame{\frametitle{Infinite bounds}
+	Suppose you are interested in evaluating
+	\[ E_{X\sim N(0,1)}[X] \pause = \int_{-\infty}^\infty x \frac{1}{\sqrt{2\pi}} e^{-x^2/2} dx \]
+	
+	\pause Then set
+	\begin{itemize}
+	\item $h(x) = x$ \pause and
+	\item $f(x) = \phi(x)$\pause, i.e. $x\sim N(0,1)$. \pause
+	\end{itemize}[<+->]
+  and approximate by a Monte Carlo estimate via
+  \begin{enumerate}
+  \item For $j=1,\ldots,J$, 
+    \begin{enumerate}
+    \item sample $x^{(j)} \sim N(0,1)$ and 
+    \item calculate $h\left(x^{(j)}\right)$.
+    \end{enumerate}
+  \item Calculate 
+  \[ \mathrm{I} \approx \frac{1}{J} \sum_{j=1}^J h(x^{(j)}). \]
+  \end{enumerate}
+}
+
+\begin{frame}[fragile]
+\frametitle{Monte Carlo estimate}
+<<infinite, eval=FALSE>>=
+# Normal expectation
+set.seed(1)
+x = rnorm(1e3)
+cmfx = cummean(x)
+cvfx = cumvar(x)
+uci  = cmfx+qnorm(.975)*sqrt(cvfx)
+lci  = cmfx-qnorm(.975)*sqrt(cvfx)
+plot(cmfx, main="Monte Carlo estimate", type="n", 
+     ylim=range(uci,lci,na.rm=T), xlab="J", ylab="Estimate")
+abline(h=0, col="red",lwd=2)
+lines(cmfx,lwd=2)
+lines(uci, lty=2)
+lines(lci, lty=2)
+legend("bottomright", c("Truth","Estimate","95% CI"), 
+       lwd=c(2,2,1), lty=c(1,1,2), col=c("red","black","black"))
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Monte Carlo estimate}
+<<infinite_plot, echo=FALSE>>=
+<<infinite>>
+@
+\end{frame}
+
+
+\section{Independent binomials}
+\subsection{3-point success in basketball}
+\frame{\frametitle{Motivating example}
+  	Is Andre Dawkins 3-point percentage higher this year than past years?
+		
+		\vspace{0.2in} \pause
+		
+		\begin{center}
+		\begin{tabular}{lrr}
+		Season & Made & Attempts \\
+		\hline
+		2009-2010 & 36 & 95  \\
+		2010-2011 & 64 & 150 \\
+    2011-2012 & 67 & 171 \\
+  	2013-2014* & 47 & 99 \\
+		\hline
+		\multicolumn{3}{l}{* as of 29 Jan}
+		\end{tabular}
+		\end{center}
+}
+
+\subsection{Binomial model}
+\frame{\frametitle{Binomial model}
+	Assume an independent binomial model,
+	\[ Y_s \stackrel{ind}{\sim} Bin(n_s,\theta_s), \uncover<6->{\mbox{ i.e. }\quad   p(y|\theta) = \prod_{s=1}^S p(y_s|\theta_s) = \prod_{s=1}^S  {n_s\choose y_s} \theta_s^{y_s} (1-\theta_s)^{n_s-y_s}}  \]
+	\pause where 
+	\begin{itemize}
+	\item $y_s$ is the number of 3-pointers made in season $s$ \pause
+	\item $n_s$ is the number of 3-pointers attempted in season $s$ \pause 
+	\item $\theta_s$ is the unknown 3-pointer success probability in season $s$ \pause
+	\item $S$ is the number of seasons \pause \pause
+	\item $\theta = (\theta_1,\theta_2,\theta_3,\theta_4)'$ and $y=(y_1,y_2,y_3,y_4)$
+	\end{itemize}
+	\pause and assume independent beta priors distribution:
+	\[ p(\theta) = \prod_{s=1}^S p(\theta_s) \pause = \prod_{s=1}^S \frac{\theta_s^{a _s-1}(1-\theta_s)^{b _s-1}}{B(a _s,b _s)} \mathrm{I}(0<\theta_s<1).  \]
+}
+
+\frame{\frametitle{Joint posterior}
+	Derive the posterior according to Bayes rule: \pause 
+	\[ \begin{array}{ll}
+	p(\theta|y) &\pause \propto p(y|\theta)p(\theta) \pause \\
+	&= \prod_{s=1}^S p(y_s|\theta_s) \prod_{s=1}^S p(\theta_s)  \pause \\
+	&= \prod_{s=1}^S p(y_s|\theta_s) p(\theta_s) \pause \\
+	&= \prod_{s=1}^S \mbox{Beta}(\theta_s|a _s+y_s, b _s+n_s-y_s) \pause 
+	\end{array} \]
+	So the posterior for each $\theta_s$ is exactly the same as if we treated each season independently. 
+}
+
+\begin{frame}[fragile]
+\frametitle{Joint posterior}
+<<joint_posterior, fig.height=3.5>>=
+a = b = 1
+d = data.frame(year=1:4, y=c(36,64,67,47), n=c(95,150,171,99))
+d$a = a + d$y
+d$b = b + d$n - d$y
+plot(0, 0, type="n", main="Andre Dawkins's 3-point percentage", xlab=expression(theta), ylab="Posterior",
+     xlim=c(0,1), ylim=c(0,max(dbeta(d$y/d$n,d$a,d$b))))
+for (i in 1:nrow(d)) curve(dbeta(x, d$a[i], d$b[i]), col=i, lwd=2, lty=i, add=TRUE)
+legend("topright", paste("Season", 1:nrow(d)), col=1:4, lwd=2, lty=1:4)
+@
+\end{frame}
+
+\section{Monte Carlo estimates}
+\begin{frame}[fragile]
+\frametitle{Monte Carlo estimates}
+
+\vspace{-0.08in}
+
+<<>>=
+library(plyr)
+sim = ddply(d, .(year), 
+            function(x) data.frame(theta=rbeta(1e3, x$a, x$b),
+                                   a = x$a, b = x$b))
+
+# hpd 
+hpd = function(theta,a,b,p=.95) {
+  h = dbeta((a-1)/(a+b-2),a,b)
+  ftheta = dbeta(theta,a,b)
+  r = uniroot(function(x) mean(ftheta>x)-p,c(0,h))
+  range(theta[which(ftheta>r$root)])
+}
+
+# expectations
+ddply(sim, .(year), summarize,
+      mean = mean(theta),
+      median = median(theta),
+      ciL  = quantile(theta, c(.025,.975))[1],
+      ciU  = quantile(theta, c(.025,.975))[2],
+      hpdL = hpd(theta,a[1],b[1])[1],
+      hpdU = hpd(theta,a[1],b[1])[2])
+@
+\end{frame}
+
+
+
+\frame{\frametitle{Comparing probabilities across years}
+	The scientific question of interest here is whether Dawkins's 3-point percentage is higher this year than in the past. \pause In probability notation this is 
+	\[ P(\theta_4>\theta_s|y)\mbox{ for } s=1,2,3.\]
+	\pause which can be approximated via Monte Carlo as 
+	\[ P(\theta_4>\theta_s|y) = E_{\theta|y}[\mathrm{I}(\theta_4>\theta_s)]\approx \frac{1}{J} \sum_{j=1}^J \mathrm{I}\left(\theta_4^{(j)} > \theta_s^{(j)}\right) \]
+	\pause where
+	\begin{itemize}
+	\item $\theta_s^{(j)} \stackrel{iid}{\sim} Be(a_s + y_s,b_s+n_s-y_s)$ \pause 
+	\item $\mathrm{I}(A)$ is in indicator function that is 1 if $A$ is true and zero otherwise. 
+	\end{itemize}
+}
+
+\begin{frame}[fragile]
+\frametitle{Estimated probabilities}
+<<>>=
+# Should be able to use dcast
+d = data.frame(theta_1 = sim$theta[sim$year==1],
+               theta_2 = sim$theta[sim$year==2],
+               theta_3 = sim$theta[sim$year==3],
+               theta_4 = sim$theta[sim$year==4])
+
+# Probabilities that season 4 percentage is higher than other seasons
+mean(d$theta_4 > d$theta_1)
+mean(d$theta_4 > d$theta_2)
+mean(d$theta_4 > d$theta_3)
+@
+\end{frame}
+
+\section{JAGS}
+\frame{\frametitle{JAGS/Stan}
+  General purpose Bayesian software and R interface:
+  \begin{itemize}
+  \item \href{http://mcmc-jags.sourceforge.net/}{JAGS} and \href{http://cran.r-project.org/web/packages/rjags/index.html}{rjags}
+  \item \href{http://mc-stan.org/}{Stan} and \href{https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started}{rstan}
+  \end{itemize}
+  
+  \vspace{0.2in}
+  
+  These software allow you to write virtually any Bayesian model and obtain samples from the posterior. 
+}
+
+\begin{frame}[fragile]
+<<jags>>=
+library(rjags)
+independent_binomials = "
+model {
+  for (i in 1:N) { 
+    y[i] ~ dbin(theta[i],n[i]) 
+    theta[i] ~ dbeta(1,1)
+  }
+}
+"
+
+d = list(y=c(36,64,67,47), n=c(95,150,171,99), N=4)
+m = jags.model(textConnection(independent_binomials), d)
+res = coda.samples(m, "theta", 1000)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<jags2>>=
+summary(res)
+@
+\end{frame}
+
+\end{document}
