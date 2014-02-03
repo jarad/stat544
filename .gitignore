@@ -1,0 +1,13 @@
+# auxiliary R files
+.Rhistory
+.Rapp.history
+
+# auxiliary LaTeX files
+*-concordance.tex
+*.log
+*.synctex.gz
+*-concordance.tex
+*.log
+*.synctex.gz
+*.vrb
+
