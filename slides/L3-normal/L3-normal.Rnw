@@ -1,0 +1,348 @@
+%\documentclass{beamer}
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\title{Normal sampling model}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE>>=
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+@
+
+\frame{\titlepage}
+
+\section{Probability theory review}
+\frame{\frametitle{Relevant probability results}\tiny 
+  In retrospect, this is the only thing I used:
+
+  If $Y|m \sim N(m,C)$, the kernel of the density for $Y$ is 
+  \[ p(y| m) \propto \exp\left(-\frac{1}{2V} [y- m]^2 \right) \propto \exp\left(-\frac{1}{2C} \left[ y^2 -2y m\right] \right). \]
+  
+  \vspace{0.2in} \pause 
+
+  These can be used, but I didn't. 
+
+  If $Y_i\stackrel{ind}{\sim} N(m_i, V_i)$, then 
+  \[ c_1 Y_1+c_2 Y_2 \sim \pause  N(c_1m_1+c_2m_2, c_1^2V_1+c_2^2V_2) \qquad \mbox{and} \qquad \sum_{i=1}^n c_i Y_i \sim \pause N\left( \sum_{i=1}^n c_i m_i, \sum_{i=1}^n c_i^2 V_i \right). \]
+  
+  \pause 
+  If
+  \[ \left( \begin{array}{c} Y_1 \\ Y_2 \end{array} \right) \sim N\left( \left[ \begin{array}{c} m_1 \\ m_2 \end{array} \right], \left[ \begin{array}{cc} C_{1} & C_{12} \\ C_{21} & C_{2} \end{array} \right] \right), \mbox{ then } Y_1|Y_2 \sim \pause N\left(m_1+C_{12}C_{2}^{-1}(Y_2-m_2), C_{1}-C_{12}C_{2}^{-1}C_{21}\right). \]
+  
+  \pause
+  If $Y|\mu \sim N(\mu,s^2\mathrm{I})$ and $\mu\sim N(m,C)$, then $Cov(Y,\mu) = \pause Var(\mu)=C$, see Casella \& Berger exercise 12.11a. 
+  
+  \vspace{0.2in} \pause 
+  
+  If $Y|\sigma^2 \sim N(m,\sigma^2)$, then 
+  \[ E[s^2] = E\left[ \frac{1}{n} \sum_{i=1}^n (y_i-m)^2 \right] = \sigma^2 \]
+}
+
+
+
+
+\section{Normal model, unknown mean}
+\subsection{Jeffreys prior for $\mu$}
+\frame{\frametitle{Jeffreys prior for $\mu$}
+  \begin{theorem}
+  If $Y_i\stackrel{iid}{\sim} N(\mu,s^2)$ ($s^2$ known), Jeffreys prior for $\mu$ is $p(\mu)\propto 1$. 
+  \end{theorem}
+  \pause
+  \begin{proof}
+  Since the normal distribution with unknown mean is an exponential family, use Casella \& Berger Lemma 7.3.11 {\tiny
+  \[ \begin{array}{rl}
+  -E_{y|\mu}\left[ \frac{\partial^2}{\partial \mu^2} \log p(y|\mu) \right] 
+  &=  -E\left[ \frac{\partial^2}{\partial \mu^2} -\log (2\pi s^2)/2 -\frac{1}{2s^2}\sum_{i=1}^n \left( y_i-\mu \right)^2 \right] \\
+  &=  -E\left[ \frac{\partial^2}{\partial \mu^2} -\log (2\pi s^2)/2 -\frac{1}{2s^2}\left( \sum_{i=1}^n y_i^2 - 2\mu n\overline{y} + n\mu^2 \right) \right] \\
+  &=  -E\left[ \frac{\partial}{\partial \mu} -\frac{1}{2s^2}\left( - 2 n\overline{y} + 2n\mu \right) \right] \\
+  &=  -E\left[  -\frac{1}{2s^2}\left( 2n \right) \right] \\
+  &=  2n/s^2 \\ \\
+  p(\mu) &\propto \sqrt{|\mathcal{I}(\mu)|} =  \sqrt{2n/s^2} \\
+  &= 1
+  \end{array} \]
+  }
+  So Jeffreys prior for $\mu$ is $p(\mu)\propto 1$.
+  \end{proof}
+}
+
+\frame{\frametitle{Posterior propriety}
+  Since $\int_{-\infty}^\infty 1 d\mu$ is not finite, we need to check posterior propriety.
+  \begin{theorem}
+  For $n>0$, the posterior for a normal mean (known variance) using Jeffreys prior is proper. 
+  \end{theorem}
+  \begin{proof}
+  The posterior is 
+  \[ \begin{array}{rl}
+  p(\mu|y) &\propto p(y|\mu)p(\mu) \\
+  &\propto \exp\left( -\frac{1}{2s^2} \sum_{i=1}^n (y_i-\mu)^2\right) 1 \\
+  &\propto \exp\left( -\frac{1}{2s^2} \left[ -2\mu n\overline{y}+n\mu^2 \right]\right) \\
+  &\propto \exp\left( -\frac{1}{2} \left[ \frac{n}{s^2}\mu^2 -2\mu \frac{n}{s^2} \overline{y} \right]\right). \\
+  \end{array} \]
+  This is the kernel of a normal distribution with mean $\overline{y}$ and variance $s^2/n$ which is proper if $n>0$. 
+  \end{proof}
+}
+
+\subsection{Natural conjugate prior}
+\frame{\frametitle{Natural conjugate prior} \small
+  If $Y_i\stackrel{iid}{\sim} N(\mu,s^2)$ ($s^2$ known), the natural conjugate prior is $\mu\sim N(m,C)$ and the posterior is $\mu|y \sim N(m', C')$.  
+  
+  \vspace{0.2in} \pause
+  
+  The likelihood is 
+  \[ \begin{array}{rl}
+  L(\mu) &= (2\pi s^2)^{-n/2} \exp\left( -\frac{1}{2s^2} \sum_{i=1}^n [y_i-\mu]^2  \right) \\
+  &\propto \exp\left( -\frac{1}{2s^2} \left[ \sum_{i=1}^n y_i^2 -2\mu n\overline{y} + n\mu^2 \right] \right) \\
+  &\propto \exp\left( -\frac{1}{2} \left[ \frac{n}{s^2} \mu^2  -2\mu \frac{n}{s^2} \overline{y} + \right] \right) \\
+  \end{array} \]
+  This is the kernel of a normal distribution, so the natural conjugate prior is $\mu\sim N(m,C)$.
+  
+  \[ \begin{array}{rl}
+  p(\mu|y) &\propto p(y|\mu)p(\mu) \\
+  &= \exp\left( -\frac{1}{2} \left[ \frac{n}{s^2} \mu^2  -2\mu \frac{n}{s^2} \overline{y} \right] \right) 
+     \exp\left( -\frac{1}{2} \left[ \frac{1}{C} \mu^2  -2\mu \frac{1}{C}m \right] \right) \\
+  &= \exp\left( -\frac{1}{2} \left[ \left(\frac{1}{C}+ \frac{n}{s^2}\right) \mu^2  -2\mu \left(\frac{1}{C}m + \frac{n}{s^2} \overline{y} \right) \right] \right) 
+  \end{array} \]
+  This is the kernel of a $N(m',C')$ with 
+  \[ \begin{array}{rl}
+  C' &= [1/C + n s^{-2}]^{-1} \\
+  m' &= C'[m/C + n s^{-2}\overline{y}]
+  \end{array} \]
+}
+
+\begin{comment} % Unfinished
+\frame{\frametitle{Alternative derivation using the probability theory results}
+  If $Y_i \stackrel{iid}{\sim} N(\mu,s^2)$ and $\mu\sim N(m,C)$, then 
+  \[ 
+  \left( \begin{array}{c} Y \\ \mu \end{array} \right) 
+  \sim N\left(
+  \left[ \begin{array}{c} m \mathrm{1} \\ m \end{array} \right], 
+  \left[ \begin{array}{cc} s^2 \mathrm{I} & C \mathrm{1} \\ C\mathrm{1}^\top & C\end{array}  \right]  \right)
+  \]
+  where $C$ is s scalar. Thus, 
+  \[ \mu|Y \sim N(m',C') \]
+  where
+  \[ \begin{array}{rl}
+  C' &= C - C\mathrm{1}^\top[s^2 \mathrm{I}]^{-1}C\mathrm{1} =  \\
+  m' &= C'[m/C + n s^{-2}\overline{y}]
+  \end{array} \]
+}
+\end{comment}
+
+
+\frame{\frametitle{Normal mean posterior comments}
+  Let $P = 1/C$, $P'=1/C'$, and $Q=1/s^2$, \pause then 
+  
+  \vspace{0.2in} 
+  
+  \begin{itemize}
+  \item The posterior precision is the sum of the prior and observation precisions.
+  \[ P' = P + \sum_{i=1}^n Q = P+ nQ. \]
+  \item \pause The posterior mean is a precision weighted average of the prior and data. 
+  \[ \begin{array}{rl}
+  m' &=  \frac{1}{P'}\left[P m  + n Q \overline{y} \right] \\
+  &= \frac{P}{P'} m + n \frac{Q}{P'} \overline{y} \\
+  &= \frac{P}{P'} m + \sum_{i=1}^n \frac{Q}{P'} y_i
+  \end{array} \]
+  \end{itemize}
+}
+
+\begin{frame}[fragile]
+<<unknown_mean,eval=FALSE>>=
+set.seed(6)
+n = 3
+mu = 1
+Q = 1
+y = rnorm(n,mu,sqrt(1/Q)) 
+m = 0
+P = 1
+nQ = n*Q
+Pp = P+nQ
+mp = (P*m+nQ*mean(y))/Pp
+curve(dnorm(x,mp,sqrt(1/Pp)), col="red", lwd=2, -2, 4,
+      main="Normal model with unknown mean, normal prior",
+      xlab=expression(mu), ylab="Density")
+curve(dnorm(x,m,sqrt(1/P)), col="blue", lwd=2, add=TRUE)
+curve(dnorm(x, mean(y), sqrt(1/nQ)), col="seagreen", lwd=2, add=TRUE)
+for (i in 1:n) curve(dnorm(x, y[i], sqrt(1/Q)), col="seagreen", lty=2, add=TRUE)
+legend("topright", c("Prior","Posterior","Likelihood"), col=c("blue","red","seagreen"), lwd=2)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<unknown_mean_plot, echo=FALSE>>=
+<<unknown_mean>>
+@
+\end{frame}
+
+
+
+\section{Normal model, unknown variance}
+\frame{\frametitle{}
+  \begin{theorem}
+  If $Y_i\stackrel{iid}{\sim} N(m,\sigma^2)$ ($m$ known), Jeffreys prior for $\sigma^2$ is $p(\sigma^2)\propto 1/\sigma^2$. 
+  \end{theorem}
+  \begin{proof}
+  Since the normal distribution with unknown variance is an exponential family, use Casella \& Berger Lemma 7.3.11.{\tiny
+  \[ \begin{array}{rl}
+  -E_{y| \sigma^2}\left[ \frac{\partial^2}{\partial  (\sigma^2)^2} \log p(y| \sigma^2) \right] 
+  &=  -E\left[ \frac{\partial^2}{\partial  (\sigma^2)^2} -n\log (2\pi \sigma^2)/2 -\frac{1}{2\sigma^2}\sum_{i=1}^n \left( y_i- m \right)^2 \right] \\
+  &=  -E\left[ \frac{\partial}{\partial  (\sigma^2)} -\frac{n}{2\sigma^2} +\frac{1}{2(\sigma^2)^2}\sum_{i=1}^n \left( y_i- m \right)^2 \right] \\
+  &=  -E\left[ \frac{n}{2(\sigma^2)^2} -\frac{1}{(\sigma^2)^3}\sum_{i=1}^n \left( y_i- m \right)^2 \right] \\
+  &=  -\frac{n}{2(\sigma^2)^2} +\frac{n}{(\sigma^2)^3} \sigma^2 \\
+  &=  n/2 (\sigma^2)^{-2}\\
+  \\
+  p(\sigma^2) &\propto \sqrt{|\mathcal{I}(\sigma^2)|} = 1/\sigma^2
+  \end{array} \] }
+  So Jeffreys prior is $p(\sigma^2) \propto 1/\sigma^2$. 
+  \end{proof}
+}
+
+
+\frame{\frametitle{Posterior propriety}
+  Since $\int_0^\infty 1/\sigma^2 d \sigma^2$ is not finite, we need to check posterior propriety.
+  \begin{theorem}
+  For $n>0$ and at least one $y_i\ne m$, the posterior for a normal variance (known mean) using Jeffreys prior is proper. 
+  \end{theorem}
+  \begin{proof}
+  The posterior is 
+  \[ \begin{array}{rl}
+  p(\sigma^2|y) &\propto p(y| \sigma^2)p( \sigma^2) \\
+  &= (2\pi\sigma^2)^{-n/2} \exp\left( -\frac{1}{2\sigma^2} \sum_{i=1}^n [y_i-m]^2 \right) (\sigma^2)^{-1}\\
+  &\propto (\sigma^2)^{-n/2-1} \exp\left( -\frac{1}{2\sigma^2} \sum_{i=1}^n [y_i-m]^2 \right) \\
+  \end{array} \]
+  This is the kernel of an inverse gamma distribution with shape $n/2$ and scale $\sum_{i=1}^n [y_i-m]^2/2$ which will be proper so long as $n>0$ and at least one $y_i\ne m$. 
+  \end{proof}
+}
+
+\frame{\frametitle{Natural conjugate prior} \small
+  If $Y_i\stackrel{iid}{\sim} N(m,\sigma^2)$ ($m$ known), the natural conjugate prior is $\sigma^2\sim IG(a,b)$ and the posterior is $\mu|y \sim N\left(a+n/2, b+\sum_{i=1}^n [y_i-m]^2/2\right)$.  
+  
+  \vspace{0.2in} \pause
+  
+  The likelihood is 
+  \[ \begin{array}{rl}
+  L(\sigma^2) &\propto (\sigma^2)^{-n/2} \exp\left( -\frac{1}{2\sigma^2} \sum_{i=1}^n [y_i-m]^2  \right) \\
+  \end{array} \]
+  This is the kernel of an inverse gamma distribution, so the natural conjugate prior is $IG(a,b)$.
+  
+  \[ \begin{array}{rl}
+  p(\sigma^2|y) &\propto p(y|\sigma^2)p(\sigma^2) \\
+  &= (\sigma^2)^{-n/2} \exp\left( -\frac{1}{2\sigma^2} \sum_{i=1}^n [y_i-m]^2 \right) (\sigma^2)^{-a-1}\exp(-b/\sigma^2) \\
+  &= (\sigma^2)^{-(a+n/2)-1} \exp\left( -\frac{1}{\sigma^2}\left[ b+ \sum_{i=1}^n [y_i-m]^2/2 \right] \right) 
+  \end{array} \]
+  This is the kernel of an inverse gamma distribution with shape $a+n/2$ and scale $b+\sum_{i=1}^n [y_i-m]^2/2$.
+}
+
+\begin{comment}
+
+\section{Normal model}
+\frame{\frametitle{Normal model, $\mu$ and $\sigma^2$ both unknown}
+  Suppose $Y_i\sim N(\mu,\sigma^2)$ with both $\mu$ and $\sigma^2$ unknown. \pause Assume
+  \begin{itemize}
+  \item $\mu|\sigma^2 \sim N(m, \sigma^2 C)$ \pause and 
+  \item $\sigma^2 \sim IG(a,b)$. \pause
+  \end{itemize}
+  
+  \vspace{0.2in} \pause 
+  
+  Then what is $Y|\sigma^2$?
+  \[ p(y|\sigma^2) = \int p(y|\mu,\sigma^2) p(\mu|\sigma^2) d\mu. \]
+  Recall,
+  \[ Y = \mu+\epsilon \]
+  so $Y|\sigma^2$ is normal with 
+  \[ E[Y|\sigma^2] = m \qquad V[Y|\sigma^2] = \sigma^2 C + \sigma^2 = \sigma^2 (C+1). \]
+}
+
+\frame{\frametitle{Posterior for $\sigma^2$}
+  Now, 
+  \[ \begin{array}{rl}
+  p(\sigma^2|y) &\propto p(y|\sigma^2)p(\sigma^2) \\
+  &\propto (\sigma^2)^{-n/2} \exp\left(-\frac{1}{2\sigma^2[C+1]} \sum_{i=1}^n [y_i-m]^2 \right) (\sigma^2)^{-a-1} \exp(-b/\sigma^2) \\
+  &= (\sigma^2)^{-(a+n/2)-1} \exp\left(-\frac{1}{\sigma^2} \left[ b + \frac{1}{2[C+1]} \sum_{i=1}^n  [y_i-m]^2 \right] \right) \\
+  \end{array} \]
+  So $\sigma^2|y \sim IG\left(a', b' \right)$ where 
+  
+    \[ \begin{array}{rl}
+  a' &= a+n/2 \\
+  b' &= b+\frac{1}{2[C+1]} \sum_{i=1}^n [y_i-m]^2
+  \end{array} \]
+}
+
+\frame{\frametitle{Posterior for $\mu$}
+  The conditional posterior, $\mu|y,\sigma^2$, is exactly like $\mu|y,s^2$ with $C$ replaced with $\sigma^2 C$. \pause So 
+  \[ 
+  \mu|y,\sigma^2 \sim N(m', \sigma^2 C')
+  \]
+  where 
+  \[ \begin{array}{rl}
+  C' &= \left[\frac{1}{C} + n\right]^{-1} \\
+  m' &= C'\left[ \frac{1}{C}m + n\overline{y} \right]
+  \end{array} \]
+  
+  \vspace{0.2in} \pause 
+  
+  The marginal posterior
+  \[ p(\mu|y) = \int p(\mu|y,\sigma^2) p(\sigma^2|y) d\sigma^2 \]
+  which is a non-standard student $t$-distribution.
+}
+
+\end{comment}
+
+\subsection{Summary}
+\frame{\frametitle{}\small
+  Suppose $Y_i \sim N(\mu,\sigma^2)$.
+  \begin{itemize}[<+->]
+  \item $\mu$ unknown ($\sigma^2$ known)
+    \begin{itemize}
+    \item Jeffreys prior: $p(\mu)\propto 1$ (think of this as $N(0,\infty)$)
+    \item Natural conjugate prior: $N(m,C)$ 
+    \item Posterior $N(m',C')$ with
+      \begin{itemize}
+      \item $C' = [1/C + n\sigma^{-2}]^{-1}$
+      \item $m' = C'[m/C + n\sigma^{-2}\overline{y}]$
+      \end{itemize}
+    \end{itemize}
+  \item $\sigma^2$ unknown ($\mu$ known)
+    \begin{itemize}
+    \item Jeffreys prior: $p(\sigma^2) \propto 1/\sigma^2$ (think of this as $IG(0,0)$)
+    \item Natural conjugate prior $IG(a,b)$
+    \item Posterior $IG\left(a+n, b+\sum_{i=1}^n (y_i-\mu)^2\right)$
+    \end{itemize}
+    
+    
+%  \item $\mu,\sigma^2$ both unknown
+%    \begin{itemize}
+%    \item Jeffreys prior: $p(\mu,\sigma^2) \propto 1/\sigma^2$
+%    \item Natural conjugate prior $\mu|\sigma^2 \sim N(m,\sigma^2 C), \sigma^2 \sim IG(a,b)$. 
+%    \item Posterior $\mu|y,\sigma^2 \sim N(m',\sigma^2 C'), \sigma^2|y \sim IG\left(a+n/2, b+\frac{1}{2[C+1]}\sum_{i=1}^n (y_i-\mu)^2\right)$
+%      \begin{itemize}
+%      \item $C' = [1/C + n]^{-1}$
+%      \item $m' = C'[m/C + n\overline{y}]$
+%      \end{itemize}
+%    \end{itemize}
+  
+    
+  \end{itemize}
+}
+
+
+\end{document}
