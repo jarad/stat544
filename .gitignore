@@ -11,3 +11,12 @@
 *.synctex.gz
 *.vrb
 
+*.pdf
+*.R
+*.tex
+
+# exclusions
+!slides/L1-parameter_estimation/one-parameter-models.tex
+!slides/L1-parameter_estimation/one-parameter-models.R
+
+
