@@ -10,6 +10,9 @@
 *.log
 *.synctex.gz
 *.vrb
+*.nav
+*.snm
+*.toc
 
 *.pdf
 *.R
