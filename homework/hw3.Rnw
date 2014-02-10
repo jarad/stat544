@@ -44,8 +44,8 @@ d
 @
 
 \begin{enumerate}
-\item Consider the model $Y_i\stackrel{iid}{\sim} Po(x_i \lambda)$ where $x_i$ are known \emph{exposures} and $\lambda$ is the rate. Model the rate of fatal accidents per miles flown, i.e. $y_i$ is the number of fatal accidents in year $i$ and $x_i$ are the number of miles flown (using 100 million miles is fine). Provide a 95\% credible interval for $\lambda$ and a 95\% prediction interval for the number of fatal accidents in 1986 assuming $8\times 10^{11}$ million miles are flown. 
-\item Consider the model $Y_i\stackrel{iid}{\sim} Po(x_i\lambda_i)$ where $\lambda_i$ is the rate for year $i$. Assume independent priors for $\lambda_i$ and calculate the probability that the rate in 1985 is greater than the rate in each of the years before it (there will be 9 probabilities). 
+\item Consider the model $Y_i\stackrel{ind}{\sim} Po(x_i \lambda)$ where $x_i$ are known \emph{exposures} and $\lambda$ is the rate. Model the rate of fatal accidents per miles flown, i.e. $y_i$ is the number of fatal accidents in year $i$ and $x_i$ are the number of miles flown (using 100 million miles is fine). Provide a 95\% credible interval for $\lambda$ and a 95\% prediction interval for the number of fatal accidents in 1986 assuming $8\times 10^{11}$ miles are flown. 
+\item Consider the model $Y_i\stackrel{ind}{\sim} Po(x_i\lambda_i)$ where $\lambda_i$ is the rate for year $i$. Assume independent priors for $\lambda_i$ and calculate the probability that the rate in 1985 is greater than the rate in each of the years before it (there will be 9 probabilities). 
 
 \end{enumerate}
 

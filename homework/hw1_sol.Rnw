@@ -135,7 +135,7 @@ xx = 0:15
 an = a+sum(y)
 bn = b+length(y)
 # Be careful with the parameterization,  
-# size is the number of successful, rather than unsuccessful, trails.
+# size is the number of successful, rather than unsuccessful, attempts.
 # I fix this by taking prob = 1-p = b/(b+1)
 plot(xx, dnbinom(xx, a, b/(b+1)), pch=19, col="blue", main="Negative binomial", xlab=expression(tilde(y)), ylab="PMF")
 points(xx, dnbinom(xx, an, bn/(bn+1)), pch=19, col="red")
