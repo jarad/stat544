@@ -1,0 +1,493 @@
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\title{Normal hierarchical models}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+####################################
+# L8 - Normal hierarchical models  #
+####################################
+library(reshape2)
+library(plyr)
+library(ggplot2)
+library(rjags)
+@
+
+\frame{\maketitle}
+
+\section{Theoretical results}
+\subsection{Proper priors}
+\frame{\frametitle{Proper priors with discrete data}
+\small
+  \begin{theorem}
+	If the prior is proper and the data is discrete, then the posterior is always proper. 
+	\end{theorem}
+	
+	\vspace{0.2in} \pause 
+	
+	\begin{proof}
+	Let $p(\theta)$ be the prior and $p(y|\theta)$ be the statistical model. \pause Thus, we need to show that 
+	\[ p(y) = \int_{\Theta} p(y|\theta) p(\theta) d\theta < \infty \quad \forall y. \]
+	\pause For discrete $y$, we have 
+	\[ \begin{array}{ll} 
+	p(y) &\le \sum_{y\in \mathcal{Y}} p(y) \pause =  \sum_{y\in \mathcal{Y}} \int_{\Theta} p(y|\theta) p(\theta) d\theta \pause \stackrel{FT}{=}  \int_{\Theta} \sum_{y\in \mathcal{Y}} p(y|\theta) p(\theta) d\theta \pause \\ \\
+  &= \int_{\Theta} p(\theta) d\theta \pause = 1. 
+	\end{array} \]
+	\pause Thus the posterior is always proper if $y$ is discrete. \pause (FT=Fubini's Theorem)
+	\end{proof}
+}
+
+\frame{\frametitle{Proper priors with continuous data}
+\small
+	\begin{theorem}
+	If the prior is proper and the data is continuous, then the posterior is almost always proper. 
+	\end{theorem}
+	
+	\pause 
+	
+	\begin{proof}
+	Let $p(\theta)$ be the prior and $p(y|\theta)$ be the statistical model. Thus, we need to show that 
+	\[ p(y) = \int_{\Theta} p(y|\theta) p(\theta) d\theta < \infty \quad \forall y. \]
+	\pause For continuous $y$, we have 
+	\[ \begin{array}{ll} 
+	\int_{\mathcal{Y}} p(y) dy \pause =  \int_{\mathcal{Y}} \int_{\Theta} p(y|\theta) p(\theta) d\theta dy \pause\stackrel{FT}{=}  \int_{\Theta} \int_{\mathcal{Y}} p(y|\theta) dy \, p(\theta) d\theta \pause= \int_{\Theta} p(\theta) d\theta \pause = 1 
+	\end{array} \]
+	\pause thus $p(y)$ is finite except on a set of measure zero, \pause i.e. $p(y)$ is almost always proper.  \pause (FT=Fubini's Theorem)
+	\end{proof}
+}
+
+
+\subsection{Impropriety of prior predictive distributions}
+\frame{\frametitle{Impropriety of prior predictive distributions}
+  \begin{theorem}
+  If $p(\theta)$ is improper, then $p(y) = \int p(y|\theta) p(\theta) d\theta$ is improper. 
+  \end{theorem}
+  
+  \vspace{0.2in} \pause
+  
+  \begin{proof}
+  \[ \begin{array}{rl}
+  \int p(y) dy &= \pause \int \int p(y|\theta) p(\theta) d\theta dy \pause \stackrel{TT}{=} \int p(\theta)  \int p(y|\theta) dy d\theta \pause \\
+  &= \int p(\theta) d\theta
+  \end{array} \]
+  \pause which is not finite \pause and therefore $p(y)$ is improper. \pause A similar result holds for discrete $y$ ing the appropriate integral with a sum. \pause (TT=Tonelli's Theorem)
+  \end{proof}
+}
+
+
+
+\section{Exchangeability}
+\frame{\frametitle{Exchangeability}
+  \begin{definition}
+	The set $Y_1,Y_2,\ldots,Y_n$ is \alert{exchangeable} if the joint probability $p(y_1,\ldots,y_n)$ is invariant to permutation of the indices. That is, for any permutation $\pi$,
+	\[ p(y_1,\ldots,y_n) = p(y_{\pi_1},\ldots,y_{\pi_n}). \]
+	\end{definition}
+	
+	\vspace{0.2in} \pause
+	
+	An exchangeable but not iid example: \pause
+	\begin{itemize}
+	\item Consider an urn with one red ball and one blue ball with probability 1/2 of drawing either. \pause
+	\item Draw without replacement from the urn. \pause
+	\item Let $Y_i=1$ if the $i$th ball is red and otherwise $Y_i=0$. \pause
+	\item Since $1/2=P(Y_1=1,Y_2=0) \pause = P(Y_1=0,Y_2=1)=1/2$\pause , $Y_1$ and $Y_2$ are exchangeable. \pause
+	\item But $0=P(Y_2=1|Y_1=1) \pause \ne P(Y_2=1)=1/2$ \pause and thus $Y_1$ and $Y_2$ are not independent.
+	\end{itemize}
+}
+
+\frame{\frametitle{Exchangeability}
+	\begin{theorem}
+	All independent and identically distributed random variables are exchangeable.
+	\end{theorem} \pause
+	\begin{proof}
+	Let $y_i \stackrel{iid}{\sim} p(y)$\pause, then 
+	\[ 
+	p(y_1,\ldots,y_n) \pause = \prod_{j=1}^n p(y_i) \pause = \prod_{j=1}^n p(y_{\pi_i}) \pause = p(y_{\pi_1},\ldots,y_{\pi_n})
+	\]
+	\end{proof}
+
+  \pause
+  
+  \begin{definition}
+	The sequence $y_1,y_2,\ldots$ is \alert{infinitely exchangeable} if, for any $n$, $y_1,y_2,\ldots,y_n$ are exchangeable.
+	\end{definition}
+}
+
+\section{de Finetti's theorem}
+\frame{\frametitle{de Finetti's theorem}
+\small
+	\begin{theorem}
+	A sequence of random variables ($y_1,y_2,\ldots$) is infinitely exchangeable iff\pause, for all $n$, 
+	\[ p(y_1,y_2,\ldots,y_n) = \int \prod_{j=1}^n p(y_i|\theta) P(d\theta), \]
+	for some measure $P$ on $\theta$. 
+	\end{theorem}
+	\pause If the distribution on $\theta$ has a density, we can replace $P(d\theta)$ with $p(\theta)d\theta$. 
+	
+	\vspace{0.1in} \pause
+	
+	This means that there must exist \pause 
+	\begin{itemize}
+	\item a parameter $\theta$\pause, 
+	\item a likelihood $p(y|\theta)$ \pause such that $y_i \stackrel{ind}{\sim} p(y|\theta)$\pause, and
+	\item a distribution $P$ on $\theta$.
+	\end{itemize}
+}
+
+\subsection{Hierarchical models}
+\frame{\frametitle{Application to hierarchical models}
+	Assume $(y_1,y_2,\ldots)$ are infinitely exchangeable\pause, then by de Finetti's theorem for the $(y_1,\ldots,y_n)$ that you actually observed\pause, there exists
+	\begin{itemize}
+	\item a parameter $\theta$\pause,
+	\item a distribution $p(y|\theta)$ \pause such that $y_i\stackrel{ind}{\sim} p(y|\theta)$\pause, and
+	\item a distribution $P$ on $\theta$. 
+	\end{itemize}
+	\pause Assume $\theta=(\theta_1,\theta_2,\ldots)$ \pause with $\theta_i$ infinitely exchangeable. \pause By de Finetti's theorem for $(\theta_1,\ldots,\theta_n)$\pause, there exists
+	\begin{itemize}
+	\item a parameter $\phi$\pause, 
+	\item a distribution $p(\theta|\phi)$ \pause such that $\theta_i\stackrel{ind}{\sim} p(\theta|\phi)$\pause, and 
+	\item a distribution $P$ on $\phi$. 
+	\end{itemize}
+	\pause Assume $\phi=\phi$ \pause with $\phi \sim p(\phi)$. 
+}
+
+\begin{comment}
+
+\subsection{Covariate information}
+\frame{\frametitle{Exchangeability with covariates}
+	Suppose we observe $y_i$ observations and $x_i$ covariates for each unit $j$. \pause Now we assume $(y_1,y_2,\ldots)$ are infinitely exchangeable given $x_i$\pause, then by de Finetti's theorem for the $(y_1,\ldots,y_n)$\pause, there exists
+	\begin{itemize}
+	\item a parameter $\theta$\pause,
+	\item a distribution $p(y|\theta,x)$ \pause such that $y_i\stackrel{ind}{\sim} p(y|\theta,x)$\pause, and
+	\item a distribution $P$ on $\theta$ given $x$. 
+	\end{itemize}
+	\pause Assume $\theta=(\theta_1,\theta_2,\ldots)$ \pause with $\theta_i$ infinitely exchangeable given $x$. \pause By de Finetti's theorem for $(\theta_1,\ldots,\theta_n)$\pause, there exists
+	\begin{itemize}
+	\item a parameter $\phi$\pause, 
+	\item a distribution $p(\theta|\phi,x)$ \pause such that $\theta_i\stackrel{ind}{\sim} p(\theta|\phi,x)$\pause, and 
+	\item a distribution $P$ on $\phi$ given $x$.
+	\end{itemize}
+	\pause Assume $\phi=\phi$ \pause with $\phi \sim p(\phi|x)$. 
+}
+
+\section{Summary}
+\frame{\frametitle{Summary}
+	Hierarchical model:
+	\[ y_i\stackrel{ind}{\sim} p(y|\theta_i), \qquad \theta_i \stackrel{ind}{\sim} p(\theta|\phi), \qquad \phi \sim p(\phi) \]
+	\pause Hierarchical linear model:
+	\[ y_i\stackrel{ind}{\sim} p(y|\theta_i,x_i), \qquad \theta_i \stackrel{ind}{\sim} p(\theta|\phi,x_i), \qquad \phi \sim p(\phi|x) \]
+	
+	\vspace{0.2in} \pause
+	
+	Although hierarchical models are typically written using the conditional independence notation above\pause, the assumptions underlying the model are exchangeability \pause and functional forms for the priors. 
+}
+
+\end{comment}
+
+
+\section{Normal hierarchical models}
+\frame{\frametitle{Normal hierarchical models}
+  Suppose we have the following model
+	\[ \begin{array}{rl}
+	y_{ij} &\stackrel{ind}{\sim} N(\theta_j, \sigma^2) \pause \\
+	\theta_j &\stackrel{iid}{\sim} N(\mu,\tau^2) \pause \\
+	p(\mu,\tau) &\propto \mathrm{I}(\tau>0)
+	\end{array} \]
+	\pause with $i=1,\ldots,n_j$, $j=1,\ldots,J$, and $n=\sum_{j=1}^J n_j$. \pause This is a normal hierarchical model. 
+	
+	\vspace{0.2in} \pause
+	
+	For the moment, we assume $\sigma^2$ is known for computational reasons.
+}
+
+\subsection{Posterior}
+\frame{\frametitle{Posterior distribution}
+	The posterior is 
+	\[ p(\theta,\mu,\tau|y) \pause \propto p(y|\theta)p(\theta|\mu,\tau) p(\mu,\tau) \]
+	\pause but the decomposition 
+	\[ p(\theta,\mu,\tau|y) = p(\theta|\mu,\tau,y) p(\mu|\tau,y) p(\tau|y) \]
+	\pause where
+	\[ \begin{array}{ll}
+	p(\theta|\mu,\tau,y) &\propto p(y|\theta)p(\theta|\mu,\tau) \pause \\
+	p(\mu|\tau,y) & \propto \int p(y|\theta)p(\theta|\mu,\tau) d\theta\, p(\mu|\tau) \pause \\
+	p(\tau|y) &\propto \int p(y|\theta)p(\theta|\mu,\tau)p(\mu|\tau) d\theta d\mu \, p(\tau)
+	\end{array} \]
+	\pause will aide computation \pause via
+	\begin{enumerate}[1.]
+	\item $\tau^{(k)} \sim p\left(\tau|y\right)$ \pause
+	\item $\mu^{(k)} \sim p\left(\mu|\tau^{(k)},y\right)$ \pause
+	\item $\theta_j^{(k)} \sim p\left(\theta|\mu^{(k)},\tau^{(k)},y\right)$ for $j=1,\ldots,J$.
+	\end{enumerate}
+}
+
+\begin{comment}
+\frame{\frametitle{Deriving posterior distributions}
+  Rewrite the model as 
+  \[ \begin{array}{rl} 
+  y|\theta,\sigma^2 &\sim N(X\theta, \sigma^2 \mathrm{I}) \pause \\
+  \theta|\mu,\tau^2 & \sim N(\mu \mathrm{1}, \tau^2 \mathrm{I}) \pause \\
+  p(\mu,\tau) &\propto \mathrm{I}(\tau>0)
+  \end{array} \]
+  \pause where 
+  \begin{itemize}[<+->]
+  \item $y$ is a vector containing all $n$ observations
+  \item $X$ is an $n\times J$ binary matrix determining group membership, and
+  \item $\theta = (\theta_1,\ldots,\theta_J)$.
+  \end{itemize}
+}
+
+\frame{\frametitle{Collapsing the hierarchical model}
+  What is $p(\overline{y}_{\cdot j}|\theta,\sigma^2)$ where $\overline{y}_{\cdot j} = \frac{1}{n_j} \sum_{i=1}^{n_j} y_{ij}$? \pause 
+  \[ \overline{y}_{\cdot j}|\theta,\sigma^2 \sim N(\theta_j, \sigma_j^2)  \]
+  where $\sigma_j^2=\sigma^2/n_j$.
+  
+  \vspace{0.2in} \pause 
+
+  The full posterior is now 
+  \[ \begin{array}{rl}
+  p(\theta,\mu,\tau|y) &\propto p(y|\theta)p(\theta|\mu,\sigma^2) p(\mu,\tau) \\
+  &\propto \left[ \prod_{j=1}^{J} N(\theta_j|\mu,\tau^2) N(\overline{y}_{\cdot j}|\theta_j,\sigma_j^2) \right]  p(\mu,\tau)
+  \end{array} \]
+}
+\end{comment}
+
+\frame{\frametitle{Posterior distributions}
+	The necessary conditional/marginal posterior are present in section 5.4 of BDA:
+	\[ \begin{array}{rlrl}
+	p(\tau|y) &\multicolumn{3}{c}{\propto p(\tau) V_\mu^{1/2} \prod_{j=1}^J (\sigma_j^2+\tau^2)^{-1/2} \exp\left( -\frac{(\overline{y}_{\cdot j}-\hat{\mu})^2}{2(\sigma_j^2+\tau^2)} \right)} \pause \\
+	\mu|\tau,y &\sim N(\hat{\mu},V_\mu)  \pause\\
+	\theta_j|\mu,\tau,y &\sim N(\hat{\theta}_j,V_j) \pause\\ \\
+	V_\mu^{-1} &= \sum_{j=1}^J \frac{1}{\sigma_j^2+\tau^2} \pause & 
+	\hat{\mu} &= V_\mu\left( \sum_{j=1}^J \frac{\overline{y}_{\cdot j}}{\sigma_j^2+\tau^2} \right) \pause\\
+	V_j^{-1} &= \frac{1}{\sigma_j^2}+\frac{1}{\tau^2} \pause &
+	\hat{\theta}_j &= V_j \left( \frac{\overline{y}_{\cdot j}}{\sigma_j^2}+\frac{\mu}{\tau^2} \right) \pause\\
+	\overline{y}_{\cdot j} &= \frac{1}{n_j} \sum_{i=1}^{n_j} y_{ij} & \sigma_j^2 &=\sigma^2/n_j
+	\end{array} \]
+}
+
+\subsection{Simulation study}
+\frame{\frametitle{Simulation study}
+	Simulation \pause 
+	\begin{enumerate}[1.]
+	\item $\theta_j=0$ for all $j$ \pause 
+	\item $\theta_j=j$ 
+	\end{enumerate}
+	
+	\vspace{0.2in} \pause
+	
+	Common to both simulations
+	\begin{itemize}
+	\item $J=10$
+	\item $n_j=9$ for all $j$
+	\item $\sigma^2=1$, i.e. $\sigma_j = 1/3$ for all $j$
+	\end{itemize}
+}
+
+\begin{frame}[fragile]
+\frametitle{Simulation study}
+<<simulation>>=
+J = 10
+n_per_group = 9
+n = rep(n_per_group,J)
+sigma = 1
+
+set.seed(1)
+df = data.frame(group = rep(1:J, each=n_per_group))
+df$y1 = rnorm(nrow(df))
+df$y2 = rnorm(nrow(df),df$group)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<data>>=
+par(mfrow=c(1,2))
+plot(df$group, df$y1, main="Sim1: data", xlab="group", ylab="data", pch=19, col=df$group,
+     ylim=range(df$y1, df$y2))
+plot(df$group, df$y2, main="Sim2: data", xlab="group", ylab="data", pch=19, col=df$group,
+     ylim=range(df$y1, df$y2))
+@
+\end{frame}
+
+<<exploratory_analysis>>=
+ddply(df, .(group), summarize, 
+      n=length(y1), 
+      mean_y1=mean(y1), sd_y1=sd(y1), 
+      mean_y2=mean(y2), sd_y2=sd(y2))
+
+df$group = factor(df$group)
+@
+
+<<analysis, echo=FALSE>>=
+tau_log_posterior = function(tau, ybar, sigmaj2) 
+{
+  spt = sigmaj2+tau^2
+  Vmu = 1/sum(1/spt)
+  mu = sum(ybar/spt)*Vmu
+  0.5*log(Vmu)+sum(-0.5*log(spt)-(ybar-mu)^2/(2*spt))
+}
+
+V_tau_log_posterior = Vectorize(tau_log_posterior,"tau")
+
+rposterior = function(n_samples, y, gp) 
+{
+  ybar = by(y,gp,mean)
+  n_groups = nlevels(gp)
+
+  # Used throughout
+  sigmaj2 = rep(sigma/n_per_group, n_groups)
+
+  # Sample from tau|y
+  half_width = 0.05
+  tau_xx = seq(0,10,by=2*half_width)+half_width
+  tau_log_post = V_tau_log_posterior(tau_xx, ybar, sigmaj2)
+  tau_post = exp(tau_log_post)
+  tau = tau_xx[sample(1:length(tau_xx), n_samples, replace=T, prob=exp(tau_log_post))]+
+         runif(n_samples, -half_width, half_width)
+  
+  # Sample from mu|tau,y
+  Vmu = muhat = rep(NA,n_samples)
+  for (i in 1:n_samples)
+  {
+    spt = sigmaj2 + tau[i]^2
+    Vmu[i] = 1/sum(1/spt)
+    muhat[i] = sum(ybar/spt)*Vmu[i]
+  }
+  mu = rnorm(n_samples, muhat, sqrt(Vmu))
+
+  # Sample from theta|mu,tau,y
+  theta = matrix(NA, n_samples, n_groups)
+  for (i in 1:n_samples)
+  {
+    tau2 = tau[i]^2
+    Vjs = 1/(1/sigmaj2+1/tau2)
+    thetahat = (ybar/sigmaj2+mu[i]/tau2)*Vjs
+    theta[i,] = rnorm(n_groups, thetahat, sqrt(Vjs))
+  }
+
+  return(list(tau=tau, mu=mu, theta=theta))
+}
+
+res1 = rposterior(1e4, df$y1, df$group)
+res2 = rposterior(1e4, df$y2, df$group)
+@
+
+\begin{frame}[fragile]
+\frametitle{Group-to-group variability in the means}
+<<tau, fig.width=8>>=
+par(mfrow=c(1,2))
+hist(res1$tau, freq=F, xlim=range(res1$tau,res2$tau), main="Sim1: tau", ylim=c(0,5))
+hist(res2$tau, freq=F, xlim=range(res1$tau,res2$tau), main="Sim2: tau", ylim=c(0,5))
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Mean of group means}
+<<, fig.width=8>>=
+par(mfrow=c(1,2))
+hist(res1$mu, freq=F, xlim=range(res1$mu,res2$mu), main="Sim1: mu", ylim=c(0,3))
+hist(res2$mu, freq=F, xlim=range(res1$mu,res2$mu), main="Sim2: mu", ylim=c(0,3))
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Group-specific means}
+<<theta, eval=FALSE>>=
+par(mfrow=c(1,2))
+plot(0,0, type="n", xlab="theta", ylab="p(theta|y)", xlim=range(res1$theta, res2$theta),
+     main="Sim1: thetas", ylim=c(0,2.5))
+for (i in 1:nlevels(df$group)) 
+{
+  lines(density(res1$theta[,i]), col=i, lty=i)
+}
+
+plot(0,0, type="n", xlab="theta", ylab="p(theta|y)", xlim=range(res1$theta, res2$theta),
+     main="Sim2: thetas", ylim=c(0,2.5))
+for (i in 1:nlevels(df$group)) 
+{
+  lines(density(res2$theta[,i]), col=i, lty=i)
+}
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Group-specific means}
+<<theta_plot, echo=FALSE>>=
+<<theta>>
+@
+\end{frame}
+
+\subsection{Summary}
+\frame{\frametitle{Summary}
+	Hierarchical models 
+	\begin{itemize}
+	\item allow the data to inform us about similarities across groups \pause 
+	\item provide data driven shrinkage toward a grand mean \pause 
+		\begin{itemize}
+		\item lots of shrinkage when means are similar \pause 
+		\item little shrinkage when means are different 
+		\end{itemize}
+	\end{itemize}
+	
+	\vspace{0.2in} \pause
+	
+	Computation used the decomposition
+	\[ p(\theta,\mu,\tau|y) = p(\theta|\mu,\tau,y) p(\mu|\tau,y) p(\tau|y) \]
+	\pause which allowed for simulation from $\tau$ then $\mu$ and then $\theta$ to obtain samples from the posterior.
+}
+
+
+\subsection{JAGS}
+\begin{frame}[fragile]
+<<jags, message=FALSE>>=
+model = "
+model {
+  for (i in 1:length(y)) {
+    y[i] ~ dnorm(theta[group[i]], 1/sigma^2)
+  }
+
+  for (i in 1:ngroups) {
+    theta[i] ~ dnorm(mu, 1/tau^2)
+  }
+
+  mu    ~ dnorm(0,1e-5)
+  sigma ~ dunif(0,1000)
+  tau   ~ dunif(0,1000)
+}
+"
+df$group = as.numeric(df$group)
+
+dat = list(group=df$group, y=df$y1, ngroups=max(df$group))
+m = jags.model(textConnection(model), dat, n.chains=3)
+res1 = coda.samples(m, c("theta","sigma","mu","tau"), 1000)
+
+dat = list(group=df$group, y=df$y2, ngroups=max(df$group))
+m = jags.model(textConnection(model), dat, n.chains=3)
+res2 = coda.samples(m, c("theta","sigma","mu","tau"), 1000)
+@
+\end{frame}
+
+
+
+
+\end{document}
