@@ -1,0 +1,364 @@
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\title{Bayesian linear regression}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\I}{\mathrm{I}}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+####################################
+# L9 - Regression                  #
+####################################
+library(reshape2)
+library(plyr)
+library(ggplot2)
+library(rjags)
+@
+
+\frame{\maketitle}
+
+\section{Linear regression}
+\frame{\frametitle{Linear Regression}
+  Basic idea
+	\begin{itemize}
+	\item understand the relationship between response $y$ and explanatory variables $x=(x_1,\ldots,x_k)$ \pause
+	\item based on data from experimental units index by $i$. \pause
+	\end{itemize}
+	
+	If we assume 
+	\begin{itemize}
+	\item linearity, independence, normality, and constant variance, 
+	\end{itemize}
+	
+	\pause then we have 
+	\[ y_i \stackrel{ind}{\sim} N(\beta_1 x_{i1} + \cdots + \beta_k x_{ik},\sigma^2) \]
+	\pause where $x_{i1}=1$ if we want to include an intercept. \pause In matrix notation, we have 
+	\[ y \sim N(X\beta, \sigma^2 \I) \]
+	\pause where $y=(y_1,\ldots,y_n)'$, $\beta=(\beta_1,\ldots,\beta_k)'$, and $X$ is $n \times k$ with each row being $x_i = (x_{i1},\ldots,x_{ik})$.
+}
+
+\subsection{Classical regression}
+\begin{frame}
+\frametitle{Classical regression}
+  How do you find confidence intervals for $\beta$? 
+  
+  \vspace{0.2in} \pause
+  
+  What is the MLE for $\beta$? \pause 
+  \[ \hat{\beta} = (X'X)^{-1}X'y \]
+  
+  \vspace{0.2in} \pause
+  
+  What is the sampling distribution for $\hat{\beta}$?
+  \[ \hat{\beta} \sim t_{n-k}(\beta, s^2(X'X)^{-1}) \]
+  where $s^2 = SSE/[n-k] = (Y-X\hat{\beta})'(Y-X\hat{\beta})$. 
+  
+  \vspace{0.2in} \pause
+  
+  What is the sampling distribution for $s^2$? 
+  \[ \frac{[n-k]s^2}{\sigma^2} \sim \chi^2_{n-k} \]
+
+\end{frame}
+
+\subsection{Objective Bayesian inference}
+\frame{\frametitle{Objective Bayesian regression}
+	Assume the standard noninformative prior
+	\[ p(\beta,\sigma^2) \propto 1/\sigma^2 \]
+	\pause then the posterior is 
+	\[ \begin{array}{rl}
+	p(\beta,\sigma^2|y) &= p(\beta|\sigma^2,y) p(\sigma^2|y) \pause \\
+	\beta|\sigma^2,y &\sim N(\hat{\beta}, \sigma^2 V_\beta) \pause \\
+	\sigma^2|y &\sim \mbox{Inv-}\chi^2(n-k,s^2) \pause \\
+	\beta|y &= t_{n-k}(\hat{\beta}, s^2V_{\beta}) \pause \\
+	\\
+	\hat{\beta} &= (X'X)^{-1}X'y \pause \\
+	V_\beta &= (X'X)^{-1} \pause \\
+	s^2 &= \frac{1}{n-k}(y-X\hat{\beta})'(y-X\hat{\beta})
+	\end{array} \]
+	\pause The posterior is proper if $n>k$ and rank$(X)=k$. 
+}
+
+
+
+\begin{frame}
+\frametitle{Comparison to classical regression}
+From the previous slide, we have
+  \[ \beta|y \sim t_{n-k}(\hat{\beta}, s^2(X'X)^{-1}).  \]
+\pause From classical regression analysis, we have 
+  \[ \hat{\beta}|\beta \sim t_{n-k}(\beta, s^2(X'X)^{-1}).  \]
+
+\vspace{0.2in} \pause
+
+From the previous slide, we have 
+  \[ \sigma^2|y \sim \mbox{Inv-}\chi^2(n-k,s^2) \]
+and thus 
+  \[ \frac{[n-k]s^2}{\sigma^2} \sim \chi^2_{n-k}. \]
+\pause but this matches the classical result when we think of $s^2$ as random and $\sigma^2$ as fixed.
+\end{frame}
+
+
+\subsection{Cricket chirps}
+\begin{frame}[fragile]
+\frametitle{Cricket chirps}
+	As an example, consider the relationship between the number of cricket chirps and temperature. 
+<<chirps_data, fig.width=8>>=
+chirps=c(20,16.0,19.8,18.4,17.1,15.5,14.7,17.1,15.4,16.2,15,17.2,16,17,14.1)
+temp=c(88.6,71.6,93.3,84.3,80.6,75.2,69.7,82,69.4,83.3,78.6,82.6,80.6,83.5,76.3)
+qplot(temp,chirps)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Objective Bayesian regression}
+
+<<lm>>=
+summary(m <- lm(chirps~temp))
+confint(m)
+@
+\end{frame}
+
+
+\subsection{Simulation}
+\begin{frame}
+\frametitle{Simulating from the posterior}
+  Although the full posterior for $\beta$ and $\sigma^2$ is available, \pause the decomposition 
+  \[ p(\beta,\sigma^2|y) = p(\beta|\sigma^2,y) p(\sigma^2|y) \]
+  suggests an approach to simulating from the posterior via
+  \begin{enumerate}[<+->]
+  \item $(\sigma^2)^{(j)} \sim \mbox{Inv-}\chi^2(n-k,s^2)$ and
+  \item $\beta^{(j)}\sim N(\hat{\beta}, (\sigma^2)^{(j)} V_\beta)$.
+  \end{enumerate}
+  
+  \vspace{0.2in}\pause
+  
+  This also provides an approach to obtaining posteriors for any function $\gamma=f(\beta,\sigma^2)$ of the parameters \pause via
+  \[ \begin{array}{rl}
+  p(\gamma,\beta,\sigma^2|y) &= p(\gamma|y,\beta,\sigma^2) p(\beta|\sigma^2,y) p(\sigma^2|y) \pause \\
+  &= p(\gamma|\beta,\sigma^2) p(\beta|\sigma^2,y) p(\sigma^2|y) \pause \\
+  &= \mathrm{I}(\gamma=f(\beta,\sigma^2)) p(\beta|\sigma^2,y) p(\sigma^2|y) \\
+  \end{array} \]
+  \pause by adding the step  
+  \begin{enumerate}
+  \setcounter{enumi}{2}
+  \item $\gamma^{(j)} = f(\beta^{(j)},(\sigma^2)^{(j)})$.
+  \end{enumerate}
+\end{frame}
+
+
+\frame{\frametitle{Computation}
+  For numerical stability and efficiency, the QR decomposition can be used to calculate posterior quantities. \pause 
+	\begin{definition}
+	For an $n\times k$ matrix $X$, a \alert{QR decomposition} is $X = QR$ for an $n\times k$ matrix $Q$ with orthonormal columns and a $k\times k$ upper triangular matrix $R$. 
+	\end{definition}
+	
+	\pause The quantities of interest are 
+	\[ \begin{array}{rl}
+	V_\beta &= (X'X)^{-1} \pause = ([QR]'QR)^{-1} \pause = (R'Q'QR)^{-1} \pause = (R'R)^{-1} \pause \\
+	&= R^{-1}[R']^{-1} \pause \\
+	\\
+	\hat{\beta} &= (X'X)^{-1}X'y \pause = R^{-1}[R']^{-1}R'Q'y \pause = R^{-1}Q'y \pause \\
+	R\hat{\beta} &= Q'y
+	\end{array} \]
+	\pause The last equation is useful because R is upper triangular and therefore the system of linear equations can be solved without requiring the inverse of R.
+}
+
+
+\begin{frame}[fragile]
+\frametitle{Cricket chirps}
+<<regression>>=
+library(MASS)
+X = cbind(1,temp)
+n = nrow(X)
+k = ncol(X)
+y = matrix(chirps,n,1)
+
+qr = qr(X); Q = qr.Q(qr); R = qr.R(qr)
+stopifnot(all.equal(X, Q%*%R),  
+          all.equal(rep(1,k), colSums(Q^2)),
+          all.equal(diag(nrow=k), t(Q)%*%Q))
+
+# Check for posterior propriety
+stopifnot(n>k,qr$rank==k) 
+
+# Calculate posterior hyperparameters
+Rinv = solve(qr.R(qr))
+vbeta = Rinv%*%t(Rinv)
+betahat = qr.solve(qr,y)
+df = n-k
+e = qr.resid(qr,y)
+s2 = sum(e^2)/df
+
+# Simulate from the posterior
+n.sims = 10000
+sigma = sqrt(1/rgamma(n.sims, df/2, df*s2/2))
+beta = matrix(betahat, n.sims, k, byrow=T) + sigma * mvrnorm(n.sims, rep(0,k), vbeta)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Cricket chirps}
+<<posterior_simulations,fig.width=8>>=
+par(mfrow=c(1,3))
+hist(sigma, 100, freq=F, main="Standard deviation", xlab=expression(sigma))
+hist(beta[,1], 100, freq=F, main="Intercept", xlab=expression(beta[0]))
+hist(beta[,2], 100, freq=F, main="Chirps", xlab=expression(beta[1]))
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Simulations vs exact}
+<<quantiles>>=
+# sigma^2
+sqrt(df*s2/qchisq(c(.975,.025),df)) # Exact
+quantile(sigma,c(.025,.975)) # MC
+
+# beta
+confint(lm(chirps~temp)) # Exact
+t(apply(beta, 2, quantile, probs=c(.025,.975))) # MC 
+@
+\end{frame}
+
+
+\subsection{Posterior for global maximum}
+\begin{frame}[fragile]
+\frametitle{Posterior for global maximum}
+Consider this potato yield data set
+<<potato_data, fig.width=9>>=
+d = read.csv("potato.csv")
+(qplot(d$N.rate,d$yield)+geom_smooth(method='lm',formula=y~x+I(x^2)))
+@
+with a goal of estimating the optimal nitrogen rate.
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Posterior for global maximum}
+Assuming this quadratic curve, the maximum occurs at $-\beta_1/[2\beta_2]$.
+<<potato_max, fig.width=8>>=
+library(LearnBayes)
+m = blinreg(d$yield, cbind(1,d$N.rate, d$N.rate^2), 1e4)
+mx = -m$beta[,2]/(2*m$beta[,3])
+quantile(mx, c(.025,.975))
+@
+This does not require any asymptotics.
+\end{frame}
+
+
+\begin{comment}
+\subsection{Subjective Bayesian inference}
+\frame{\frametitle{Subjective Bayesian inference}
+	For ease of notation, let $\phi = 1/\sigma^2$\pause. If we assume the following normal-gamma prior,
+	\[ \beta|\phi \sim (\beta_0, \phi^{-1} C_0) \qquad \phi \sim Ga(a_0,b_0) \]
+	\pause then the posterior is 
+	\[ \beta|\phi,y \sim (\beta_n, \phi^{-1} C_n) \qquad \phi|y \sim Ga(a_n,b_n) \]
+	\pause with
+	\[ \begin{array}{rl}
+	\beta_n &= \beta_0 + C_0X'(XC_0X'+\I)^{-1}(y-X\beta_0) \\
+	C_n &= C_0-C_0X'(XC_0X'+\I)^{-1}XC_0 \\
+	a_n &= a_0+n/2 \\
+	b_n &= b_0+(y-X\beta_0)'(XC_0X'+\I)^{-1}(y-X\beta_0)/2
+	\end{array} \]
+}
+\end{comment}
+
+
+\begin{frame}[fragile]
+\frametitle{Subjective Bayesian regression}
+<<subjective, message=FALSE>>=
+library(arm)
+# Standard normal prior 
+m = bayesglm(chirps~temp, prior.mean=0, prior.scale=1, prior.df=Inf)
+summary(m)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Shrinkage}
+<<shrinkage, fig.width=8>>=
+d = ddply(data.frame(prior.scale=10^seq(-1,1,by=0.1)), .(prior.scale), function(x) {
+  m = bayesglm(chirps~temp, prior.mean=0, prior.scale=x$prior.scale, prior.df=Inf)
+  data.frame(beta0=m$coefficients[1], beta1=m$coefficients[2])
+})
+tmp = melt(d, id="prior.scale", value.name="estimate")
+(p = ggplot(tmp, aes(prior.scale, estimate, col=variable))+geom_line()+scale_x_log10())
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+\frametitle{Subjective Bayesian regression}
+<<t-distribution, message=FALSE>>=
+m$coefficients
+confint(m)
+
+# compared to standard analysis
+tmp = lm(chirps~temp)
+tmp$coefficients
+confint(tmp)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Subjective Bayesian regression}
+<<t-distribution_fit, message=FALSE, fig.width=8>>=
+qplot(temp, chirps)+geom_smooth(method='lm',formula=y~x, se=FALSE)+geom_abline(intercept=m$coefficients[1], slope=m$coefficients[2])
+@
+\end{frame}
+
+\begin{comment}
+\section{Simulation study}
+\begin{frame}[fragile]
+<<cache=TRUE>>=
+n = 101
+p = 100
+b = rnorm(p)
+X = matrix(rnorm(n*p), n, p)
+y = rnorm(X%*%b)
+
+# OLS
+b_ols = lm(y~-1+X)$coefficients
+mean((b_ols-b)^2)
+
+# Bayes, standard normal prior
+b_bayes = bayesglm(y~-1+X, prior.mean=0, prior.scale=1, prior.df=Inf)$coefficients
+mean((b_bayes-b)^2)
+@
+\end{frame}
+
+
+\subsection{Summary}
+\frame{\frametitle{Summary}
+	\begin{itemize}
+	\item Standard objective Bayesian regression matches standard point estimates and confidence intervals.
+	\item For stability and efficiency, need to be thoughtful about matrix computations. 
+	\end{itemize}
+}
+\end{comment}
+
+
+
+\end{document}
