@@ -1,0 +1,348 @@
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\title{Hierachical model activity}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\I}{\mathrm{I}}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+library(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+####################################
+# L12 - Hierarchical example       #
+####################################
+library(reshape2)
+library(plyr)
+library(ggplot2)
+library(rjags)
+@
+
+\frame{\maketitle}
+
+\begin{frame}[fragile]
+\frametitle{SAT scores for 8 schools}
+<<data>>=
+d = data.frame(school=LETTERS[1:8],
+               effect = c(28,8,-3,7,-1,1,18,12),
+               sd   = c(15,10,16,11,9,11,10,18))
+d
+@
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Separate estimates}
+Let 
+\begin{itemize}[<+->]
+\item $y_i$ be the estimated effect for each school
+\item $s_i$ be the estimated standard deviation
+\end{itemize}
+One model is 
+\[ y_i \stackrel{ind}{\sim} N(\theta_i,s_i^2) \]
+with independent uniform priors on $\theta_i$ \pause which results in the posterior
+\[ \theta_i \stackrel{ind}{\sim} N(y_i,s_i^2). \]
+
+\end{frame}
+
+\begin{frame}[fragile]
+<<independent>>=
+(ggplot(d, aes(x=effect-2*sd, xend=effect+2*sd, y=school, yend=school))+geom_segment()+labs(x="effect"))
+@
+\end{frame}
+
+\begin{frame}
+\frametitle{Pooled estimate}
+Let 
+\begin{itemize}[<+->]
+\item $y_i$ be the estimated effect for each school
+\item $s_i$ be the estimated standard deviation
+\end{itemize}
+One model is 
+\[ y_i \stackrel{ind}{\sim} N(\theta,s_i^2) \]
+with a uniform prior on $\theta$ \pause which results in the posterior
+\[ \theta \sim N(m,C) \]
+\pause with
+\[ \begin{array}{rl}
+C^{-1} &= \sum_{i=1}^n \frac{1}{s_i^2}  \pause \\
+m &= C \left[ \sum_{i=1}^n \frac{y_i}{s_i^2} \right]
+\end{array} \]
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<pooled, fig.width=8>>=
+C = 1/sum(1/d$sd^2)
+m = C*sum(d$effect/d$sd^2)
+(ggplot(d, aes(x=effect-2*sd, xend=effect+2*sd, y=school, yend=school))+
+   geom_segment()+
+   labs(x="effect")+
+   geom_segment(aes(x=m-2*sqrt(C),xend=m+2*sqrt(C),y=4.5,yend=4.5,col=1,lwd=2))+
+   theme(legend.position="none"))
+@
+\end{frame}
+
+\begin{frame}
+\frametitle{Hierarchical model}
+  Let 
+\begin{itemize}[<+->]
+\item $y_i$ be the estimated effect for each school
+\item $s_i$ be the estimated standard deviation
+\end{itemize}
+One model is 
+\[ y_i \stackrel{ind}{\sim} N(\theta_i,s_i^2) \]
+with 
+\[ \theta_i \stackrel{ind}{\sim} N(\mu,\tau^2). \]
+\pause Integrating out the $\theta_i$ results in 
+\[ y_i \stackrel{ind}{\sim} N(\mu,s_i^2+\tau^2) \]
+\pause which has only two parameters: $\mu$ and $\tau$. \pause Assume $p(\mu,\tau) = p(\mu|\tau)p(\tau)$ with $p(\mu|\tau)\propto 1$. 
+\end{frame}
+
+\begin{frame}
+\frametitle{Hierarchical model: posteriors}
+The joint posterior can be decomposed
+\[ p(\mu,\tau|y) = p(\mu|\tau,y) p(\tau|y) \]
+\pause with the conditional posterior for $\mu$ 
+\[ \mu|\tau,y \sim N(m,C) \]
+\pause where 
+\[ \begin{array}{rl}
+C^{-1} &= \sum_{i=1}^n \frac{1}{s_i^{-2}+\tau^{-2}} \pause \\
+m &= C\left[ \sum_{i=1}^n \frac{y_i}{s_i^{-2}+\tau^{-2}} \right] 
+\end{array} \]
+The marginal posterior for $\tau$ is 
+\[ \begin{array}{rl}
+p(\tau|y) &= \frac{p(\mu,\tau|y)}{p(\mu|\tau,y)} \pause 
+\propto \frac{p(\tau)\prod_{i=1}^J N(y_i|\mu,s_i^2+\tau^2)}{N(\mu|m,C)} \pause \\
+&\propto \frac{p(\tau)\prod_{i=1}^J N(y_i|m,s_i^2+\tau^2)}{N(m|m,C)} \pause \\
+&= p(\tau)C^{1/2}\prod_{i=1}^n (s_i^2+\tau^2)^{-1/2}\exp\left(-\frac{(y_i-m)^2}{2(s_i^2+\tau^2)}\right)
+\end{array} \]
+\end{frame}
+
+\begin{frame}[fragile]
+<<tau, fig.width=8>>=
+tau_like = function(tau) {
+  sdtau = d$sd^2+tau^2
+  C = 1/sum(1/(sdtau))
+  m = C*sum(d$effect/sdtau)
+  llike = .5*log(C)-0.5*sum(log(sdtau))-sum((d$effect-m)^2/(2*sdtau))
+  return(exp(llike))
+}
+vtau_like = Vectorize(tau_like)
+curve(vtau_like(x), 0, 30, xlab="tau", ylab="likelihood")
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<tau_priors>>=
+uniform = "
+model {
+  for (i in 1:n) {
+    y[i] ~ dnorm(theta[i],1/sd[i]^2)
+    theta[i] ~ dnorm(mu,1/tau^2)
+  }
+  mu ~ dunif(-1000,1000)
+  tau ~ dunif(0,1000)
+}"
+
+ig = "
+model {
+  for (i in 1:n) {
+    y[i] ~ dnorm(theta[i],1/sd[i]^2)
+    theta[i] ~ dnorm(mu,prec)
+  }
+  mu ~ dunif(-1000,1000)
+  prec ~ dgamma(a,b)
+  tau <- 1/sqrt(prec)
+}"
+
+dat = list(y=d$effect, sd=d$sd, n=nrow(d))
+parms = c("theta","mu","tau")
+
+m_uniform = jags.model(textConnection(uniform), dat, quiet=!interactive())
+s_uniform = coda.samples(m_uniform, parms, 10000, thin=10)
+
+dat$a = dat$b = 1
+m_ig1 = jags.model(textConnection(ig), dat, quiet=!interactive())
+s_ig1 = coda.samples(m_ig1, parms, 10000, thin=10)
+
+dat$a = dat$b = 1/100
+m_ig2 = jags.model(textConnection(ig), dat, quiet=!interactive())
+s_ig2 = coda.samples(m_ig2, parms, 10000, thin=10)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<compare_priors, eval=FALSE>>=
+dsqrtinvgamma = function(x,a,b,log=FALSE) {
+  lg = dgamma(1/x^2,a,b,log=TRUE)+log(2)-3*log(x)
+  if (log) {
+    return(lg)
+  } else {
+    return(exp(lg))
+  }
+}
+
+ylm = 0.5
+par(mfrow=c(1,3))
+hist(unlist(s_uniform[,"tau"]), 20, freq=F, xlim=c(0,20), ylim=c(0,ylm), main="uniform on sd")
+abline(h=1/1000, col="red", lwd=2)
+
+hist(unlist(s_ig1[,"tau"]), 20, freq=F, xlim=c(0,20), ylim=c(0,ylm), main="IG(1,1) on var")
+curve(dsqrtinvgamma(x,1,1), col="red", add=TRUE, lwd=2)
+
+hist(unlist(s_ig2[,"tau"]), 20, freq=F, xlim=c(0,20), ylim=c(0,ylm), main="IG(a,b) on var")
+curve(dsqrtinvgamma(x,dat$a,dat$b), col="red", add=TRUE, lwd=2)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<compare_priors_plot, echo=FALSE>>=
+<<compare_priors>>
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<posterior, eval=FALSE>>=
+par(mfrow=c(2,2))
+post = function(x) dsqrtinvgamma(x,1,1)*vtau_like(x)
+norm = integrate(post,0,Inf)
+curve(post(x)/norm$value, 0, 10)
+curve(dsqrtinvgamma(x,1,1), col="red", add=TRUE)
+legend("topright",c("Prior","Posterior"), col=c("red","black"), lwd=1)
+
+curve(log(post(x)/norm$value), 100, 1000, ylim=c(-50,0))
+curve(dsqrtinvgamma(x,1,1,log=TRUE), col="red", add=TRUE)
+
+
+post = function(x) dsqrtinvgamma(x,dat$a,dat$b)*vtau_like(x)
+norm = integrate(post,0,Inf)
+curve(post(x)/norm$value, 0, 10)
+curve(dsqrtinvgamma(x,dat$a,dat$b), col="red", add=TRUE)
+legend("topright",c("Prior","Posterior"), col=c("red","black"), lwd=1)
+
+curve(log(post(x)/norm$value), 100, 1000, ylim=c(-50,0))
+curve(dsqrtinvgamma(x,dat$a,dat$b,log=TRUE), col="red", add=TRUE)
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<posterior_plot, echo=FALSE>>=
+<<posterior>>
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Other priors}
+<<other_priors>>=
+unif_var = "
+model {
+  for (i in 1:n) {
+    y[i] ~ dnorm(theta[i],1/sd[i]^2)
+    theta[i] ~ dnorm(mu,1/tau2)
+  }
+  mu ~ dunif(-1000,1000)
+  tau2 ~ dunif(0,1000)
+  tau <- sqrt(tau2)
+}"
+
+unif_log = "
+model {
+  for (i in 1:n) {
+    y[i] ~ dnorm(theta[i],1/sd[i]^2)
+    theta[i] ~ dnorm(mu,1/tau^2)
+  }
+  mu ~ dunif(-1000,1000)
+  tau <- exp(ltau)
+  ltau ~ dunif(-100,100)
+}"
+
+dat = list(y=d$effect, sd=d$sd, n=nrow(d))
+parms = c("theta","mu","tau")
+
+m_unif_var = jags.model(textConnection(unif_var), dat, quiet=!interactive())
+s_unif_var = coda.samples(m_unif_var, parms, 10000, thin=10)
+
+m_unif_log = jags.model(textConnection(unif_log), dat, quiet=!interactive())
+s_unif_log = coda.samples(m_unif_log, parms, 10000, thin=10)
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<compare_priors2, fig.width=8>>=
+ylm = 0.5
+xlm = 50
+par(mfrow=c(1,2))
+hist(unlist(s_unif_var[,"tau"]), 20, freq=F, xlim=c(0,xlm), ylim=c(0,ylm), main="Uniform on variance")
+curve(x/500, col="red", add=TRUE)
+
+hist(unlist(s_unif_log[,"tau"]), 20, freq=F, xlim=c(0,xlm), ylim=c(0,ylm), main="Uniform on log(sd)")
+curve(1/(200*x), col="red", add=TRUE)
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<compare_lambdas, eval=FALSE>>=
+thetas = as.data.frame(s_uniform[,paste("theta[",1:8,"]",sep="")][[1]])
+me = melt(thetas)
+theta_cis = ddply(me, .(variable), summarize, lcl=quantile(value,.025), ucl=quantile(value,.975))
+theta_cis$school = d$school
+(ggplot(d, aes(x=effect-2*sd, xend=effect+2*sd, y=school, yend=school))+
+   geom_segment()+
+   labs(x="effect")+
+   geom_segment(aes(x=m-2*sqrt(C),xend=m+2*sqrt(C),y=4.5,yend=4.5,col=2,lwd=2))+
+   geom_segment(data=theta_cis, aes(x=lcl,xend=ucl,y=school, yend=school, color=3, lwd=2))+
+   theme(legend.position="none"))
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<compare_lambdas_plot, echo=FALSE>>=
+<<compare_lambdas>>
+@
+\end{frame}
+
+\begin{frame}
+\frametitle{Summary}
+  To summarize:
+  \begin{itemize}
+  \item For a hierarchical variance, 
+    \begin{itemize}
+    \item If the number of groups is $\ge 5$, use a uniform prior on the standard deviation.
+    \item If the number of grsoup is $<5$, use a half-Cauchy prior on the standard deviation.
+    \end{itemize}
+  \item Plot the posterior and the prior together.
+    \begin{itemize}
+    \item If they look the same, the prior is likely dominating the likelihood.
+    \item If they look quite a bit different, the likelihood is likely dominating the prior.
+    \end{itemize}
+  \item Check the sensitivity of the posterior to changes in the prior. 
+  \end{itemize}
+
+\end{frame}
+
+\end{document}
