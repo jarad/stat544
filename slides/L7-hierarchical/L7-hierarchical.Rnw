@@ -1,5 +1,5 @@
-%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-\documentclass{beamer}
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
 
 \usecolortheme[RGB={0,0,144}]{structure}
 \usetheme{AnnArbor}\usecolortheme{beaver}
@@ -27,7 +27,7 @@
 <<chunk_options, echo=FALSE, message=FALSE>>=
 opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
 ####################################
-# L6 - Bayesian hypothesis testing #
+# L7 - Hierarchical models         #
 ####################################
 library(reshape2)
 library(plyr)

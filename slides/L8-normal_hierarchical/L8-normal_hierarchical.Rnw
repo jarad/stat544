@@ -131,7 +131,7 @@ library(rjags)
   \pause
   
   \begin{definition}
-	The sequence $y_1,y_2,\ldots$ is \alert{infinitely exchangeable} if, for any $n$, $y_1,y_2,\ldots,y_n$ are exchangeable.
+	The sequence $Y_1,Y_2,\ldots$ is \alert{infinitely exchangeable} if, for any $n$, $Y_1,Y_2,\ldots,Y_n$ are exchangeable.
 	\end{definition}
 }
 
