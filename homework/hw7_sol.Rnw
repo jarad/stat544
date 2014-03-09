@@ -29,10 +29,69 @@ The file {\tt radon.csv} contains observations on houses in Minnesota with the f
 \item {\tt county}: the county the observation was made in
 \end{itemize}
 
+<<data>>=
+d = read.csv("radon.csv")
+
+dat = list(n=nrow(d), y=log(d$radon+0.01))
+@
+
 Provide 95\% credible intervals for the mean radon concentration in each county (ignoring {\tt floor}) under the following models:
 \begin{enumerate}
 \item Common mean radon concentration in all counties.
+
+Due to radon being positive, we will model the logarithm of radon plus 0.01 as normally distributed. For this first model, we have a common mean and variance for all observations. The model is 
+
+\[ Y_i = \log (R_i+0.01) \stackrel{iid}{\sim} N(\mu,\sigma^2) \]
+
+where $R_i$ is the radon measurement for observation $i$. On the original scale, the $E[R_i] = e^{\mu+\sigma^2/2}-0.01$. 
+
+<<common_mean>>=
+library(rjags)
+common_mean = "
+model {
+  for (i in 1:n) {
+    y[i] ~ dnorm(mu, prec)
+  }
+  mu ~ dunif(-100,100)
+  prec <- 1/sigma^2
+  sigma ~ dunif(0, 100)
+  mean <- exp(mu+sigma^2/2)-0.01 # Mean on the original scale
+}"
+
+m = jags.model(textConnection(common_mean), dat)
+s = coda.samples(m, c("mu","sigma","mean"), 1000)
+@
+
+From the plots and summary statistics below, we can see the mean radon level is between 4.7 and 5.4 with 95\% probability. 
+
+<<common_mean_plots>>=
+plot(s)
+summary(s)
+@
+
+
 \item No relationship between mean radon concentrations in the counties, i.e. complete independence.
+
+This model assumes that there is a different mean radon concentration in each county. In addition, I assume there is a different variance in all counties. The model is 
+\[ R_i \stackrel{iid}{\sim} N(\mu_{c[i]},\sigma_{c[i]}^2) \]
+where $c[i]$ is the county id for observation $i$. The mean radon level in county $i$ is $E[R_i] = e^{\mu_{c[i]}+\sigma_{c[i]}^2/2}-0.01$.
+
+<<number_of_observations_per_county>>=
+library(plyr)
+ddply(d, .(county), summarise, n=length(radon))
+@
+
+<<independence_model>>=
+independence_model = "
+model {
+  for (i in 1:n) {
+    y[i] ~ dnorm(mu[county[i]], prec[i])
+    prec <- 1/sigma[i]^2
+  }
+}
+"
+@
+
 \item A hierarchical model for mean radon concentrations in the counties.
 \end{enumerate}
 
