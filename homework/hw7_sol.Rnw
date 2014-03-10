@@ -47,7 +47,7 @@ Due to radon being positive, we will model the logarithm of radon plus 0.01 as n
 
 where $R_i$ is the radon measurement for observation $i$. On the original scale, the $E[R_i] = e^{\mu+\sigma^2/2}-0.01$. 
 
-<<common_mean>>=
+<<common_mean, tidy=FALSE>>=
 library(rjags)
 common_mean = "
 model {
@@ -56,11 +56,11 @@ model {
   }
   mu ~ dunif(-100,100)
   sigma2 ~ dgamma(0.001,0.001)
-  mean <- exp(mu+sigma^2/2)-0.01 # Mean on the original scale
+  mean <- exp(mu+sigma2/2)-0.01 # Mean on the original scale
 }"
 
 dat = list(n=nrow(d), y=d$y)
-m_common = jags.model(textConnection(common_mean), dat)
+m_common = jags.model(textConnection(common_mean), dat, quiet=TRUE)
 s_common = coda.samples(m_common, c("mu","sigma2","mean"), 1000)
 @
 
@@ -93,7 +93,7 @@ ddply(n_county, .(), summarise,
       mean_sigma2 = mean(sigma2, na.rm=TRUE), var_sigma2 = var(sigma2, na.rm=TRUE))
 @
 
-Although the idea is to not borrow information across the counties, since there are so few observations in some counties, we are obliged to create informative priors at least for these counties. So we construct the following independent priors 
+The idea for this model is to NOT borrow information across the counties. But since there are so few observations in some counties, we are obliged to create informative priors at least for these counties. So we construct the following independent priors 
 \[ \mu_c \stackrel{iid}{\sim} N(m,C) \qquad \sigma^2_c \stackrel{iid}{\sim} Ga(\alpha,\beta). \]
 
 
@@ -109,7 +109,7 @@ Although the idea is to not borrow information across the counties, since there 
 
 Compared with the hierachical model, one issue here is that our priors do not take into account the sample size in the various counties. 
 
-<<independence_model>>=
+<<independence_model, tidy=FALSE>>=
 independence_model = "
 model {
   for (i in 1:n) {
@@ -129,7 +129,7 @@ dat$m = m
 dat$C = C
 dat$nc = nlevels(d$county)
 dat$county = as.numeric(d$county)
-m_indep = jags.model(textConnection(independence_model), dat)
+m_indep = jags.model(textConnection(independence_model), dat, quiet=TRUE)
 s_indep = coda.samples(m_indep, c("mu","sigma2","mean"), 1000)
 @
 
@@ -140,8 +140,10 @@ s_sum_mean_df = as.data.frame(s_sum_mean$quantiles)
 names(s_sum_mean_df) = paste("q",gsub("%","",names(s_sum_mean_df)),sep="")
 s_sum_mean_df$county = levels(d$county)
 library(ggplot2)
-ggplot(s_sum_mean_df, aes(x=q2.5, xend=q97.5, y=county, yend=county))+geom_segment()+coord_cartesian(xlim=c(0,35))+geom_vline(x=4,col=2)
+(ggplot(s_sum_mean_df, aes(x=q2.5, xend=q97.5, y=county, yend=county))+geom_segment()+coord_cartesian(xlim=c(0,35))+geom_vline(x=4,col=2))
 @
+
+Notice that many of the intervals extend farther to the right. The plot is left as is to ease comparison with the hierarchical model. For reference, the red line in the figure is  4pCi/L, the federal limit above which suggests the use of a radon mitigation sytem.
 
 \item A hierarchical model for mean radon concentrations in the counties.
 
@@ -152,13 +154,15 @@ The hierarchical model is the same as the independence model, but the hyperparam
 Y_i &\stackrel{iid}{\sim} N(\mu_{c[i]}, \sigma_{c[i]}^2) \\
 \mu_{c[i]} &\stackrel{iid}{\sim} N(\eta, \tau^2) \\
 \sigma^2_{c[i]} &\stackrel{iid}{\sim} Ga(\nu/2,\nu \eta^2/2) \\
-\eta &\sim N(0,1) \\
-\tau^2& \sim Ga(1,1) \\
-\nu & \sim Exp(1) \\
-\eta^2 & \sim Exp(1) 
+\eta &\sim N(0,100) \\
+\tau^2& \sim Ga(1/100,1/100) \\
+\nu & \sim Exp(1/10) \\
+\eta^2 & \sim Exp(1/10) 
 \end{align*}
 
-<<hierarchical_model>>=
+These priors were chosen in an attempt to be vague. Note that the exponential distribution is parameterized here by the rate (just like the gammas), so that the means of these exponentials are 10. 
+
+<<hierarchical_model, tidy=FALSE>>=
 hier_model = "
 model {
   for (i in 1:n) {
@@ -177,9 +181,12 @@ model {
 }
 "
 
-hier_dat = list(n=nrow(d), y=d$y, nc=nlevels(d$county), county=as.numeric(d$county))
-hier_m = jags.model(textConnection(hier_model), hier_dat)
-hier_r = coda.samples(hier_m, c("mu","sigma2","mean","eta","tau2","nu","eta2"), 1000)
+hier_dat = list(n=nrow(d), y=d$y, nc=nlevels(d$county), 
+                county=as.numeric(d$county))
+hier_m = jags.model(textConnection(hier_model), hier_dat, quiet=TRUE)
+hier_r = coda.samples(hier_m, 
+                      c("mu","sigma2","mean","eta","tau2","nu","eta2"), 
+                      1000)
 plot(hier_r[,c("eta","tau2","nu","eta2")])
 @
 
@@ -197,14 +204,34 @@ ggplot(hier_sum_mean_df, aes_string(x="q2.5", xend="q97.5", y="county", yend="co
 
 Notice that the uncertainty in the mean radon levels is much less than observed in the independence model. 
 
-<<hyperparameters>>=
-plot(hier_r)
-@
-
 \end{enumerate}
 
 Finally, provide a plot or posterior predictive pvalue to determine whether it is reasonable to ignore {\tt floor} using the techniques from chapter 6.
 
+\paragraph{Solution:}
 
+We will calculate the difference between observations taken on the first floor and those in the basement.
+
+<<t-test>>=
+(ttest = t.test(radon~floor, d))
+obs_test_statistic = diff(ttest$estimate)
+@
+
+Immediately this pvalue suggests that it would be important to incorporate floor into the model. We will compute a posterior predictive pvalue using data replicates from the posterior, i.e. $p(y^{rep}|y) = \int p(y^{rep}|\theta)p(\theta|y) d\theta$, for our hierarchical model. We will compare our observed pvalue to the pvalue from these replicates. 
+
+<<replicates>>=
+mu = hier_r[,grep("mu",varnames(hier_r))][[1]]
+sigma = sqrt(hier_r[,grep("sigma2",varnames(hier_r))][[1]])
+tmp = d
+n = nrow(d)
+yrep = rdply(nrow(mu), {
+  tmp$radon = exp(rnorm(n, mu[dat$county], sigma[dat$county]))-0.01 # Possibly negative
+  data.frame(pvalue=diff(t.test(radon~floor, tmp)$estimate))
+})
+
+qplot(pvalue, data=yrep, geom="histogram")+geom_vline(x=obs_test_statistic,col=2)
+@
+
+Since this observed test statistic is so far away from the replicated statistics, there is evidence to suggest our model would be improved if we included floor. 
 
 \end{document}
