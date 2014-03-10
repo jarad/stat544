@@ -1,34 +1,4 @@
-y = rnorm(10)
-
-library(rjags)
-
-model = "
-model {
-  for (i in 1:10) {
-    y[i] ~ dnorm(a+b,1)
-  }
-  a ~ dnorm(0,1e-6)
-  b ~ dnorm(0,1e-6)
-}
-"
-
-m = jags.model(textConnection(model), list(y=y), n.chains=3)
-r = coda.samples(m, c("a","b"), n.iter=1000)
-
-pdf("trace1.pdf", height=5)
-plot(r)
-dev.off()
-
-gelman.diag(r)
-
-
-
-
-pdf("trace2.pdf", height=5)
-plot(rnorm(1000),type="l", ylab="")
-lines(rnorm(1000), col="red")
-lines(rnorm(1000), col="green")
-dev.off()\documentclass{beamer}
+\documentclass{beamer}
 %\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
 
 
@@ -59,6 +29,117 @@ dev.off()\documentclass{beamer}
 \begin{document}
 
 \frame{\maketitle}
+
+\section{What we have covered}
+\frame{\frametitle{What we have covered}
+  Chapters
+  \begin{itemize}
+  \item[1.] Probability and inference
+  \item[2.] Single-parameter models
+  \item[3.] Introduction to multiparameter models
+  \item[5.] Hierarchical models
+  \item[14.] Introduction to regression models
+  \item[6.] Model checking
+  \end{itemize}
+}
+
+\subsection{Probability and inference}
+\frame{\frametitle{Probability and inference (Ch 1)}
+  \begin{itemize}[<+->]
+  \item Three steps of Bayesian data analysis (Sec 1.1)
+    \begin{itemize}
+    \item Set up a full probability model: $p(y|\theta)$ and $p(\theta)$
+    \item Condition on observed data: $p(\theta|y)$
+    \item Evaluate the fit of the model: $p(y^{rep}|y)$
+    \end{itemize}
+  \item Bayesian inference via Bayes' rule (Sec 1.3)
+    \begin{itemize}
+    \item Parameter posteriors: $p(\theta|y)\propto p(y|\theta)p(\theta)$
+    \item Predictions: $p(\tilde{y}|y) = \int p(\tilde{y}|\theta)p(\theta|y) d\theta$
+    \item Model probabilities $p(M|y) \propto p(y|M)p(M)$ where $p(y|M) = \int p(y|\theta,M)p(\theta|M) d\theta$.
+    \end{itemize}
+  \item Interpreting Bayesian probabilities (Sec 1.5)
+    \begin{itemize}
+    \item Epistemic probability: my belief
+    \item Frequency probability: long run percentage
+    \end{itemize}
+  \item Computation (Sec 1.9)
+    \begin{itemize}
+    \item Inference via simulations
+    \end{itemize}
+  \end{itemize}
+}
+
+\subsection{Single-parameter models}
+\frame{\frametitle{Single-parameter models (Ch 2)}\small
+  \begin{multicols}{2}
+  General
+  \begin{itemize}
+  \item Priors
+    \begin{itemize}
+    \item Conjugate (Sec 2.4)
+    \item Default - Jeffreys (Sec 2.8)
+    \item Weakly informative (Sec 2.9)
+    \end{itemize}
+  \item Posteriors
+    \begin{itemize}
+    \item Compromise between data and prior (2.2)
+    \item Point estimation 
+    \item Credible intervals (Sec 2.3)
+    \end{itemize}
+  \end{itemize}
+  
+  \columnbreak
+  
+  Specific models
+  \begin{itemize}
+  \item Binomial (Sec 2.1--2.4)
+  \item Normal, unknown mean (Sec 2.5)
+  \item Normal, unknown variance (Sec 2.6)
+  \item Poisson (Sec 2.6)
+  \item Exponential (Sec 2.6)
+  \item Poisson with exposure (Sec 2.7)
+  \end{itemize}
+  
+  \end{multicols}
+}
+
+\subsection{Introduction to multiparameter models}
+\frame{\frametitle{Introduction to multiparameter models (Ch 3)}
+  \begin{itemize}
+  \item Normal model with $p(\mu,\sigma^2)\propto 1/\sigma^2$ (Sec 3.2)
+  \item Normal model with conjugate prior (Sec 3.3)
+  \item Multinomial model (Sec 3.4)*
+  \item Multivariate normal model (Sec 3.5--3.6)*
+  \end{itemize}
+  
+  \vspace{0.2in} 
+  
+  * didn't cover
+}
+
+\subsection{Hierarchical models}
+\frame{\frametitle{Hierarchical models}
+  \begin{itemize}
+  \item Hierarchical model (Ch 5):
+  \[ p(\theta,\phi|y) \propto p(y|\theta)p(\theta|phi)p(\phi) \]
+  \item Exchangeability (Sec 5.2)
+  \[ p(y_1,\ldots,y_n) = p(y_{\pi_1},\ldots,y_{\pi_n}) \]
+  \item Hierarchical binomial model (Sec 5.3):
+  \[ y_i \stackrel{iid}{\sim} Bin(n_i,\theta_i) \quad \theta_i \stackrel{iid}{\sim} Be(\alpha,\beta) %\quad p(\alpha,\beta) \propto (\alpha+\beta)^{-5/2} 
+  \]
+  \item Hierarchical Poisson (with exposure) model (HW 5)
+  \[ y_i \stackrel{iid}{\sim} Po(x_i\lambda_i) \quad \lambda_i\stackrel{iid}{\sim} Ga(\mu\beta,\beta) \]
+  \item Hierarchical normal model (Sec 5.4, HW 7)
+  \[ y_{ij} \stackrel{iid}{\sim} N(\mu_j,\sigma_j^2) \quad \mu_j\stackrel{iid}{\sim} N(\eta,\tau^2) \quad \sigma_j^2 \stackrel{iid}{\sim} Ga(\alpha,\beta) \]
+  
+  \end{itemize}
+}
+
+
+\subsection{Introduction to regression models}
+
+\subsection{Model checking}
 
 \section{Bayesian statistics}
 \frame{\frametitle{What makes a Bayesian?}
@@ -244,75 +325,6 @@ lie in the 95% credible region
 \end{itemize}
 }
 
-\subsection{Convergence}
-\frame{\frametitle{Convergence}
-	Has this MCMC converged?
-	\begin{center}
-	\includegraphics{trace1}
-	\end{center}
-	\pause Yes, but the parameters are unidentified.
-}
-
-\frame{\frametitle{Convergence}
-	Has this MCMC converged?
-	\begin{center}
-	\includegraphics{trace2}
-	\end{center}
-	\pause No, this chain hasn't even visited the other mode.
-}
-
-\frame{\frametitle{Convergence: best practices}
-	\begin{itemize}[<+->]
-	\item Run multiple chains
-		\begin{itemize}
-		\item Initial values
-			\begin{itemize}
-			\item Ideally: overdispersed relative to the posterior
-			\item Simple: sample from proper priors
-			\item Computationally efficient: random from some heavy tailed distribution
-			\end{itemize}
-		\item Check Gelman-Rubin potential scale reduction factor
-		\item If all are below 1.1, report ``No lack of convergence detected.''
-		\end{itemize}
-	\item Continue to run one chain for a long time
-	\end{itemize}
-	
-	\vspace{0.2in} \pause
-	
-	Lack of convergence can mean
-	\begin{itemize}[<+->]
-	\item Run the chains longer
-	\item Reparameterize your model
-	\item Unidentifiable (or weakly identified) parameters
-	\end{itemize}
-}
-
-\section{Stat 615}
-\frame{\frametitle{Stat 615}
-	\begin{itemize}[<+->]
-	\item Time-series
-		\begin{itemize}
-		\item Dynamic linear models
-		\item State-space models
-		\end{itemize}
-	\item Spatial
-		\begin{itemize}
-		\item Gaussian process
-		\item Conditionally autoregressive models
-		\end{itemize}
-	\item Nonparametric
-		\begin{itemize}
-		\item Dirichlet process
-		\item Polya trees (?)
-		\end{itemize}
-	\item Computing
-		\begin{itemize}
-		\item Slice sampling
-		\item Simulated annealing
-		\item Parallel tempering
-		\end{itemize}
-	\end{itemize}
-}
 
 
 \end{document}
