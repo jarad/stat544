@@ -1,0 +1,44 @@
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\title{Introduction to Bayesian computation}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\I}{\mathrm{I}}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+library(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+##############################################
+# Midterm review                             #
+##############################################
+library(reshape2)
+library(plyr)
+library(ggplot2)
+library(rjags)
+@
+
+
+
+
+\end{document}
