@@ -1,0 +1,318 @@
+y = rnorm(10)
+
+library(rjags)
+
+model = "
+model {
+  for (i in 1:10) {
+    y[i] ~ dnorm(a+b,1)
+  }
+  a ~ dnorm(0,1e-6)
+  b ~ dnorm(0,1e-6)
+}
+"
+
+m = jags.model(textConnection(model), list(y=y), n.chains=3)
+r = coda.samples(m, c("a","b"), n.iter=1000)
+
+pdf("trace1.pdf", height=5)
+plot(r)
+dev.off()
+
+gelman.diag(r)
+
+
+
+
+pdf("trace2.pdf", height=5)
+plot(rnorm(1000),type="l", ylab="")
+lines(rnorm(1000), col="red")
+lines(rnorm(1000), col="green")
+dev.off()\documentclass{beamer}
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+
+
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\title{Review}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\mG}{\mathrm{\Gamma}}
+\newcommand{\I}{\mathrm{I}}
+\newcommand{\mySigma}{\mathrm{\Sigma}}
+
+\begin{document}
+
+\frame{\maketitle}
+
+\section{Bayesian statistics}
+\frame{\frametitle{What makes a Bayesian?}
+\small
+	\begin{definition}
+	A Bayesian statistician is somebody who answers questions based on the probability of quantities she doesn't know conditional on quantities she does. 
+	\end{definition}
+	
+	\vspace{0.2in} \pause
+	
+	For example, 
+	
+	\vspace{0.1in} \pause
+	
+	\begin{tabular}{lll}
+	Parameter estimation: & $p(\theta|y)$ & \uncover<7->{$=p(y|\theta)p(\theta)/p(y)$} \pause \\ \\
+	Prediction: & $p(\tilde{y}|y)$ & \uncover<8->{$= \int p(\tilde{y}|\theta)p(\theta|y) d\theta$} \pause \\ \\
+	Model comparison: & $p(M|y)$ & \uncover<9->{$= p(y|M)p(M)/p(y)$} \pause \\ 
+	\end{tabular}
+	
+	\vspace{0.2in} 
+	
+	where access to these conditional distributions utilizes Bayes' rule. 
+}
+
+\frame{\frametitle{Bayesian inference often match non-Bayesian inference}
+	\begin{itemize}[<+->]
+	\item Exact (priors $\propto 1$)
+		\begin{itemize}
+		\item Normal models
+		\item Multiple regression
+		\item Regularized regression (ridge, LASSO)
+		\end{itemize}
+	\item Approximate (posterior is approximately normal)
+		\begin{itemize}
+		\item GLMs
+		\item Above when informative priors are dominated by the likelihood
+		\end{itemize}
+	\end{itemize}
+}
+
+\frame{\frametitle{Some things are easier from a Bayesian perspective}
+\small
+	\begin{itemize}[<+->]
+	\item Uncertainty for binomial success probability when
+		\begin{itemize}
+		\item all successes
+		\item all failures
+		\end{itemize}
+	\item Uncertainty has proper support
+		\begin{itemize}
+		\item binomial success probability $p$  
+		\item MLEs (and CIs) for hierarchical variances
+		\end{itemize}
+	\item Uncertainty for complicated functions of parameters
+		\begin{itemize}
+		\item baking example, $-\frac{2BC-DE}{4AB-E^2}$
+		\end{itemize}
+	\item Dealing with non-standard problems
+		\begin{itemize}
+		\item Truncating/censoring
+		\item Bizarre data models
+		\end{itemize}
+	\item Small sample sizes
+		\begin{itemize}
+		\item Bayesians do not rely on data asymptotics
+		\end{itemize}
+	\end{itemize}
+}
+
+\frame{\frametitle{Some things are harder from a Bayesian perspective}
+	Non-Bayesians differentiate and Bayesians integrate. 
+	
+	\vspace{0.2in} \pause
+	
+	\begin{itemize}[<+->]
+	\item Bayesian application relies on BUGS/JAGS/Stan
+		\begin{itemize}
+		\item convergence issues
+		\item parameterization issues
+		\item identifiability issues
+		\end{itemize}
+	\item ``univariate'' Gibbs sampling does not work well for 
+		\begin{itemize}
+		\item Spatial models
+		\item Time series models
+		\item Multi-model posteriors
+		\end{itemize}
+	\end{itemize}
+	
+	\vspace{0.2in} \pause
+	
+	Application of Bayesian inference often become computational issues.
+}
+
+\section{Errors I've seen}
+\frame{\frametitle{Appropriate non-informative priors for variance parameters}
+\footnotesize
+	There are two types variance parameters:
+	\begin{itemize}
+	\item Data-level variances
+	\item Hierarchical variances
+	\end{itemize}
+	\pause e.g.
+	\[ y_i\stackrel{ind}{\sim} N(\mu_{g[i]},\sigma^2) \qquad \mu_g \stackrel{ind}{\sim} N(\mu,\sigma_g^2) \]
+	where $g=1,\ldots,G$. \pause The data-level and hierarchical variances are $\sigma^2$ and $\sigma_g^2$, respectively.
+	
+	\vspace{0.2in} \pause
+	
+	According to Gelman's 2006 paper ``Prior distributions for variance parameters in hierarchical models'', the appropriate non-informative priors for variances are
+	\begin{itemize}[<+->]
+	\item Data-level variances: 
+		\begin{itemize}
+		\item $p(\sigma^2) \propto \sigma^{-2}$, equivalently $p(\log \sigma)\propto 1$
+		\item $p(\sigma^2)\propto \sigma^{-1}$, equivalently $p(\sigma) \propto 1$
+		\end{itemize} 
+	\item Hierarchical variances: 
+		\begin{itemize}
+		\item $G\ge 5$: $p(\sigma_g^2)\propto \sigma_g^{-1}$, equivalently $p(\sigma_g) \propto 1$
+		\item $G< 5$: $p(\sigma_g) = C^+(0,\tau^2)$ with $\tau$ large
+		\end{itemize}
+	\end{itemize}
+}
+
+
+
+\frame{\frametitle{Proper interpretation of credible sets}
+	What is wrong with this quote
+	\begin{quote}
+	Since the 95\% confidence interval for the hierarchical variance parameter  does not
+contain 0, I can say there is statistically significant evidence that the relationship between
+conversion and the remaining 9 variables benefits from the hierarchical model.
+	\end{quote}
+	
+	\vspace{0.2in} \pause
+	
+	\begin{itemize}
+	\item Bayesians create credible intervals, not confidence intervals.
+	\item The credible intervals for variances parameters will never contain zero. 
+	\end{itemize}
+}
+
+\frame[containsverbatim]{\frametitle{Proper interpretation of credible sets}
+\small
+	What is wrong with this quote?
+\begin{verbatim}
+quantile(d.new$x1.opt, c(0.025, 0.5, 0.975)) + mean(d$minutes)
+## 2.5% 50% 97.5%
+## 34.67 35.82 38.94
+
+quantile(d.new$x2.opt, c(0.025, 0.5, 0.975)) + mean(d$temperature)
+## 2.5% 50% 97.5%
+## 346.1 352.7 357.6
+
+The best combination of baking time and temperature 
+lie in the 95% credible region
+[34.7,38.9] x [346, 353].
+\end{verbatim}
+
+}
+
+\frame[containsverbatim]{\frametitle{Proper interpretation of credible sets}
+\small
+	What is wrong with this quote
+\begin{verbatim}
+quantile(d.new$x1.opt, c(0.025, 0.5, 0.975)) + mean(d$minutes)
+## 2.5% 50% 97.5%
+## 34.67 35.82 38.94
+
+quantile(d.new$x2.opt, c(0.025, 0.5, 0.975)) + mean(d$temperature)
+## 2.5% 50% 97.5%
+## 346.1 352.7 357.6
+
+The best combination of baking time and temperature 
+lie in the 95% credible region
+[34.7,38.9] x [346, 353].
+\end{verbatim}
+
+\vspace{0.2in} 
+
+\begin{itemize}
+\item A 95\% credible (or confidence) region is not typically the ``product'' of the two individual sets. 
+\end{itemize}
+}
+
+\subsection{Convergence}
+\frame{\frametitle{Convergence}
+	Has this MCMC converged?
+	\begin{center}
+	\includegraphics{trace1}
+	\end{center}
+	\pause Yes, but the parameters are unidentified.
+}
+
+\frame{\frametitle{Convergence}
+	Has this MCMC converged?
+	\begin{center}
+	\includegraphics{trace2}
+	\end{center}
+	\pause No, this chain hasn't even visited the other mode.
+}
+
+\frame{\frametitle{Convergence: best practices}
+	\begin{itemize}[<+->]
+	\item Run multiple chains
+		\begin{itemize}
+		\item Initial values
+			\begin{itemize}
+			\item Ideally: overdispersed relative to the posterior
+			\item Simple: sample from proper priors
+			\item Computationally efficient: random from some heavy tailed distribution
+			\end{itemize}
+		\item Check Gelman-Rubin potential scale reduction factor
+		\item If all are below 1.1, report ``No lack of convergence detected.''
+		\end{itemize}
+	\item Continue to run one chain for a long time
+	\end{itemize}
+	
+	\vspace{0.2in} \pause
+	
+	Lack of convergence can mean
+	\begin{itemize}[<+->]
+	\item Run the chains longer
+	\item Reparameterize your model
+	\item Unidentifiable (or weakly identified) parameters
+	\end{itemize}
+}
+
+\section{Stat 615}
+\frame{\frametitle{Stat 615}
+	\begin{itemize}[<+->]
+	\item Time-series
+		\begin{itemize}
+		\item Dynamic linear models
+		\item State-space models
+		\end{itemize}
+	\item Spatial
+		\begin{itemize}
+		\item Gaussian process
+		\item Conditionally autoregressive models
+		\end{itemize}
+	\item Nonparametric
+		\begin{itemize}
+		\item Dirichlet process
+		\item Polya trees (?)
+		\end{itemize}
+	\item Computing
+		\begin{itemize}
+		\item Slice sampling
+		\item Simulated annealing
+		\item Parallel tempering
+		\end{itemize}
+	\end{itemize}
+}
+
+
+\end{document}
