@@ -1,3 +1,9 @@
+This file contains my to-do list and any other notes to myself.
+
+# Notes for next time
+
+Follow the text more closely and in order (possibly with Ch 14 still out of order). 
+
 # ToDo
 
 - [ ] put L1 into Rnw file, and remove .R and .tex file from repository and remove exclusions in .gitignore
