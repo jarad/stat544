@@ -348,7 +348,7 @@ mean(d$accept)
 \subsection{Importance sampling}
 \frame{\frametitle{Importance sampling}
   Notice that 
-  \[ E[h(\theta)|y] = \int h(\theta) p(\theta|y) d\theta = \int h(\theta) \frac{p(\theta|y)}{g(\theta)} g(\theta) d\theta \]
+  \[ E[h(\theta)|y] = \int h(\theta) p(\theta|y) d\theta \pause = \int h(\theta) \frac{p(\theta|y)}{g(\theta)} g(\theta) d\theta \]
   where $g(\theta)$ is a proposal distribution\pause, so that we approximate the expectation via 
   \[ E[h(\theta)|y] \approx \frac{1}{S} \sum_{s=1}^S w(\theta^s) h(\theta^s) \]
   where $\theta^s \stackrel{iid}{\sim} g(\theta)$ and 
@@ -366,22 +366,59 @@ mean(d$accept)
   is the \alert{normalized} importance weight. 
 }
 
+\begin{frame}
+\frametitle{Example: Normal-Cauchy model}
+  If $Y \sim N(\theta,1)$ and $\theta\sim Ca(0,1)$, then 
+  \[ p(\theta|y) \propto \frac{\frac{1}{\sqrt{2\pi}} e^{-(y-\theta)^2/2}}{\frac{1}{\pi}(1+\theta^2)} \]
+  for all $\theta$. 
+  
+  \vspace{0.2in} \pause 
+  
+  In this case, a proposal distribution is a standard normal, i.e. 
+  \[ g(\theta)=\frac{1}{\sqrt{2\pi}}  e^{-(\theta-y)^2/2} \]
+  with 
+  \[ w(\theta) = \frac{p(\theta|y)}{g(\theta)} = \frac{1}{\frac{1}{\pi}(1+\theta^2)} \]
+
+\end{frame}
+
 \begin{frame}[fragile]
 <<importance_sampling, fig.width=8>>=
 n = 1000
 theta = rnorm(n)
 weight = q(theta,0)/g(theta,0)
-qplot(x=theta,y=weight)+geom_point()
+qplot(x=theta,y=weight)+geom_point()+labs(title="Importance weight")
 @
 \end{frame}
 
 \begin{frame}[fragile]
 <<importance_sampling_mean, message=FALSE, fig.width=8>>=
 library(weights)
-mean(weight*theta/sum(weight))
+mean(weight*theta/sum(weight)) # Estimate mean
 wtd.hist(theta, 100, prob=TRUE, weight=weight)
 @
 \end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Resampling}
+If an unweighted sample is desired, sample $\theta^s$ with replacement with probability equal to the normalized weights, $\tilde{w}(\theta^s)$.
+
+<<resampling, eval=FALSE, warning=FALSE>>=
+# resampling
+new_theta = theta[sample(length(theta), replace=TRUE, prob=weight)] # internally normalized
+hist(new_theta, 100, prob=TRUE, main="Unweighted histogram of resampled draws")
+curve(q(x,0)/py(0), add=TRUE, col="red", lwd=2)
+@
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Resampling}
+<<resampling_plot, echo=FALSE>>=
+<<resampling>>
+@
+\end{frame}
+
 
 \frame{\frametitle{Heavy-tailed proposals}
   Although any proposal can be used for importance sampling, only proposals with heavy tails relative to the target will be efficient. 
@@ -399,7 +436,8 @@ set.seed(16)
 theta = rnorm(100)
 weight = dcauchy(theta)/dnorm(theta)
 weight = weight/sum(weight)
-qplot(theta,weight,geom="point")+ylim(0,max(weight))
+whmax = which.max(weight)
+qplot(theta,weight,geom="point")+ylim(0,max(weight))+xlim(-theta[whmax],theta[whmax])
 @
 \end{frame}
 
@@ -414,7 +452,7 @@ We can get a measure of how efficient the sample is by computing the effective s
 
 \begin{frame}[fragile]
 \frametitle{Effective sample size}
-<<cumulative_effective_size, fig.width=10, cache=TRUE>>=
+<<cumulative_effective_size, fig.width=12, cache=TRUE>>=
 set.seed(5)
 theta = rnorm(10000)
 lweight = dcauchy(theta,log=TRUE)-dnorm(theta,log=TRUE)
@@ -429,31 +467,6 @@ qplot(x=1:length(cumulative_ess), y=cumulative_ess, geom="line")+labs(x="Number 
 @
 \end{frame}
 
-\begin{frame}[fragile]
-\frametitle{Resampling}
-If an unweighted sample is desired, sample with replacement with probability equal to the normalized weights.
-
-<<resampling, eval=FALSE>>=
-n = 10000
-theta = rcauchy(n) # proposal
-lweight = dnorm(theta, log=TRUE)-dcauchy(theta, log=TRUE)
-lweight = lweight-max(lweight)
-
-# resampling
-new_theta = theta[sample(n, n, replace=TRUE, prob=exp(lweight))]
-hist(new_theta, 100, prob=TRUE)
-curve(dnorm, add=TRUE, col="red", lwd=2)
-@
-
-\end{frame}
-
-
-\begin{frame}[fragile]
-\frametitle{Creating an unweighted sample from a weighted sample}
-<<resampling_plot, echo=FALSE>>=
-<<resampling>>
-@
-\end{frame}
 
 
 \begin{comment}
