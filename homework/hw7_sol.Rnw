@@ -20,7 +20,12 @@
 \chead{PSTAT 544 - Bayesian statistics}
 \rhead{Page \thepage\ of \pageref{LastPage}}
 
-This homework is due on Blackboard Learn by 8:00am on 6 March 2014. There will be a total of 10 points available. 
+<<echo=FALSE,message=FALSE>>=
+
+library(ggplot2)
+library(plyr)
+library(rjags)
+@ 
 
 The file {\tt radon.csv} contains observations on houses in Minnesota with the following information
 \begin{itemize}
@@ -48,7 +53,6 @@ Due to radon being positive, we will model the logarithm of radon plus 0.01 as n
 where $R_i$ is the radon measurement for observation $i$. On the original scale, the $E[R_i] = e^{\mu+\sigma^2/2}-0.01$. 
 
 <<common_mean, tidy=FALSE>>=
-library(rjags)
 common_mean = "
 model {
   for (i in 1:n) {
@@ -67,7 +71,7 @@ s_common = coda.samples(m_common, c("mu","sigma2","mean"), 1000)
 From the plots and summary statistics below, we can see the mean radon level is between 4.7 and 5.4 with 95\% probability. 
 
 <<common_mean_plots>>=
-plot(s_common)
+plot(s_common, trace=FALSE)
 summary(s_common)
 @
 
@@ -85,7 +89,6 @@ Since some of the counties have few observations, the information for the standa
 
 
 <<number_of_observations_per_county>>=
-library(plyr)
 n_county = ddply(d, .(county), summarise, n=length(y), mu=mean(y), sigma2=var(y))
 n_county[order(n_county$n),][1:11,]
 ddply(n_county, .(), summarise, 
@@ -116,7 +119,7 @@ model {
     y[i] ~ dnorm(mu[county[i]], 1/sigma2[county[i]])
   }
   for (c in 1:nc) {
-    mu[c] ~ dnorm(m,C)
+    mu[c] ~ dnorm(m,1/C)
     sigma2[c] ~ dgamma(alpha,beta)
     mean[c] <- exp(mu[c]+sigma2[c]/2)-0.01
   }
@@ -139,17 +142,17 @@ s_sum_mean_df = as.data.frame(s_sum_mean$quantiles)
 
 names(s_sum_mean_df) = paste("q",gsub("%","",names(s_sum_mean_df)),sep="")
 s_sum_mean_df$county = levels(d$county)
-library(ggplot2)
-(ggplot(s_sum_mean_df, aes(x=q2.5, xend=q97.5, y=county, yend=county))+geom_segment()+coord_cartesian(xlim=c(0,35))+geom_vline(x=4,col=2))
 @
 
-Notice that many of the intervals extend farther to the right. The plot is left as is to ease comparison with the hierarchical model. For reference, the red line in the figure is  4pCi/L, the federal limit above which suggests the use of a radon mitigation sytem.
+The estimated 95\% credible intervals for mean radon concentration by county are provided later with the hierarchical model. For the independence model, many of the intervals extend farther to the right with the most extreme being Cottonwood county with an upper endpoint of 1600. 
+
+For reference, the red line in the figure is  4pCi/L, the federal limit above which a radon mitigation sytem is suggested.
 
 \item A hierarchical model for mean radon concentrations in the counties.
 
 \paragraph{Solution:}
 
-The hierarchical model is the same as the independence model, but the hyperparameters are learned rather than set. A model is 
+A hierarchical model is constructed simmilarly to the independence model, but the hyperparameters are learned rather than set. The model used here is
 \begin{align*}
 Y_i &\stackrel{iid}{\sim} N(\mu_{c[i]}, \sigma_{c[i]}^2) \\
 \mu_{c[i]} &\stackrel{iid}{\sim} N(\eta, \tau^2) \\
@@ -187,7 +190,7 @@ hier_m = jags.model(textConnection(hier_model), hier_dat, quiet=TRUE)
 hier_r = coda.samples(hier_m, 
                       c("mu","sigma2","mean","eta","tau2","nu","eta2"), 
                       1000)
-plot(hier_r[,c("eta","tau2","nu","eta2")])
+plot(hier_r[,c("eta","tau2","nu","eta2")],trace=FALSE)
 @
 
 Posterior 95\% credible intervals for the mean in each county are given below.
@@ -198,11 +201,16 @@ hier_sum_mean_df = as.data.frame(hier_sum_mean$quantiles)
 
 names(hier_sum_mean_df) = paste("q",gsub("%","",names(hier_sum_mean_df)),sep="")
 hier_sum_mean_df$county = levels(d$county)
-library(ggplot2)
-ggplot(hier_sum_mean_df, aes_string(x="q2.5", xend="q97.5", y="county", yend="county"))+geom_segment()+geom_vline(x=4,col=2)+coord_cartesian(xlim=c(0,35))
+
+# Combine independent model results with hierarchical model results
+s_sum_mean_df$model = "independent"
+hier_sum_mean_df$model = "hierarchical"
+both = merge(s_sum_mean_df, hier_sum_mean_df, all=TRUE)
+ggplot(both, aes(x=q2.5, xend=q97.5, y=county, yend=county))+facet_grid(~model)+geom_segment()+geom_vline(x=4,col=2)+coord_cartesian(xlim=c(0,35))+labs(x="Mean radon level")+ theme_grey(base_size = 8)
 @
 
-Notice that the uncertainty in the mean radon levels is much less than observed in the independence model. 
+Compared with the independent model, the hierarchical model allowed the data to inform the analysis more since the hyperparameters that were assumed in the independent model (and were created based on the data) were estimated in the hierarchical model. On average, the 95\% credible intervals for mean radon concentration are narrower under the hierarchical model, although this effect is not monotonic. For example, the interval is narrower for Yellowmedicine county and wider for Koochiching county in the hierarchical model compared to the independent model.
+
 
 \end{enumerate}
 
@@ -217,21 +225,21 @@ We will calculate the difference between observations taken on the first floor a
 obs_test_statistic = diff(ttest$estimate)
 @
 
-Immediately this pvalue suggests that it would be important to incorporate floor into the model. We will compute a posterior predictive pvalue using data replicates from the posterior, i.e. $p(y^{rep}|y) = \int p(y^{rep}|\theta)p(\theta|y) d\theta$, for our hierarchical model. We will compare our observed pvalue to the pvalue from these replicates. 
+Immediately this pvalue suggests that it would be important to incorporate floor into the model. We will compute a posterior predictive pvalue using data replicates from the posterior, i.e. $p(y^{rep}|y) = \int p(y^{rep}|\theta)p(\theta|y) d\theta$, for our hierarchical model. We will compare our observed test statistic to the test statistic from these replicates. 
 
-<<replicates>>=
+<<replicates, fig.width=4, fig.height=4, message=FALSE>>=
 mu = hier_r[,grep("mu",varnames(hier_r))][[1]]
 sigma = sqrt(hier_r[,grep("sigma2",varnames(hier_r))][[1]])
 tmp = d
 n = nrow(d)
 yrep = rdply(nrow(mu), {
   tmp$radon = exp(rnorm(n, mu[dat$county], sigma[dat$county]))-0.01 # Possibly negative
-  data.frame(pvalue=diff(t.test(radon~floor, tmp)$estimate))
+  data.frame(test_statistic=diff(t.test(radon~floor, tmp)$estimate))
 })
 
-qplot(pvalue, data=yrep, geom="histogram")+geom_vline(x=obs_test_statistic,col=2)
+qplot(test_statistic, data=yrep, geom="histogram")+geom_vline(x=obs_test_statistic,col=2)
 @
 
-Since this observed test statistic is so far away from the replicated statistics, there is evidence to suggest our model would be improved if we included floor. 
+Since this observed test statistic is so far away from the replicated statistics, there is evidence to suggest our model would be improved if we included floor.
 
 \end{document}
