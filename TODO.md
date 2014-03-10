@@ -7,4 +7,4 @@
 - [ ] in L8, move theoretical slides to appropriate lectures, e.g. L2 and L6
 - [ ] in L9, make it a completely objective Bayesian regression lecture
 - [ ] in HW5, provide more direction, i.e. perform the complete pooling and no pooling models
-
+- [ ] reorganize slides based on chapter of BDA3 (started doing this in Ch10)
