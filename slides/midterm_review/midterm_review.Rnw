@@ -18,7 +18,7 @@
 %\setbeamertemplate{block body theorem}{bg=orange}
 \setkeys{Gin}{width=0.6\textwidth}
 
-\title{Review}
+\title{Midterm review}
 \author[Jarad Niemi]{Dr. Jarad Niemi}
 \institute[Iowa State]{Iowa State University}
 \date{\today}
@@ -73,11 +73,11 @@
 }
 
 \subsection{Single-parameter models}
-\frame{\frametitle{Single-parameter models (Ch 2)}
+\frame{\frametitle{Single-parameter models (Ch 2, L1)}
   \begin{multicols}{2}
   General
   \begin{itemize}
-  \item Priors
+  \item Priors (L2)
     \begin{itemize}
     \item Conjugate (Sec 2.4)
     \item Default - Jeffreys (Sec 2.8)
@@ -96,8 +96,8 @@
   Specific models
   \begin{itemize}
   \item Binomial (Sec 2.1--2.4)
-  \item Normal, unknown mean (Sec 2.5)
-  \item Normal, unknown variance (Sec 2.6)
+  \item Normal, unknown mean (Sec 2.5, L3)
+  \item Normal, unknown variance (Sec 2.6, L3)
   \item Poisson (Sec 2.6)
   \item Exponential (Sec 2.6)
   \item Poisson with exposure (Sec 2.7)
@@ -106,9 +106,29 @@
   \end{multicols}
 }
 
+\frame{\frametitle{Single-parameter models (Ch 2, L1)}
+  Additional comments:
+  \begin{itemize}[<+->]
+  \item Deriving posteriors using the \alert{kernel}
+  \item Discrete priors are conjugate
+  \item Mixtures of conjugate priors are conjugate
+  \item Point estimation  depends on utility function
+    \begin{itemize}
+    \item Mean minimizes squared error
+    \item Median minimizes absolute error
+    \item Mode minimizes 0-1 error
+    \end{itemize}
+  \item Computation, $E[h(\theta)|y]$ (L4)
+    \begin{itemize}
+    \item SLLN
+    \item CLT
+    \end{itemize}
+  \end{itemize}
+}
+
 \subsection{Introduction to multiparameter models}
-\frame{\frametitle{Introduction to multiparameter models (Ch 3)}
-  \begin{itemize}
+\frame{\frametitle{Introduction to multiparameter models (Ch 3, L5)}
+  \begin{itemize}[<+->]
   \item Normal model with default prior (Sec 3.2)
   \[ y\stackrel{iid}{\sim} N(\mu,\sigma^2) \quad p(\mu,\sigma^2) \propto 1/\sigma^2 \]
   results in 
@@ -124,9 +144,29 @@
   \end{itemize}
 }
 
+\frame{\frametitle{Hypothesis testing (L6)}
+  From a Bayesian perspective, 
+  \begin{itemize}[<+->]
+  \item treat point hypotheses as formal Bayesian tests
+  \[ H_i: \theta=\theta_i \]
+  \item treat composite hypotheses via parameter estimation 
+  \[ H_i: \theta \in (\theta_i,\theta_{i+1}] \]
+  \end{itemize}
+  
+  \vspace{0.2in} \pause
+  
+  Formal Bayesian hypotheses 
+  \begin{itemize}[<+->]
+  \item require prior probabilities for each hypothesis, $p(H_i)$, 
+  \item require priors for parameters in non-point hypotheses, $p(\theta|H_i)$, and
+  \item calculate posterior probabilities $p(H_i|y)$ which depend on 
+  \item the marginal likelihood, $p(y|H_i)$.
+  \end{itemize}
+}
+
 \subsection{Hierarchical models}
-\frame{\frametitle{Hierarchical models (Ch 5)}
-  \begin{itemize}
+\frame{\frametitle{Hierarchical models (Ch 5, L7, L12)}
+  \begin{itemize}[<+->]
   \item Hierarchical model (Ch 5):
   \[ p(\theta,\phi|y) \propto p(y|\theta)p(\theta|phi)p(\phi) \]
   \item Exchangeability (Sec 5.2)
@@ -136,14 +176,14 @@
   \]
   \item Hierarchical Poisson (with exposure) model (HW 5)
   \[ y_i \stackrel{iid}{\sim} Po(x_i\lambda_i) \quad \lambda_i\stackrel{iid}{\sim} Ga(\mu\beta,\beta) \]
-  \item Hierarchical normal model (Sec 5.4, HW 7)
+  \item Hierarchical normal model (Sec 5.4, HW 7, L8)
   \[ y_{ij} \stackrel{iid}{\sim} N(\mu_j,\sigma_j^2) \quad \mu_j\stackrel{iid}{\sim} N(\eta,\tau^2) \quad \sigma_j^2 \stackrel{iid}{\sim} Ga(\alpha,\beta) \]
   \end{itemize}
 }
 
 
 \subsection{Introduction to regression models}
-\frame{\frametitle{Introduction to regression models (Ch 14)}
+\frame{\frametitle{Introduction to regression models (Ch 14, L9, L10)}
   \begin{itemize}
   \item Default (classical) regression (Sec 14.2)
   \[ y|\beta,\sigma^2 \sim N(X\beta,\sigma^2\mathrm{I}) \quad p(\beta,\sigma^2) \propto 1/\sigma^2  \]
@@ -159,7 +199,7 @@
 }
 
 \subsection{Model checking}
-\frame{\frametitle{Model checking (Ch 6)}
+\frame{\frametitle{Model checking (Ch 6, L11)}
   \begin{itemize}
   \item Posterior predictive checking (Sec 6.4)
   \[ p(y^{rep}|y) = \int p(y^{rep}|\theta)p(\theta|y) d\theta \]
