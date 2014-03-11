@@ -1,5 +1,6 @@
-\documentclass{beamer}
-%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+\documentclass[10pt,handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass[10pt]{beamer}
+
 
 
 
@@ -34,12 +35,13 @@
 \frame{\frametitle{What we have covered}
   Chapters
   \begin{itemize}
-  \item[1.] Probability and inference
-  \item[2.] Single-parameter models
-  \item[3.] Introduction to multiparameter models
-  \item[5.] Hierarchical models
-  \item[14.] Introduction to regression models
-  \item[6.] Model checking
+  \item Probability and inference (Ch 1)
+  \item Single-parameter models (Ch 2)
+  \item Introduction to multiparameter models (Ch 3)
+  \item Hierarchical models (Ch 5)
+  \item Introduction to regression models (Ch 14)
+  \item Model checking (Ch 6)
+  \item JAGS
   \end{itemize}
 }
 
@@ -71,7 +73,7 @@
 }
 
 \subsection{Single-parameter models}
-\frame{\frametitle{Single-parameter models (Ch 2)}\small
+\frame{\frametitle{Single-parameter models (Ch 2)}
   \begin{multicols}{2}
   General
   \begin{itemize}
@@ -107,19 +109,23 @@
 \subsection{Introduction to multiparameter models}
 \frame{\frametitle{Introduction to multiparameter models (Ch 3)}
   \begin{itemize}
-  \item Normal model with $p(\mu,\sigma^2)\propto 1/\sigma^2$ (Sec 3.2)
+  \item Normal model with default prior (Sec 3.2)
+  \[ y\stackrel{iid}{\sim} N(\mu,\sigma^2) \quad p(\mu,\sigma^2) \propto 1/\sigma^2 \]
+  results in 
+  \[ p(\mu,\sigma^2|y) = N(\overline{y}, \sigma^2/n) \mbox{Inv-}\chi^2(n-1,s^2)\]
+  where $s^2 = \frac{1}{n} \sum_{i=1}^n (y_i-\overline{y})^2$.
   \item Normal model with conjugate prior (Sec 3.3)
-  \item Multinomial model (Sec 3.4)*
-  \item Multivariate normal model (Sec 3.5--3.6)*
+  \[ y\stackrel{iid}{\sim} N(\mu,\sigma^2) \quad \mu|\sigma^2 \sim N(\mu_0, \sigma^2/\kappa_0) \mbox{Inv-}\chi^2(\nu_0,\sigma_0^2) \]
+  results in 
+  \[ p(\mu,\sigma^2|y) = N\left(\frac{\kappa_0\mu_0+n\overline{y}}{\kappa_0+n}, \frac{\sigma^2}{\kappa_0+n}\right) \mbox{Inv-}\chi^2(\nu_0+n,\sigma_n^2)\]
+  where $\sigma_n^2 = \left[\mu_0\sigma_0^2+(n-1)s^2+\frac{\kappa_0n}{\kappa_0+n}(\overline{y}-\mu_0)^2 \right]/(\nu_0+n)$.
+%  \item Multinomial model (Sec 3.4)*
+  \item Multivariate normal model (Sec 3.5--3.6, HW6)
   \end{itemize}
-  
-  \vspace{0.2in} 
-  
-  * didn't cover
 }
 
 \subsection{Hierarchical models}
-\frame{\frametitle{Hierarchical models}
+\frame{\frametitle{Hierarchical models (Ch 5)}
   \begin{itemize}
   \item Hierarchical model (Ch 5):
   \[ p(\theta,\phi|y) \propto p(y|\theta)p(\theta|phi)p(\phi) \]
@@ -132,15 +138,61 @@
   \[ y_i \stackrel{iid}{\sim} Po(x_i\lambda_i) \quad \lambda_i\stackrel{iid}{\sim} Ga(\mu\beta,\beta) \]
   \item Hierarchical normal model (Sec 5.4, HW 7)
   \[ y_{ij} \stackrel{iid}{\sim} N(\mu_j,\sigma_j^2) \quad \mu_j\stackrel{iid}{\sim} N(\eta,\tau^2) \quad \sigma_j^2 \stackrel{iid}{\sim} Ga(\alpha,\beta) \]
-  
   \end{itemize}
 }
 
 
 \subsection{Introduction to regression models}
+\frame{\frametitle{Introduction to regression models (Ch 14)}
+  \begin{itemize}
+  \item Default (classical) regression (Sec 14.2)
+  \[ y|\beta,\sigma^2 \sim N(X\beta,\sigma^2\mathrm{I}) \quad p(\beta,\sigma^2) \propto 1/\sigma^2  \]
+  results in 
+  \[ p(\beta,\sigma^2|y) \sim N(\beta|\hat{\beta}, \sigma^2 [X^\top X]^{-1})\mbox{Inv-}\chi^2(n-k,s^2) \]
+  where $\hat{\beta} = [X^\top X]^{-1} X^top y$ and $s^2 = \frac{1}{n-k} (y-X\hat{\beta})^\top (y-X\hat{\beta})$.
+  
+  \item Regression with known covariance matrix (Sec 14.7)
+  \item Regression with conjugate informative prior (Sec 14.8)
+  \[ y|\beta,\sigma^2 \sim N(X\beta,\sigma^2\mathrm{I}) \quad \beta|\sigma^2 \sim N(\beta_0,\Sigma_\beta) \quad \sigma^2\sim \mbox{Inv}-\chi^2(\nu_0,\sigma_0^2) \]
+  can be thought of as addition data directly on $\beta$ and $\sigma^2$.
+  \end{itemize}
+}
 
 \subsection{Model checking}
+\frame{\frametitle{Model checking (Ch 6)}
+  \begin{itemize}
+  \item Posterior predictive checking (Sec 6.4)
+  \[ p(y^{rep}|y) = \int p(y^{rep}|\theta)p(\theta|y) d\theta \]
+  \item Posterior predictive pvalues (Sec 6.3)
+  \[ p_B = P(T(y^{rep},\theta)\ge T(y,\theta)|y) \]
+  for a test statistic $T(y,\theta)$. 
+  \end{itemize}
+}
 
+
+\subsection{JAGS}
+\begin{frame}[fragile]
+\frametitle{JAGS}
+  A non-conjugate normal hierarchical model in JAGS:
+  
+<<JAGS_example, eval=FALSE, tidy=FALSE>>=
+model {
+  for (i in 1:n) {
+    y[i]     ~ dnorm(theta[group[i]], tau2[group[i]])
+    theta[i] ~ dnorm(mu0, 1/sigma0^2)
+    tau2[i]  ~ dgamma(nu0, tau20)
+  }
+  mu0    ~ dnorm(0,0.001)
+  sigma0 ~ dunif(0,100) # if number of group is > 4
+  nu0    ~ dexp(0.1)
+  tau20  ~ dexp(0.1)
+}
+@
+  
+This model allows borrowing of information across groups for both the mean and the variance in each group.
+\end{frame}
+
+\begin{comment}
 \section{Bayesian statistics}
 \frame{\frametitle{What makes a Bayesian?}
 \small
@@ -324,7 +376,7 @@ lie in the 95% credible region
 \item A 95\% credible (or confidence) region is not typically the ``product'' of the two individual sets. 
 \end{itemize}
 }
-
+\end{comment}
 
 
 \end{document}
