@@ -1,0 +1,400 @@
+\documentclass[10pt]{article}
+
+\usepackage{verbatim,multicol,color,amsmath,ifdraft, graphicx, wrapfig,setspace}
+
+%\usepackage[latin1]{inputenc}
+%\usepackage[T1]{fontenc}
+%\usepackage[dvips]{graphicx}
+
+\title{STAT 544 Mid-term Exam \\ Thursday 14 March 8:00-9:20}
+\author{Instructor: Jarad Niemi}
+\date{}
+
+\newenvironment{longitem}{
+\begin{itemize}
+  \setlength{\itemsep}{15pt}
+  \setlength{\parskip}{20pt}
+  \setlength{\parsep}{20pt}
+}{\end{itemize}}
+
+\setlength{\textheight}{9in}
+\setlength{\textwidth}{6.5in}
+\setlength{\topmargin}{-0.125in}
+\setlength{\oddsidemargin}{-.2in}
+\setlength{\evensidemargin}{-.2in}
+\setlength{\headsep}{0in}
+
+\newcommand{\bigbrk}{\vspace*{2in}}
+\newcommand{\smallbrk}{\vspace*{.3in}}
+
+\ifdraft{
+  \newcommand{\correct}[1]{{\color{red} #1}}
+  \newcommand{\shortcorrect}[1]{{\color{red} #1}}
+  \newcommand{\longcorrect}[2][\bigbrk]{{\color{red} #2}}
+}{
+  \newcommand{\correct}[1]{}
+  \newcommand{\shortcorrect}[1]{{\phantom{33.33}}}
+  \newcommand{\longcorrect}[2][\bigbrk]{#1}
+}
+
+\newcommand{\iid}{\stackrel{iid}{\sim}}
+\newcommand{\Yiid}{Y_1,\ldots,Y_n\stackrel{iid}{\sim}}
+
+\begin{document}
+
+
+\maketitle
+
+
+\bigskip
+
+
+\textbf{INSTRUCTIONS}
+
+\bigskip
+
+Please check to make sure you have 5 pages with writing on the front and back (some pages are marked `intentionally left blank'). Please remove the last page, i.e. the one with SAS code on front and back. When returned to you, the peer evaluation page will also be removed.
+
+\bigskip
+
+On the following pages you will find short answer questions related to the topics we covered in class for a total of 50 points. Please read the directions carefully.
+
+\bigskip
+
+You are allowed to use a calculator and one $8\frac{1}{2}\times 11$ sheet of paper with writing on both front and back. A non-exhaustive list of items you are not allowed to use are {\bf cell phones, laptops, PDAs, and textbooks}. Cheating will not be tolerated. Anyone caught cheating will receive an automatic F on the exam. In addition the incident will be reported, and dealt with according to University's Academic Dishonesty regulations. Please refrain from talking to your peers, exchanging papers, writing utensils or other objects, or walking around the room. All of these activities can be considered cheating. {\bf If you have any questions, please raise your hand.}
+
+\bigskip
+
+You will be given only the time allotted for the course; no extra time will be given.
+
+\bigskip
+
+
+Good Luck!
+
+\smallbrk
+
+Please print your name below:
+
+\smallbrk
+
+
+Student Name: \underline{\phantom{XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX}}  
+
+\newpage
+(intentionally left blank)
+
+\newpage
+\noindent \begin{Large}Definitions  (10 pts total) \end{Large}
+
+\bigskip
+
+
+\begin{itemize}
+\item Bayes rule
+
+\shortcorrect{$p(A|B) =P(B|A)P(A)/P(B)$}
+\bigskip\bigskip
+
+\item Conjugate prior
+
+\shortcorrect{A prior distribution for a parameter such that the posterior distribution is in the same family as the prior.}
+\bigskip\bigskip
+
+\item Credible interval
+
+\shortcorrect{For a parameter $\theta$, an interval (a,b) such that $\int_a^b p(\theta|y)d\theta$ has a given probability where $p(\theta|y)$ is the posterior for $\theta$.}
+\bigskip\bigskip
+
+\item Exchangeability
+
+\shortcorrect{A set of random variables $\theta_1,\ldots,\theta_n$ are exchangeable if $p(\theta_1,\ldots,\theta_n) = p(\theta_{\pi_1},\ldots,\theta_{\pi_n})$ for any permutation $\pi$.}
+\bigskip\bigskip
+
+\item Improper prior
+
+\shortcorrect{The integral of the prior over its support is not finite.}
+\bigskip\bigskip
+
+\item Marginal likelihood
+
+\shortcorrect{The integral of the model over the prior distribution, e.g. $p(y) = \int p(y|\theta)p(\theta)d\theta$, evaluated at the observed data.}
+\bigskip\bigskip
+
+\item Posterior distribution
+
+\shortcorrect{The distribution of the parameters conditional on the observed data usually obtained using Bayes' rule, e.g. $p(\theta|y) \propto p(y|\theta)p(\theta)$.}
+\bigskip\bigskip
+
+\item Posterior predictive distribution
+
+\shortcorrect{The integral of the model over the posterior distribution, e.g. $p(\tilde{y}|y) = \int p(\tilde{y}|\theta)p(\theta|y)d\theta$.}
+\bigskip\bigskip
+
+\item Prior distribution
+
+\shortcorrect{A distribution assumed for parameters before observing the data, i.e. $p(\theta)$. This is combined with the statistical model through Bayes' rule to obtain a posterior distribution.}
+\bigskip\bigskip
+
+\item Subjective prior
+
+\shortcorrect{A proper prior distribution that intentionally contains subject matter knowledge about a particular parameter.}
+\bigskip\bigskip
+
+\end{itemize}
+
+\newpage
+\noindent \begin{Large}Computation  (10 pts total) \end{Large}
+
+\begin{enumerate}
+\item Write R code to draw a single standard normal using the inverse cdf method. (1 pts)
+
+\shortcorrect{{\tt qnorm(runif(1))}}\smallbrk
+
+\item Write pseudo/R-code to draw a single standard normal using the accept-reject algorithm with $N(0,2^2)$ as a proposal. (3 pts)
+
+\longcorrect{
+\begin{verbatim}
+M = dnorm(0,0,2)/dnorm(0)
+accept = FALSE
+while(!accept) {
+  x = rnorm(1,0,2) 
+  if (runif(1) < dnorm(x)/(M*dnorm(x,0,2))) accept=TRUE 
+}
+x
+\end{verbatim}
+}
+
+\item For a Metropolis-Hastings {\bf independence} sampler for a standard normal target distribution and a $N(0,2^2)$ proposal distribution (this is not a random walk), derive the acceptance probability and simply as much as possible. (3 pts)
+
+\longcorrect{
+The acceptance probability for moving from $x$ to $y$ is
+\begin{align*}
+\rho(x,y) &= \min\left\{1, \frac{N(x|0,1)}{N(y|0,1)}\frac{N(y|0,2^2)}{N(x|0,2^2)} \right\} \\
+&= \min\left\{1, \exp(-(y^2-x^2)/2) \exp(-(x^2-y^2)/2(2^2)) \right\} \\
+&= \min\left\{1, \exp(3(x^2-y^2)/8)  \right\} 
+\end{align*}
+}
+
+\item Write pseudo/R-code to perform a single iteration of the Metropolis-Hastings algorithm in the previous question. (3 pts)
+
+\longcorrect{
+\begin{verbatim}
+x is current value
+y = rnorm(1,0,2) 
+ifelse(runif(1) < exp(-3(x^2-y^2)/8, y, x)
+\end{verbatim}
+}
+
+\end{enumerate}
+
+\newpage
+\noindent \begin{Large}German tank problem  (10 pts total) \end{Large}
+
+\bigskip 
+
+During World War II, the Western Allies devised a new system for estimating the number of German tanks. The allies assumed the Germans used sequential serial numbers on their tanks and that the tanks they actually encountered were a random sample from the population of possible tanks. So, if $Y_i$ represents the serial number for tank $i$, then we can assume 
+\[ P(Y_i = y) = \frac{1}{N} \qquad \mbox{for } y=1,2,\ldots,N. \]
+If $N$ is large enough, then we can assume the $Y_i$ are independent and identically distributed. 
+
+\begin{enumerate}
+\item Show that the Jeffrey's prior for $N$ is $\propto 1/N$. (4 pts)
+
+\longcorrect{
+\begin{align*}
+p(y|N) &= \frac{1}{N} \\
+\log p(y|N) &= -\log(N) \\
+\frac{d}{dN} \log p(y|N) &= -1/N \\
+E\left[ \left. \left( \frac{d}{dN} \log p(y|N)  \right)^2 \right| N \right] &= 1/N^2 \\
+p(N) &= \sqrt{1/N^2} = 1/N
+\end{align*}
+for $N=1,2,\ldots$.
+}
+
+\item  Using Jeffrey's prior, derive the unnormalized posterior distribution for $N$ if $n$ total tanks are observed and the largest serial number is $y_{max}$. (4 pts)
+
+\longcorrect{
+\begin{align*}
+p(N|y) &\propto p(y|N) p(N) \\
+&\propto \left[ \prod_{i=1}^n \frac{1}{N} \mathrm{I}(1\le y_i \le N) \right] \frac{1}{N} \\
+&= N^{-(n+1)} \mathrm{I}(y_{max} \le N) 
+\end{align*}
+}
+
+\item Provide the normalized posterior distribution. (2 pts)
+
+\longcorrect{
+\begin{align*}
+p(N|y) = \frac{N^{-(n+1}}{\sum_{i=y_{max}}^\infty i^{-(n+1}} \mathrm{I}(y_{max} \le N)
+\end{align*}
+}
+\end{enumerate}
+
+\newpage
+\noindent \begin{Large}JAGS interpretation  (15 pts total) \end{Large}
+
+\bigskip 
+
+Use the R/JAGS code and output, to answer the following questions
+\begin{enumerate}
+\item Write down the model that is being fit including priors. (6 pts)
+
+\longcorrect{
+For a binary response $Y_{ij}$ for individual $i$ in group $j$, the model is 
+\begin{align*}
+Y_{ij} &\stackrel{ind}{\sim} Ber(p_{ij}) \\
+\mbox{logit}(p_{ij}) &= \alpha_j + b_j x_i \\
+ \alpha_j &\stackrel{ind}{\sim} N(\mu_a,\sigma_a^2) \\
+ \beta_j &\stackrel{ind}{\sim} N(\mu_b,\sigma_b^2) \\
+ \mu_a &\sim N(0,100^2) \\
+ \mu_b &\sim N(0,100^2) \\
+ \sigma_a &\sim \mbox{Unif}(0,1000) \\
+ \sigma_b &\sim \mbox{Unif}(0,1000) \\
+\end{align*}
+}
+
+\item For group 1, answer the following questions
+	\begin{enumerate}
+	\item Provide a 95\% credible interval for a. (1 pt)
+	
+	\shortcorrect{(-7.85,-0.71)}\bigskip
+	
+	\item Provide a 95\% credible interval for b. (1 pt)
+	
+	\shortcorrect{(-9.55,-0.00)}\bigskip
+	
+	\item Provide a 95\% credible interval for the success probability if {\tt x} is zero. (2 pts)
+	
+	\shortcorrect{Take $e^a/(1+e^a)$ from part 2a to get (0.00, 0.33).}\bigskip\bigskip\bigskip
+	
+	\item Provide a point estimate for the success probability if {\tt x} is one. (1 pt)
+	
+	\shortcorrect{Plug in medians from parts 2a and 2b to get 0.002.}\bigskip
+	
+	\item Describe how you would obtain a 95\% credible interval for the success probability if {\tt x} is one. (2 pts)
+	
+	\longcorrect{For iteration values $\alpha^{(j)}$ and $\beta^{(j)}$, calculate $e^{\alpha^{(j)}+\beta^{(j)}}/(1+e^{\alpha^{(j)}+\beta^{(j)}})$. Then take the 2.5\% and 97.5\% quantiles of these values.}
+	
+	\end{enumerate}
+	
+\item Which groups appear to have a nonzero effect of x? (2 pts)
+
+	\shortcorrect{1,3,4,6,10}
+
+\end{enumerate}
+
+\begin{comment}
+
+\newpage
+\noindent \begin{Large}Mid-term peer evaluation  (5 pts total) 
+\end{Large}
+
+\bigskip
+
+Please assign scores (higher is better) that reflect how you really feel about the extent to which the other members of your team contributed to your learning and/or your team's performance. This will be one of two opportunities to reward the members of your team who worked hard on your behalf. (Note: If you give everyone pretty much the same score you will be hurting those who did the most and helping those who did the least.)
+
+{\bf Instructions:} In the space below please rate each of the {\bf other} members of your team. Each member's peer evaluation score will be the average of the points they receive from the other members of the team. To complete the evaluation you should: 1) List the {\bf last name} of each member of your team in the alphabetical order of their last names and, 2) assign an average of ten points to the {\bf other} members of your team (Thus, for example, you should assign a total of 50 points in a six-member team; 60 points in a seven-member team; etc.) and, 3) differentiate some in your ratings; for example, you must give at least one score of 11 or higher (maximum=15) and one score of 9 or lower.
+
+\vspace{0.2in}
+
+{\Large
+\begin{tabular}{l@{\qquad}c@{\qquad}c@{\qquad}l@{\qquad}c@{\qquad}c@{\qquad}}
+& Team Members & Score & & Team Members & Score \\
+\hline
+1) & & & 5) & & \\
+\hline
+2) & & & 6) & & \\
+\hline
+3) & & & 7) & & \\
+\hline
+4) & & & 8) & & \\
+\hline
+\end{tabular}
+}
+
+\vspace{0.3in}
+
+{\bf Additional Feedback:} In the space below would you also briefly describe your reasons for your highest and lowest ratings. These comments -- but not information about who provided them -- will be used to provide feedback to students who would like to receive it.
+
+Provide at least {\bf one positive critique} and {\bf one area for improvement}.
+
+\vspace{0.2in}
+
+{\bf Positive critique:}
+
+\vspace{2in}
+
+{\bf Area of improvement:} 
+
+\newpage
+(intentionally left blank)
+
+\end{comment}
+
+\newpage
+\noindent \begin{Large}R/JAGS code and output  \end{Large}
+
+{\small
+\begin{verbatim}
+model = "
+model
+{
+  for (i in 1:N)
+  {
+    y[i] ~ dbern(p[i])
+    p[i]   <- exp(eta[i])/(1+exp(eta[i]))
+    eta[i] <- a[g[i]] + b[g[i]] * x[i]
+  }
+
+  for (k in 1:K)
+  {
+    a[k] ~ dnorm(mu.a, tau.a)
+    b[k] ~ dnorm(mu.b, tau.b)
+  }
+
+  mu.a ~ dnorm(0, 0.0001)
+  mu.b ~ dnorm(0, 0.0001)
+
+  tau.a <- 1/sigma.a^2
+  tau.b <- 1/sigma.b^2
+  sigma.a ~ dunif(0, 1000)
+  sigma.b ~ dunif(0, 1000)
+}
+"
+
+dat = list(y=y,N=N,g=g,K=K,x=x)
+m = jags.model(textConnection(model), dat)
+res = coda.samples(m, c("a","b","mu.a","mu.b","sigma.a","sigma.b"),n.iter=1000)
+
+2. Quantiles for each variable:
+
+            2.5%     25%     50%       75%     97.5%
+a[1]     -7.8486 -4.1277 -3.1159 -2.164376 -0.709005
+a[2]     -9.4332 -5.3462 -3.7179 -2.718343 -1.106423
+a[3]     -0.4784  0.4910  1.0634  1.726584  3.234961
+a[4]     -2.3201 -1.1808 -0.6283 -0.078529  0.919725
+a[5]     -3.3562 -1.8345 -1.1334 -0.510872  0.496255
+a[6]     -0.7389  0.6885  1.2976  2.090765  4.519771
+a[7]      0.5573  1.5835  2.2455  3.127684  5.155046
+a[8]     -4.1602 -2.4156 -1.6704 -1.096626 -0.078988
+a[9]     -0.3035  0.4282  0.9176  1.412435  2.404102
+a[10]    -3.6691 -1.9663 -1.2414 -0.607768  0.473724
+b[1]     -9.5545 -4.4276 -3.0129 -1.806773 -0.001592
+b[2]     -3.0348 -0.6202  0.7600  2.337120  5.872925
+b[3]      0.1007  1.2492  2.1249  3.235798  6.549282
+b[4]      0.1156  1.8743  3.1420  4.549275  8.352706
+b[5]     -2.7514 -1.5385 -0.9339 -0.440789  0.373716
+b[6]    -11.7455 -6.0007 -4.1198 -2.623280 -0.731131
+b[7]     -3.6340 -1.8215 -1.1000 -0.422400  0.662967
+b[8]     -4.7302 -2.5548 -1.7003 -0.991012  0.140636
+b[9]     -1.4825 -0.1136  0.5356  1.330718  2.909039
+b[10]     0.2327  1.3960  2.1966  3.093238  5.520731
+mu.a     -2.9952 -1.2449 -0.5515  0.009154  1.333650
+mu.b     -3.0027 -0.9717 -0.2539  0.531188  2.232285
+sigma.a   1.2683  1.9566  2.5669  3.486157  5.931566
+sigma.b   1.4187  2.3497  3.1134  4.201705  7.074806
+\end{verbatim}}
+
+
+\end{document}
+
