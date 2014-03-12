@@ -18,10 +18,15 @@
 *.R
 *.tex
 
+# knitr aux
+*cache*
+
+# RStduio
+.Rproj.user
+
+
 # exclusions
 !slides/L1-parameter_estimation/one-parameter-models.tex
 !slides/L1-parameter_estimation/one-parameter-models.R
 !syllabus.tex
 
-
-.Rproj.user
