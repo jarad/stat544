@@ -1,5 +1,5 @@
-\documentclass[10pt,handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-%\documentclass[10pt]{beamer}
+%\documentclass[10pt,handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+\documentclass[10pt]{beamer}
 
 
 
@@ -34,7 +34,7 @@
 \section{What we have covered}
 \frame{\frametitle{What we have covered}
   Chapters
-  \begin{itemize}
+  \begin{itemize}[<+->]
   \item Probability and inference (Ch 1)
   \item Single-parameter models (Ch 2)
   \item Introduction to multiparameter models (Ch 3)
@@ -128,17 +128,22 @@
 
 \subsection{Introduction to multiparameter models}
 \frame{\frametitle{Introduction to multiparameter models (Ch 3, L5)}
-  \begin{itemize}[<+->]
+  \begin{itemize}
   \item Normal model with default prior (Sec 3.2)
   \[ y\stackrel{iid}{\sim} N(\mu,\sigma^2) \quad p(\mu,\sigma^2) \propto 1/\sigma^2 \]
-  results in 
+  \pause results in 
   \[ p(\mu,\sigma^2|y) = N(\overline{y}, \sigma^2/n) \mbox{Inv-}\chi^2(n-1,s^2)\]
-  where $s^2 = \frac{1}{n} \sum_{i=1}^n (y_i-\overline{y})^2$.
+  \pause where $s^2 = \frac{1}{n} \sum_{i=1}^n (y_i-\overline{y})^2$. \pause
   \item Normal model with conjugate prior (Sec 3.3)
+<<<<<<< HEAD
   \[ y\stackrel{iid}{\sim} N(\mu,\sigma^2) \quad \mu|\sigma^2 \sim N(\mu_0, \sigma^2/\kappa_0) \quad \sigma^2 \sim \mbox{Inv-}\chi^2(\nu_0,\sigma_0^2) \]
   results in 
+=======
+  \[ y\stackrel{iid}{\sim} N(\mu,\sigma^2) \quad \mu|\sigma^2 \sim N(\mu_0, \sigma^2/\kappa_0) \mbox{Inv-}\chi^2(\nu_0,\sigma_0^2) \]
+  \pause results in 
+>>>>>>> 1dadbb500ef5e79cbf68db9dee94c20c04b50651
   \[ p(\mu,\sigma^2|y) = N\left(\frac{\kappa_0\mu_0+n\overline{y}}{\kappa_0+n}, \frac{\sigma^2}{\kappa_0+n}\right) \mbox{Inv-}\chi^2(\nu_0+n,\sigma_n^2)\]
-  where $\sigma_n^2 = \left[\mu_0\sigma_0^2+(n-1)s^2+\frac{\kappa_0n}{\kappa_0+n}(\overline{y}-\mu_0)^2 \right]/(\nu_0+n)$.
+  \pause where $\sigma_n^2 = \left[\mu_0\sigma_0^2+(n-1)s^2+\frac{\kappa_0n}{\kappa_0+n}(\overline{y}-\mu_0)^2 \right]/(\nu_0+n)$. \pause 
 %  \item Multinomial model (Sec 3.4)*
   \item Multivariate normal model (Sec 3.5--3.6, HW6)
   \end{itemize}
@@ -187,20 +192,29 @@
   \begin{itemize}
   \item Default (classical) regression (Sec 14.2)
   \[ y|\beta,\sigma^2 \sim N(X\beta,\sigma^2\mathrm{I}) \quad p(\beta,\sigma^2) \propto 1/\sigma^2  \]
-  results in 
+  \pause results in 
   \[ p(\beta,\sigma^2|y) \sim N(\beta|\hat{\beta}, \sigma^2 [X^\top X]^{-1})\mbox{Inv-}\chi^2(n-k,s^2) \]
+<<<<<<< HEAD
   where $\hat{\beta} = [X^\top X]^{-1} X^\top y$ and $s^2 = \frac{1}{n-k} (y-X\hat{\beta})^\top (y-X\hat{\beta})$.
+=======
+  \pause where $\hat{\beta} = [X^\top X]^{-1} X^top y$ and $s^2 = \frac{1}{n-k} (y-X\hat{\beta})^\top (y-X\hat{\beta})$. \pause 
+>>>>>>> 1dadbb500ef5e79cbf68db9dee94c20c04b50651
   
-  \item Regression with known covariance matrix (Sec 14.7)
+  \item Regression with known covariance matrix (Sec 14.7) \pause 
   \item Regression with conjugate informative prior (Sec 14.8)
+<<<<<<< HEAD
   \[ y|\beta,\sigma^2 \sim N(X\beta,\sigma^2\mathrm{I}) \quad \beta|\sigma^2 \sim N(\beta_0,\Sigma_\beta) \quad \sigma^2\sim \mbox{Inv}-\chi^2(\nu_0,\sigma_0^2) \]
   can be thought of as additional data directly on $\beta$ and $\sigma^2$.
+=======
+  \[ y|\beta,\sigma^2 \sim N(X\beta,\sigma^2\mathrm{I}) \quad \beta|\sigma^2 \sim N(\beta_0,\sigma^2 \Sigma_\beta) \quad \sigma^2\sim \mbox{Inv}-\chi^2(\nu_0,\sigma_0^2) \]
+  \pause can be thought of as addition data directly on $\beta$ and $\sigma^2$.
+>>>>>>> 1dadbb500ef5e79cbf68db9dee94c20c04b50651
   \end{itemize}
 }
 
 \subsection{Model checking}
-\frame{\frametitle{Model checking (Ch 6, L11)}
-  \begin{itemize}
+\frame{\frametitle{Model checking (Ch 6, L11, HW7)}
+  \begin{itemize}[<+->]
   \item Posterior predictive checking (Sec 6.4)
   \[ p(y^{rep}|y) = \int p(y^{rep}|\theta)p(\theta|y) d\theta \]
   \item Posterior predictive pvalues (Sec 6.3)
@@ -212,7 +226,7 @@
 
 \subsection{JAGS}
 \begin{frame}[fragile]
-\frametitle{JAGS}
+\frametitle{JAGS (HW7)}
   A non-conjugate normal hierarchical model in JAGS:
   
 <<JAGS_example, eval=FALSE, tidy=FALSE>>=
