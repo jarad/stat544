@@ -1,5 +1,5 @@
-\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-%\documentclass{beamer}
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+\documentclass{beamer}
 
 \usecolortheme[RGB={0,0,144}]{structure}
 \usetheme{AnnArbor}\usecolortheme{beaver}
@@ -349,21 +349,21 @@ mean(d$accept)
 \frame{\frametitle{Importance sampling}
   Notice that 
   \[ E[h(\theta)|y] = \int h(\theta) p(\theta|y) d\theta \pause = \int h(\theta) \frac{p(\theta|y)}{g(\theta)} g(\theta) d\theta \]
-  where $g(\theta)$ is a proposal distribution\pause, so that we approximate the expectation via 
+  \pause where $g(\theta)$ is a proposal distribution\pause, so that we approximate the expectation via 
   \[ E[h(\theta)|y] \approx \frac{1}{S} \sum_{s=1}^S w(\theta^s) h(\theta^s) \]
-  where $\theta^s \stackrel{iid}{\sim} g(\theta)$ and 
+  \pause where $\theta^s \stackrel{iid}{\sim} g(\theta)$ \pause and 
   \[ w(\theta^s) = \frac{p(\theta^s|y)}{g(\theta^s)} \]
-  is known as the importance weight. 
+  \pause is known as the importance weight. 
 }
 
 \frame{\frametitle{Importance sampling}
   If the target distribution is known only up to a proportionality constant, then 
-  \[ E[h(\theta)|y] = \frac{\int h(\theta) q(\theta|y) d\theta}{\int q(\theta|y) d\theta} = \frac{\int h(\theta) \frac{p(\theta|y)}{g(\theta)} g(\theta) d\theta}{\int \frac{p(\theta|y)}{g(\theta)} g(\theta) d\theta} \]
-  where $g(\theta)$ is a proposal distribution\pause, so that we approximate the expectation via 
+  \[ E[h(\theta)|y] = \frac{\int h(\theta) q(\theta|y) d\theta}{\int q(\theta|y) d\theta} \pause = \frac{\int h(\theta) \frac{q(\theta|y)}{g(\theta)} g(\theta) d\theta}{\int \frac{q(\theta|y)}{g(\theta)} g(\theta) d\theta} \]
+  \pause where $g(\theta)$ is a proposal distribution\pause, so that we approximate the expectation via 
   \[ E[h(\theta)|y] \approx \frac{\frac{1}{S} \sum_{s=1}^S w(\theta^s) h(\theta^s)}{\frac{1}{S} \sum_{s=1}^S w(\theta^s)} = \sum_{i=1}^S \tilde{w}(\theta^s) h(\theta^s) \]
-  where $\theta^s \stackrel{iid}{\sim} g(\theta)$ and 
+  \pause where $\theta^s \stackrel{iid}{\sim} g(\theta)$ and 
   \[ \tilde{w}(\theta^s) = \frac{w(\theta^s)}{\sum_{j=1}^S w(\theta^j)} \]
-  is the \alert{normalized} importance weight. 
+  \pause is the \alert{normalized} importance weight. 
 }
 
 \begin{frame}
@@ -376,7 +376,7 @@ mean(d$accept)
   
   In this case, a proposal distribution is a standard normal, i.e. 
   \[ g(\theta)=\frac{1}{\sqrt{2\pi}}  e^{-(\theta-y)^2/2} \]
-  with 
+  \pause with 
   \[ w(\theta) = \frac{p(\theta|y)}{g(\theta)} = \frac{1}{\frac{1}{\pi}(1+\theta^2)} \]
 
 \end{frame}
@@ -395,6 +395,7 @@ qplot(x=theta,y=weight)+geom_point()+labs(title="Importance weight")
 library(weights)
 mean(weight*theta/sum(weight)) # Estimate mean
 wtd.hist(theta, 100, prob=TRUE, weight=weight)
+curve(q(x,0)/py(0), add=TRUE, col="red", lwd=2)
 @
 \end{frame}
 
