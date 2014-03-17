@@ -1,4 +1,4 @@
-\documentclass[10pt]{article}
+\documentclass[10pt,draft]{article}
 
 \usepackage{verbatim,multicol,color,amsmath,ifdraft, graphicx, wrapfig,setspace}
 
@@ -6,7 +6,7 @@
 %\usepackage[T1]{fontenc}
 %\usepackage[dvips]{graphicx}
 
-\title{STAT 544 Mid-term Exam \\ Thursday 14 March 8:00-9:20}
+\title{STAT 544 Mid-term Exam \\ Thursday 13 March 8:00-9:20}
 \author{Instructor: Jarad Niemi}
 \date{}
 
@@ -42,7 +42,6 @@
 
 \begin{document}
 
-
 \maketitle
 
 
@@ -53,7 +52,7 @@
 
 \bigskip
 
-Please check to make sure you have 5 pages with writing on the front and back (some pages are marked `intentionally left blank'). Please remove the last page, i.e. the one with SAS code on front and back. When returned to you, the peer evaluation page will also be removed.
+Please check to make sure you have 4 pages with writing on the front and back (some pages are marked `intentionally left blank'). Feel free to remove the last page, i.e. the one with R code.
 
 \bigskip
 
@@ -81,319 +80,271 @@ Please print your name below:
 
 Student Name: \underline{\phantom{XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX}}  
 
-\newpage
-(intentionally left blank)
 
 \newpage
-\noindent \begin{Large}Definitions  (10 pts total) \end{Large}
+\noindent \begin{Large}Confidence vs credible intervals  (6 pts this page) \end{Large}
 
-\bigskip
+When I was a child my mother used to occasionally surprise me by ordering a jar of chocolate-chip cookies to be delivered by mail. The delivery supplier stocked four different kinds of cookie jars -- type A, type B, type C, and type D, and they were all on the same truck and you were never sure what type you would get. Each jar had exactly 100 cookies, but the feature that distinguished the different cookie jars was their respective distributions of chocolate chips per cookie. If you reached into a jar and took out a single cookie uniformly at random, table \ref{tab:cookies} provides the probability distribution for number of chips on a cookie by jar type. For example, a type-A cookie jar has 8 cookies with 0 chips, 72 cookies with two chips each, and 20 cookies with 3 chips. The goal of this problem is to construct confidence and credible sets for jar type when a single cookie is observed.
 
-
-\begin{itemize}
-\item Bayes rule
-
-\shortcorrect{$p(A|B) =P(B|A)P(A)/P(B)$}
-\bigskip\bigskip
-
-\item Conjugate prior
-
-\shortcorrect{A prior distribution for a parameter such that the posterior distribution is in the same family as the prior.}
-\bigskip\bigskip
-
-\item Credible interval
-
-\shortcorrect{For a parameter $\theta$, an interval (a,b) such that $\int_a^b p(\theta|y)d\theta$ has a given probability where $p(\theta|y)$ is the posterior for $\theta$.}
-\bigskip\bigskip
-
-\item Exchangeability
-
-\shortcorrect{A set of random variables $\theta_1,\ldots,\theta_n$ are exchangeable if $p(\theta_1,\ldots,\theta_n) = p(\theta_{\pi_1},\ldots,\theta_{\pi_n})$ for any permutation $\pi$.}
-\bigskip\bigskip
-
-\item Improper prior
-
-\shortcorrect{The integral of the prior over its support is not finite.}
-\bigskip\bigskip
-
-\item Marginal likelihood
-
-\shortcorrect{The integral of the model over the prior distribution, e.g. $p(y) = \int p(y|\theta)p(\theta)d\theta$, evaluated at the observed data.}
-\bigskip\bigskip
-
-\item Posterior distribution
-
-\shortcorrect{The distribution of the parameters conditional on the observed data usually obtained using Bayes' rule, e.g. $p(\theta|y) \propto p(y|\theta)p(\theta)$.}
-\bigskip\bigskip
-
-\item Posterior predictive distribution
-
-\shortcorrect{The integral of the model over the posterior distribution, e.g. $p(\tilde{y}|y) = \int p(\tilde{y}|\theta)p(\theta|y)d\theta$.}
-\bigskip\bigskip
-
-\item Prior distribution
-
-\shortcorrect{A distribution assumed for parameters before observing the data, i.e. $p(\theta)$. This is combined with the statistical model through Bayes' rule to obtain a posterior distribution.}
-\bigskip\bigskip
-
-\item Subjective prior
-
-\shortcorrect{A proper prior distribution that intentionally contains subject matter knowledge about a particular parameter.}
-\bigskip\bigskip
-
-\end{itemize}
-
-\newpage
-\noindent \begin{Large}Computation  (10 pts total) \end{Large}
+%\input{cookies}
 
 \begin{enumerate}
-\item Write R code to draw a single standard normal using the inverse cdf method. (1 pts)
+\item The bold-face values in Table \ref{tab:cookies} define 80\% confidence sets. For each jar type, calculate the coverage, i.e. the probability the true jar is in the set, conditional on the jar type. (4 pts)
+  \begin{itemize}
+  \item type A \shortcorrect{80\%}
+  \item type B \shortcorrect{80\%}
+  \item type C \shortcorrect{80\%}
+  \item type D \shortcorrect{80\%}
+  \end{itemize}
+\item If one cookie is observed and it has 1 chocolate chip, what is odd about this confidence set? (1 pt)
 
-\shortcorrect{{\tt qnorm(runif(1))}}\smallbrk
+\longcorrect{The confidence set contains no values.}
 
-\item Write pseudo/R-code to draw a single standard normal using the accept-reject algorithm with $N(0,2^2)$ as a proposal. (3 pts)
+\item If one cookie is observed and it has 3 chocolate chips, what is odd about this confidence set? (1 pt)
 
-\longcorrect{
-\begin{verbatim}
-M = dnorm(0,0,2)/dnorm(0)
-accept = FALSE
-while(!accept) {
-  x = rnorm(1,0,2) 
-  if (runif(1) < dnorm(x)/(M*dnorm(x,0,2))) accept=TRUE 
-}
-x
-\end{verbatim}
-}
-
-\item For a Metropolis-Hastings {\bf independence} sampler for a standard normal target distribution and a $N(0,2^2)$ proposal distribution (this is not a random walk), derive the acceptance probability and simply as much as possible. (3 pts)
-
-\longcorrect{
-The acceptance probability for moving from $x$ to $y$ is
-\begin{align*}
-\rho(x,y) &= \min\left\{1, \frac{N(x|0,1)}{N(y|0,1)}\frac{N(y|0,2^2)}{N(x|0,2^2)} \right\} \\
-&= \min\left\{1, \exp(-(y^2-x^2)/2) \exp(-(x^2-y^2)/2(2^2)) \right\} \\
-&= \min\left\{1, \exp(3(x^2-y^2)/8)  \right\} 
-\end{align*}
-}
-
-\item Write pseudo/R-code to perform a single iteration of the Metropolis-Hastings algorithm in the previous question. (3 pts)
-
-\longcorrect{
-\begin{verbatim}
-x is current value
-y = rnorm(1,0,2) 
-ifelse(runif(1) < exp(-3(x^2-y^2)/8, y, x)
-\end{verbatim}
-}
-
-\end{enumerate}
+\longcorrect{Only one of two jars with the same proportion of 3-chip cookies is in the set.}
 
 \newpage
-\noindent \begin{Large}German tank problem  (10 pts total) \end{Large}
+\noindent \begin{Large}Confidence vs credible intervals continued (14 pts this page) \end{Large}
 
-\bigskip 
+On this page, you will fill out Table \ref{tab:joint}. At minimum, show your work for the 0 chip row in the corresponding question number.
 
-During World War II, the Western Allies devised a new system for estimating the number of German tanks. The allies assumed the Germans used sequential serial numbers on their tanks and that the tanks they actually encountered were a random sample from the population of possible tanks. So, if $Y_i$ represents the serial number for tank $i$, then we can assume 
-\[ P(Y_i = y) = \frac{1}{N} \qquad \mbox{for } y=1,2,\ldots,N. \]
-If $N$ is large enough, then we can assume the $Y_i$ are independent and identically distributed. 
 
-\begin{enumerate}
-\item Show that the Jeffrey's prior for $N$ is $\propto 1/N$. (4 pts)
-
-\longcorrect{
-\begin{align*}
-p(y|N) &= \frac{1}{N} \\
-\log p(y|N) &= -\log(N) \\
-\frac{d}{dN} \log p(y|N) &= -1/N \\
-E\left[ \left. \left( \frac{d}{dN} \log p(y|N)  \right)^2 \right| N \right] &= 1/N^2 \\
-p(N) &= \sqrt{1/N^2} = 1/N
-\end{align*}
-for $N=1,2,\ldots$.
-}
-
-\item  Using Jeffrey's prior, derive the unnormalized posterior distribution for $N$ if $n$ total tanks are observed and the largest serial number is $y_{max}$. (4 pts)
-
-\longcorrect{
-\begin{align*}
-p(N|y) &\propto p(y|N) p(N) \\
-&\propto \left[ \prod_{i=1}^n \frac{1}{N} \mathrm{I}(1\le y_i \le N) \right] \frac{1}{N} \\
-&= N^{-(n+1)} \mathrm{I}(y_{max} \le N) 
-\end{align*}
-}
-
-\item Provide the normalized posterior distribution. (2 pts)
-
-\longcorrect{
-\begin{align*}
-p(N|y) = \frac{N^{-(n+1}}{\sum_{i=y_{max}}^\infty i^{-(n+1}} \mathrm{I}(y_{max} \le N)
-\end{align*}
-}
-\end{enumerate}
-
-\newpage
-\noindent \begin{Large}JAGS interpretation  (15 pts total) \end{Large}
-
-\bigskip 
-
-Use the R/JAGS code and output, to answer the following questions
-\begin{enumerate}
-\item Write down the model that is being fit including priors. (6 pts)
-
-\longcorrect{
-For a binary response $Y_{ij}$ for individual $i$ in group $j$, the model is 
-\begin{align*}
-Y_{ij} &\stackrel{ind}{\sim} Ber(p_{ij}) \\
-\mbox{logit}(p_{ij}) &= \alpha_j + b_j x_i \\
- \alpha_j &\stackrel{ind}{\sim} N(\mu_a,\sigma_a^2) \\
- \beta_j &\stackrel{ind}{\sim} N(\mu_b,\sigma_b^2) \\
- \mu_a &\sim N(0,100^2) \\
- \mu_b &\sim N(0,100^2) \\
- \sigma_a &\sim \mbox{Unif}(0,1000) \\
- \sigma_b &\sim \mbox{Unif}(0,1000) \\
-\end{align*}
-}
-
-\item For group 1, answer the following questions
-	\begin{enumerate}
-	\item Provide a 95\% credible interval for a. (1 pt)
-	
-	\shortcorrect{(-7.85,-0.71)}\bigskip
-	
-	\item Provide a 95\% credible interval for b. (1 pt)
-	
-	\shortcorrect{(-9.55,-0.00)}\bigskip
-	
-	\item Provide a 95\% credible interval for the success probability if {\tt x} is zero. (2 pts)
-	
-	\shortcorrect{Take $e^a/(1+e^a)$ from part 2a to get (0.00, 0.33).}\bigskip\bigskip\bigskip
-	
-	\item Provide a point estimate for the success probability if {\tt x} is one. (1 pt)
-	
-	\shortcorrect{Plug in medians from parts 2a and 2b to get 0.002.}\bigskip
-	
-	\item Describe how you would obtain a 95\% credible interval for the success probability if {\tt x} is one. (2 pts)
-	
-	\longcorrect{For iteration values $\alpha^{(j)}$ and $\beta^{(j)}$, calculate $e^{\alpha^{(j)}+\beta^{(j)}}/(1+e^{\alpha^{(j)}+\beta^{(j)}})$. Then take the 2.5\% and 97.5\% quantiles of these values.}
-	
-	\end{enumerate}
-	
-\item Which groups appear to have a nonzero effect of x? (2 pts)
-
-	\shortcorrect{1,3,4,6,10}
-
-\end{enumerate}
-
-\begin{comment}
-
-\newpage
-\noindent \begin{Large}Mid-term peer evaluation  (5 pts total) 
-\end{Large}
-
-\bigskip
-
-Please assign scores (higher is better) that reflect how you really feel about the extent to which the other members of your team contributed to your learning and/or your team's performance. This will be one of two opportunities to reward the members of your team who worked hard on your behalf. (Note: If you give everyone pretty much the same score you will be hurting those who did the most and helping those who did the least.)
-
-{\bf Instructions:} In the space below please rate each of the {\bf other} members of your team. Each member's peer evaluation score will be the average of the points they receive from the other members of the team. To complete the evaluation you should: 1) List the {\bf last name} of each member of your team in the alphabetical order of their last names and, 2) assign an average of ten points to the {\bf other} members of your team (Thus, for example, you should assign a total of 50 points in a six-member team; 60 points in a seven-member team; etc.) and, 3) differentiate some in your ratings; for example, you must give at least one score of 11 or higher (maximum=15) and one score of 9 or lower.
-
-\vspace{0.2in}
-
-{\Large
-\begin{tabular}{l@{\qquad}c@{\qquad}c@{\qquad}l@{\qquad}c@{\qquad}c@{\qquad}}
-& Team Members & Score & & Team Members & Score \\
+\begin{table}[h]
+\centering
+\caption{Joint distribution for cookie and jar type.}
+\label{tab:joint}
+{\large
+\begin{tabular}{|c|cccc||c||c|}
 \hline
-1) & & & 5) & & \\
+& \multicolumn{4}{c||}{Jar} & marginal & \\
+Chips & A & B & C & D & probability & credibility \\
 \hline
-2) & & & 6) & & \\
+0 & \shortcorrect{2} & \shortcorrect{3}  & \shortcorrect{2}  & \shortcorrect{20} & \shortcorrect{27} & \shortcorrect{81} \\
+1 & \shortcorrect{0} & \shortcorrect{5} & \shortcorrect{5} & \shortcorrect{2} & \shortcorrect{12}  & \shortcorrect{83} \\
+2 & \shortcorrect{16} & \shortcorrect{6} & \shortcorrect{0} & \shortcorrect{1} & \shortcorrect{25}  & \shortcorrect{96} \\
+3 & \shortcorrect{5} & \shortcorrect{5} & \shortcorrect{0} & \shortcorrect{1} & \shortcorrect{11}  & \shortcorrect{91} \\
+4 & \shortcorrect{0} & \shortcorrect{6} & \shortcorrect{18} & \shortcorrect{1} & \shortcorrect{25}  & \shortcorrect{96} \\
 \hline
-3) & & & 7) & & \\
-\hline
-4) & & & 8) & & \\
+total & \phantom{XX}25\%\phantom{XX} & \phantom{XX}25\%\phantom{XX} & \phantom{XX}25\%\phantom{XX} & \phantom{XX}25\%\phantom{XX} & &\\
 \hline
 \end{tabular}
 }
+\end{table}
 
-\vspace{0.3in}
 
-{\bf Additional Feedback:} In the space below would you also briefly describe your reasons for your highest and lowest ratings. These comments -- but not information about who provided them -- will be used to provide feedback to students who would like to receive it.
+\item Assuming the delivery man picks jar types randomly and uniformly, fill in Table \ref{tab:} below for the joint distribution of chips and jar types. A (5 pts)
 
-Provide at least {\bf one positive critique} and {\bf one area for improvement}.
+\longcorrect[\vspace{1in}]{Divide all cells in Table \ref{tab:cookies}}
 
-\vspace{0.2in}
 
-{\bf Positive critique:}
+\item Fill in the table above with the marginal probability for each number of chips? (2 pts)
 
-\vspace{2in}
+\longcorrect[\vspace{1in}]{$\frac{20+2}{27} > 0.8$}
 
-{\bf Area of improvement:} 
+\item In Table \ref{tab:joint}, circle the cells that create a 80\% credible sets, i.e. for any observed number of chips, the probability of the jars are at least 80\%.  (4 pts)
 
-\newpage
-(intentionally left blank)
-
-\end{comment}
-
-\newpage
-\noindent \begin{Large}R/JAGS code and output  \end{Large}
-
-{\small
-\begin{verbatim}
-model = "
-model
-{
-  for (i in 1:N)
-  {
-    y[i] ~ dbern(p[i])
-    p[i]   <- exp(eta[i])/(1+exp(eta[i]))
-    eta[i] <- a[g[i]] + b[g[i]] * x[i]
-  }
-
-  for (k in 1:K)
-  {
-    a[k] ~ dnorm(mu.a, tau.a)
-    b[k] ~ dnorm(mu.b, tau.b)
-  }
-
-  mu.a ~ dnorm(0, 0.0001)
-  mu.b ~ dnorm(0, 0.0001)
-
-  tau.a <- 1/sigma.a^2
-  tau.b <- 1/sigma.b^2
-  sigma.a ~ dunif(0, 1000)
-  sigma.b ~ dunif(0, 1000)
+\longcorrect[\vspace{1in}]{
+  Credible sets are 
+  \begin{itemize}
+  \item[0.] C,D
+  \item[1.] B,C
+  \item[2.] A,B
+  \item[3.] A,B
+  \item[4.] B,C
+  \end{itemize}
 }
-"
 
-dat = list(y=y,N=N,g=g,K=K,x=x)
-m = jags.model(textConnection(model), dat)
-res = coda.samples(m, c("a","b","mu.a","mu.b","sigma.a","sigma.b"),n.iter=1000)
+\item For each row, calculate the actual credibility, i.e. the probability of the set of jars conditional on the number of chips. At minimum, show your work for the 0 chip row. (3 pts)
 
-2. Quantiles for each variable:
+\longcorrect[\vspace{1in}]{
+  The actual credibility is  
+  \begin{itemize}
+  \item[0.] (20+2)/27 = 81\%
+  \item[1.] (5+5)/12 = 83\%
+  \item[2.] (18+6)/25 =  96\%
+  \item[3.] (5+5)/11 = 91\%
+  \item[4.] (6+18)/25 = 96\&
+  \end{itemize}
+}
 
-            2.5%     25%     50%       75%     97.5%
-a[1]     -7.8486 -4.1277 -3.1159 -2.164376 -0.709005
-a[2]     -9.4332 -5.3462 -3.7179 -2.718343 -1.106423
-a[3]     -0.4784  0.4910  1.0634  1.726584  3.234961
-a[4]     -2.3201 -1.1808 -0.6283 -0.078529  0.919725
-a[5]     -3.3562 -1.8345 -1.1334 -0.510872  0.496255
-a[6]     -0.7389  0.6885  1.2976  2.090765  4.519771
-a[7]      0.5573  1.5835  2.2455  3.127684  5.155046
-a[8]     -4.1602 -2.4156 -1.6704 -1.096626 -0.078988
-a[9]     -0.3035  0.4282  0.9176  1.412435  2.404102
-a[10]    -3.6691 -1.9663 -1.2414 -0.607768  0.473724
-b[1]     -9.5545 -4.4276 -3.0129 -1.806773 -0.001592
-b[2]     -3.0348 -0.6202  0.7600  2.337120  5.872925
-b[3]      0.1007  1.2492  2.1249  3.235798  6.549282
-b[4]      0.1156  1.8743  3.1420  4.549275  8.352706
-b[5]     -2.7514 -1.5385 -0.9339 -0.440789  0.373716
-b[6]    -11.7455 -6.0007 -4.1198 -2.623280 -0.731131
-b[7]     -3.6340 -1.8215 -1.1000 -0.422400  0.662967
-b[8]     -4.7302 -2.5548 -1.7003 -0.991012  0.140636
-b[9]     -1.4825 -0.1136  0.5356  1.330718  2.909039
-b[10]     0.2327  1.3960  2.1966  3.093238  5.520731
-mu.a     -2.9952 -1.2449 -0.5515  0.009154  1.333650
-mu.b     -3.0027 -0.9717 -0.2539  0.531188  2.232285
-sigma.a   1.2683  1.9566  2.5669  3.486157  5.931566
-sigma.b   1.4187  2.3497  3.1134  4.201705  7.074806
-\end{verbatim}}
+\end{enumerate}
+
+
+\newpage
+\noindent \begin{Large}Gamma model (10 pts total) \end{Large}
+
+Suppose $Y_i \stackrel{iid}{\sim} Ga(a,\beta)$ with $a$ known and $\beta$ unknown where the probability density function is \[ p(y|\beta) = \frac{\beta^a}{\Gamma(a)}y^{a-1}e^{-\beta y}. \]
+
+\begin{enumerate}
+\item Derive Jeffreys prior for $\beta$. (4 pts)
+
+\longcorrect{
+\begin{align*}
+\log L(\beta) &= a\log(\beta) -\log \Gamma(a) (a-1)\log(y) -\beta y \\
+\frac{\partial}{\partial \beta} \log L(\beta) &= a/\beta -y \\
+\frac{\partial^2}{\partial \beta^2} \log L(\beta) &= -a/\beta^2 \\
+\mathcal{I}(\beta) &= -E\left[\frac{\partial^2}{\partial \beta^2} \log L(\beta) \right] = a/\beta^2 \\
+p(\beta) &\propto \sqrt{|\mathcal{I}(\beta)|} = 1/\beta
+\end{align*}
+}
+
+\item Derive the posterior for $\beta$ under Jeffreys prior. Make sure to name the distribution. (2 pts)
+
+\longcorrect[\vspace{1.7in}]{
+\begin{align*}
+p(\beta|y) &\propto p(y|\beta)p(\beta) \\
+&= \left[ \prod_{i=1}^n \frac{\beta^a}{\Gamma(a)}y_i^{a-1}e^{-\beta y_i} \right] \frac{1}{\beta} \\
+&\propto \beta^{a-1} e^{-\beta n\overline{y}}
+\end{align*}
+where $\overline{y}$ is the sample mean of the $y_i$. This is the kernel of a $Ga(a,n\overline{y})$. 
+}
+
+\item Consider the conjugate prior $\beta \sim Ga(a_0,b_0)$, derive the posterior under this prior. (2 pts)
+
+\longcorrect[\vspace{1.7in}]{
+\begin{align*}
+p(\beta|y) &\propto p(y|\beta)p(\beta) \\
+&\propto \left[ \prod_{i=1}^n \frac{\beta^a}{\Gamma(a)}y_i^{a-1}e^{-\beta y_i} \right] \beta^{a_0-1} e^{-b_0 \beta} \\
+&\propto \beta^{a_0+a-1} e^{-\beta [b_0+n\overline{y}]}
+\end{align*}
+}
+
+\item What is the interpretation for $a_0$? (1 pt)
+
+\longcorrect[\vspace{0.8in}]{Prior number of observations times $a$.}
+
+\item What is the interpretation for $b_0$? (1 pt)
+
+\longcorrect[\vspace{0.8in}]{Prior sum of those observations.}
+
+\end{enumerate}
+
+\newpage
+\noindent \begin{Large}Failure times (10 pts total) \end{Large}
+
+A manufacturing facility utilizes a large number of identical O-rings. Due to the large number, the facility purchases these O-rings from a variety of suppliers. The company has recorded the failure time in {\bf months} for O-rings as well as the supplier and is interested in understanding which supplier makes longer lasting O-rings. The JAGS code on page \pageref{jags} provides an analysis of their data. Please use this code and output to answer the following questions.
+
+\begin{enumerate}
+\item Write down the model that was used to analyze the failure times including any priors used. Make sure to define any notation you introduce, e.g. if you use $Y_i$, then define what it means. (5 pts)
+
+\longcorrect[\vspace{2.5in}]{
+Let $Y_i$ be the failure time and $s[i]$ be the supplier id for the $i^{th}$ O-ring. The model is 
+\begin{align*}
+Y_i &\stackrel{ind}{\sim} Exp(\rho_{s[i]}) \\
+\rho_s &\stackrel{ind}{\sim} Ga(\mu^2/\sigma^2, \mu/\sigma^2) \\
+\mu &\sim Exp(1/100) \\
+\sigma & \sim Exp(1/100)
+\end{align*}
+with $\mu$ and $\sigma$ being independent and $Exp(\rho)$ is an exponential random variable with a mean of $1/\rho$.
+}
+
+\item Provide 95\% credible intervals (1 pt each) for 
+
+  \begin{enumerate}
+  \item $\mu$ \longcorrect[\vspace{0.3in}]{(0.5,1.4)}
+  \item $\rho_1$, the rate of failures for O-rings for company 1 \longcorrect[\vspace{0.3in}]{(0.5,3.7)}
+  \item the {\bf mean failure time} for O-rings from company 1 \longcorrect[\vspace{0.3in}]{(0.27,2)}
+  \end{enumerate}
+  
+\item Describe why the median for $\rho$ for th2nd supplier is so low compared to the others. (1 pt)
+
+\longcorrect[\vspace{1in}]{This company has the longest lasting O-rings.}
+
+\item Describe why the 95\% credible interval for $\rho$ is so much shorter for supplier 10 compared to the others (excluding supplier 3). (1 pt)
+
+\longcorrect[\vspace{1in}]{This company had many more observations than the others.}
+
+\newpage
+\noindent \begin{Large}Failure times continued (10 pts total, 2 pts each) \end{Large}
+
+\item Why is this model more reasonable than a model that assumes a common failure rate for all suppliers? 
+
+\longcorrect[\vspace{0.5in}]{
+  There is no reason to believe that all suppliers have the same failure rate.
+}
+
+\item What is an advantage of this model over a non-hierarchical model that treats each supplier completely independently? 
+
+\longcorrect[\vspace{0.5in}]{
+  This model allows us to borrow information across suppliers.
+}
+
+\item Describe how to obtain samples from the posterior predictive distribution of O-ring failure times for supplier $s$. 
+
+\longcorrect[\vspace{1.7in}]{
+  Let $\rho_s^j$ be the $j$th Monte Carlo draw from JAGS, then $\tilde{Y}_s^j\stackrel{ind}{\sim} Exp(\rho_s^j)$ is a draw from the predictive distribution of O-ring failure times for supplier $s$. 
+}
+
+\item For a single machine needing a single O-ring, describe how to determine the expected cost for replacing O-rings over one year if the O-rings come from supplier $s$ at a cost of $C_s$. 
+
+\longcorrect{
+  Use draws from the predictive distribution, i.e. $\tilde{Y}_s^j$ from the previous problem, and sum them up until they are over 12 (since there are 12 months in a year). The number that are needed is a draw from the predictive distribution for how many O-rings will be needed over a year. Repeat this process a large number of times and take the average. Multiply this average by $C_s$ to obtain an estimate of the expected cost. 
+  
+  Alternatively, the number of O-rings needed have a Poisson distribution with mean $12\rho_s$. Thus the expected cost is $E[12C_s\rho_s]=12C_s E[\rho_s]$ and we can use the estimated posterior mean from the JAGS output for each $\rho_s$. 
+}
+
+\item Describe how you would use the expected costs from the previous problem to determine which supplier you will buy O-rings from. 
+
+\longcorrect{
+  Take the estimated costs (and their Monte Carlo uncertainty) and choose the company with the lowest expected cost. 
+}
+
+
+\end{enumerate}
+
+
+\newpage
+(intentionally left blank- use for scratch paper)
+
+\newpage
+\noindent \begin{Large}JAGS code - failure time  \end{Large}
+\label{jags}
+{\footnotesize
+
+<<exponential_data, echo=FALSE, cache=TRUE>>=
+library(plyr)
+set.seed(3)
+n_suppliers = 10
+d = ddply(data.frame(n_per_supplier=c(rep(5,9),50), 
+                     supplier = 1:n_suppliers,
+                     rho = c(1,10,rep(1,8))), 
+          .(supplier, n_per_supplier, rho), 
+          function(x) {
+            data.frame(failure_time = rexp(x$n_per_supplier, 1/x$rho))
+          })
+#ddply(d, .(supplier), summarise, n=length(supplier), mean=mean(failure_time))
+@
+
+<<exponential_model, tidy=FALSE, message=FALSE>>=
+library(rjags)
+dat = list(n = nrow(d),
+           y = d$failure_time,
+           supplier = d$supplier,
+           n_suppliers = max(d$supplier))
+model = "
+model {
+  for (i in 1:n) {
+    y[i] ~ dexp(rho[supplier[i]])
+  }
+
+  for (s in 1:n_suppliers) {
+    rho[s] ~ dgamma(mu^2/sigma^2, mu/sigma^2)
+  }
+
+  sigma ~ dexp(0.01)
+  mu   ~ dexp(0.01)
+}"
+@
+
+<<run_mcmc, dependson=c("exponential_data","exponential_model"), cache=TRUE>>=
+m = jags.model(textConnection(model), dat, quiet=TRUE)
+r = coda.samples(m, c("rho","mu","sigma"), 10000, thin=10)
+
+summary(r)
+@
+}
+
 
 
 \end{document}
