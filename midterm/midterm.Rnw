@@ -164,7 +164,7 @@ total & \phantom{XX}25\%\phantom{XX} & \phantom{XX}25\%\phantom{XX} & \phantom{X
   \item[1.] (5+5)/12 = 83\%
   \item[2.] (18+6)/25 =  96\%
   \item[3.] (5+5)/11 = 91\%
-  \item[4.] (6+18)/25 = 96\&
+  \item[4.] (6+18)/25 = 96\%
   \end{itemize}
 }
 
@@ -206,7 +206,7 @@ where $\overline{y}$ is the sample mean of the $y_i$. This is the kernel of a $G
 \begin{align*}
 p(\beta|y) &\propto p(y|\beta)p(\beta) \\
 &\propto \left[ \prod_{i=1}^n \frac{\beta^a}{\Gamma(a)}y_i^{a-1}e^{-\beta y_i} \right] \beta^{a_0-1} e^{-b_0 \beta} \\
-&\propto \beta^{a_0+a-1} e^{-\beta [b_0+n\overline{y}]}
+&\propto \beta^{a_0+na-1} e^{-\beta [b_0+n\overline{y}]}
 \end{align*}
 
 This is the kernel of a $Ga(a_0+na, b_0+n\overline{y})$.
@@ -251,7 +251,7 @@ with $\mu$ and $\sigma$ being independent and $Exp(\rho)$ is an exponential rand
   \item the {\bf mean failure time} for O-rings from company 1 \longcorrect[\vspace{0.3in}]{(0.57,2.17)}
   \end{enumerate}
   
-\item Describe why the median for $\rho$ for th2nd supplier is so low compared to the others. (1 pt)
+\item Describe why the median for $\rho$ for the 2nd supplier is so low compared to the others. (1 pt)
 
 \longcorrect[\vspace{1in}]{This company has the longest lasting O-rings.}
 
