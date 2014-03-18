@@ -1,0 +1,246 @@
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\title{Markov chain theorey}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\I}{\mathrm{I}}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+library(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+##############################################
+# Markov chain theory                        #
+##############################################
+library(reshape2)
+library(plyr)
+library(ggplot2)
+library(rjags)
+@
+
+\frame{\maketitle}
+
+\section{Markov chain theory}
+\begin{frame}
+\frametitle{Markov chains}
+
+\begin{definition}
+A \alert{discrete-time, homogeneous Markov chain} is a sequence of random variables $\theta^t$ \pause such that
+\[ p(\theta^t|\theta^{t-1},\ldots,\theta^0) = p(\theta^t|\theta^{t-1}) \]
+\pause which is known as the \alert{transition distribution}.
+\end{definition}
+
+\pause 
+
+Examples
+\begin{itemize}
+\item Correlated coin flip
+\item DNA sequence
+\item Random walk on the integers
+\item Autoregressive process of order 1
+\end{itemize}
+
+\end{frame}
+
+\subsection{Correlated coin flip}
+\begin{frame}
+\frametitle{Correlated coin flip}
+With finite support, the transition distribution can be represented as a row stochastic transition matrix, e.g. 
+\[ P = \bordermatrix{ & 0 & 1 \cr 0 & 1-p & p \cr 1 & q & 1-q } \]
+where 
+\begin{itemize}
+\item $p$ is the probability of switching from 0 to 1 and 
+\item $q$ is the probability of switching from 1 to 0.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<correlted_coin_flip, fig.width=10>>=
+rflip = function(n, p, q, theta0) {
+  theta = rep(theta0, n+1)
+  for (i in 1:n) theta[i+1] = ifelse(theta[i], rbinom(1,1,q), rbinom(1,1,1-p))
+  theta
+}
+set.seed(1)
+n = 100
+qplot(0:n, rflip(n,p <- .9,q <- .5, rbinom(1,1,.5)))
+@
+\end{frame}
+
+
+\subsection{DNA sequence}
+\begin{frame}
+\frametitle{DNA sequence}
+With finite support, the transition distribution can be represented as a row stochastic transition matrix, e.g. 
+\[ P = \bordermatrix{ & A & C & G & T \cr 
+A & 0.60 & 0.10 & 0.05 & 0.40 \cr 
+C & 0.10 & 0.50 & 0.20 & 0.05 \cr
+G & 0.10 & 0.30 & 0.70 & 0.05 \cr
+T & 0.20 & 0.10 & 0.05 & 0.50 } \]
+where 
+\begin{itemize}
+\item each cell provides the probability of moving from the row nucleotide to the column nucleotide.
+\end{itemize}
+
+{\tiny \url{http://tata-box-blog.blogspot.com/2012/04/introduction-to-markov-chains-and.html}}
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<dna_seq, fig.width=10>>=
+nucleotides = factor(c("A","C","G","T"))
+dna_seq_m = matrix(cbind(c(.6,.1,.05,.4), c(.1,.5,.2,.05), c(.1,.3,.7,.05), c(.2,.1,.05,.5)),4)
+r_dna_seq = function(n,theta0) {
+  theta = rep(theta0,n+1)
+  for (i in 1:n) theta[i+1] = sample(nucleotides,1,prob=dna_seq_m[as.numeric(theta[i]),])
+  theta
+}
+qplot(0:n,r_dna_seq(n, sample(nucleotides,1)))
+@
+\end{frame}
+
+\subsection{Random walk on the integers}
+\begin{frame}
+\frametitle{Random walk on the integers}
+With countable support, the transition can be represented with a probability mass function, e.g. 
+\[ p(\theta^t=j|\theta^{t-1}=i) = \left\{ \begin{array}{ll} 
+p & j=i+1 \\
+1-p & j=i-1 \\
+0 & \mbox{otherwise} \end{array} \right. \]
+where 
+\begin{itemize}
+\item $p$ is the probabilty of moving one integer up and 
+\item $1-p$ is the probability of moving one integer down.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Random walk on the integers}
+<<random_walk_on_the_integers, fig.width=12>>=
+rwalk = function(n, p, theta0) {
+  theta = rep(theta0, n+1)
+  for (i in 1:n) theta[i+1] = sample(c(-1,1), 1, prob=c(p,1-p))+theta[i]
+  theta
+}
+qplot(0:n, rwalk(n, p=0.5, theta0=0))
+@
+\end{frame}
+
+\subsection{AR1}
+\begin{frame}
+\frametitle{Autoregressive process of order 1}
+With continuous support, the transition can be represented with a probability density function, e.g. 
+\[ \theta^t|\theta^{t-1} \sim N(\mu+ \rho [\theta^{t-1}-\mu], \sigma^2). \]
+\end{frame}
+
+\begin{frame}[fragile]
+<<autoregressive_process_1, fig.width=10>>=
+rar1 = function(n, mu, rho, sigma, theta0) {
+  theta = rep(theta0, n+1)
+  for (i in 1:n) theta[i+1] = rnorm(1, mu+rho*(theta[i]-mu), sigma)
+  theta
+}
+qplot(0:n, rar1(n, 0,.95,1,0), geom="point")
+@
+\end{frame}
+
+\subsection{Stationary distribution}
+\begin{frame}
+\frametitle{Stationary distribution}
+  A key question is `what is the distribution for $\theta^t$ as $t\to\infty$?'
+  
+  \begin{definition}
+  The \emph{stationary distribution} is the distribution $\pi$ such that 
+  \begin{itemize}
+  \item finite support: $\pi P = \pi$. 
+  \item countable support: $\sum_{\theta^{t-1}} p(\theta^t|\theta^{t-1}) \pi(\theta^{t-1}) = \pi(\theta^t)$
+  \item continuous support: $\int p(\theta^t|\theta^{t-1}) \pi(\theta^{t-1}) d\theta^{t-1} = \pi(\theta^t)$
+  \end{itemize}
+  where $p(\theta^t|\theta^{t-1})$ is the transition distribution. This is also called the \alert{invariant} or \alert{equilibrium distribution}.
+  \end{definition}
+\end{frame}
+
+\begin{frame}
+\frametitle{Correlated coin flips}
+
+For \[ P = \bordermatrix{ & 0 & 1 \cr 0 & 1-p & p \cr 1 & q & 1-q } \]
+\pause we have $\pi = (q,p)/(p+q)$, \pause such that 
+
+\[ \begin{array}{ll}
+\pi P &= \frac{1}{p+q}\left[ \begin{array}{cc} q&p  \end{array} \right] 
+\left[ \begin{array}{cc}1-p & p \\ q & 1-q \end{array} \right] \\
+&= \frac{1}{p+q} \left[ \begin{array}{cc} q(1-p)+pq & pq+p(1-q) \end{array}  \right] \\
+&= \frac{1}{p+q} \left[ \begin{array}{cc} q & p \end{array}  \right] \\
+&= \pi
+\end{array} \]
+Thus $\pi$ is the stationary distribution for the Markov chain with transition matrix $P$.
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Calculate numerically}
+
+For finite support and $P^t = P^{t-1}P$, we have 
+\[ \lim_{t\to\infty} P^t = \left[ \begin{array}{c} \pi \\ \ldots \\ \pi \end{array} \right] \]
+
+<<P>>=
+p = 0.9; q = 0.5
+create_P = function(p,q) matrix(c(1-p,p,q,1-q), 2, byrow=TRUE)
+P = Pn = create_P(p,q)
+for (i in 1:100) Pn = Pn%*%P
+Pn
+c(q,p)/(p+q)
+@
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Stationary distribution for AR1 process}
+
+Let $\theta^t|\theta^{t-1} \sim N(\mu+\rho[\theta^{t-1}-\mu],\sigma^2)$, or, equivalently
+\[ \theta^t = \mu+\rho[\theta^{t-1}-\mu] + \epsilon_t \]
+where $\epsilon_t \sim N(0,\sigma^2)$. \pause If $\theta_{t-1} \sim N(\mu,\sigma^2/[1-\rho^2])$, then 
+\[ \begin{array}{rl}
+E[\theta^t] &= \mu \\
+V[\theta^t] &= \rho^2 \frac{\sigma^2}{1-\rho^2} + \sigma^2 = \sigma^2
+\end{array} \]
+Thus $\theta^t \sim N(\mu,\sigma^2/[1-\rho^2])$ is the stationary distribution for an AR1 process.
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Approximate via simulation}
+<<ar1_stationary_distribution, fig.width=10>>=
+mu = 10; sigma = 4; rho = 0.9
+d = rdply(1000, function(x) {
+  x = rcauchy(1) # initial draw (clearly not from stationary distribution)
+  for (i in 1:100) x = rnorm(1,mu+rho*(x-mu),sigma)
+  data.frame(x=x)
+})
+ggplot(d, aes(x=x))+geom_histogram(aes(y=..density..), binwidth=1)+stat_function(fun = dnorm, arg = list(mean=mu,sd=sigma/sqrt(1-rho^2)),col=2)
+@
+\end{frame}
+
+
+
+
+\end{document}
