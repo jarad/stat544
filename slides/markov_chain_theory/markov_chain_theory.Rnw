@@ -236,11 +236,17 @@ d = rdply(1000, function(x) {
   for (i in 1:100) x = rnorm(1,mu+rho*(x-mu),sigma)
   data.frame(x=x)
 })
-ggplot(d, aes(x=x))+geom_histogram(aes(y=..density..), binwidth=1)+stat_function(fun = dnorm, arg = list(mean=mu,sd=sigma/sqrt(1-rho^2)),col=2)
+ggplot(d, aes(x=x))+geom_histogram(aes(y=..density..), binwidth=1)+stat_function(fun = dnorm, arg = list(mean=mu,sd=sigma/sqrt(1-rho^2)),col=2,lwd=2)
 @
 \end{frame}
 
+\subsection{Reducibility}
+\begin{frame}
+\frametitle{Reducibility}
 
+
+
+\end{frame}
 
 
 \end{document}
