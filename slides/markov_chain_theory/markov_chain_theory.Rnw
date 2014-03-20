@@ -15,7 +15,7 @@
 %\setbeamertemplate{block body theorem}{bg=orange}
 \setkeys{Gin}{width=0.6\textwidth}
 
-\title{Markov chain theorey}
+\title{Markov chain theory}
 \author[Jarad Niemi]{Dr. Jarad Niemi}
 \institute[Iowa State]{Iowa State University}
 \date{\today}
@@ -45,7 +45,7 @@ library(rjags)
 \frametitle{Markov chains}
 
 \begin{definition}
-A \alert{discrete-time, homogeneous Markov chain} is a sequence of random variables $\theta^t$ \pause such that
+A \alert{discrete-time, homogeneous Markov chain} is a sequence of random variables $\theta_t$ \pause such that
 \[ p(\theta^t|\theta^{t-1},\ldots,\theta^0) = p(\theta^t|\theta^{t-1}) \]
 \pause which is known as the \alert{transition distribution}.
 \end{definition}
@@ -240,13 +240,106 @@ ggplot(d, aes(x=x))+geom_histogram(aes(y=..density..), binwidth=1)+stat_function
 @
 \end{frame}
 
-\subsection{Reducibility}
+
+
+\subsection{Convergence}
 \begin{frame}
-\frametitle{Reducibility}
+\frametitle{Convergence}
 
+Consider discrete support Markov chains. \pause Let 
+\[
+\pi^t_i = Pr(\theta^t=i) \mbox{ and } 
+P_{ij} = Pr(\theta^t=j|\theta^{t-1}=i) 
+\]
+with $\pi^t = (\pi_1^t,\pi_2^t,\ldots)$ and $P$ has elements $P_{ij}$. 
 
+\vspace{0.2in} \pause 
+
+Two questions:
+\begin{itemize}
+\item Does $\pi$ exist, such that $\pi P = \pi$?
+\item Does $\lim_{t\to\infty} \pi^t = \pi$ for all $\pi^0$?
+\end{itemize}
 
 \end{frame}
 
+
+
+
+\subsection{Irreducibility}
+\begin{frame}
+\frametitle{Irreducibility}
+
+\begin{definition}
+A Markov chain is \alert{irreducible} if for all $i$ and $j$
+\[ P(\theta^{t_{ij}}=j|\theta^0=i) > 0 \]
+for some $t_{ij}\ge 0$.
+\end{definition}
+\pause 
+Reducible example:
+\[ P = \bordermatrix{ & 0 & 1 \cr 0 & 1 & 0 \cr 1 & 0 & 1 } \]
+\pause where $\pi P=\pi$ for any $\pi$\pause, i.e. the stationary distribution is not unique.
+\end{frame}
+
+\subsection{Aperiodic}
+\begin{frame}\frametitle{Aperiodic}
+
+\vspace{-.2in}
+
+\begin{definition}
+The \alert{period} $k$ of a state $i$ is 
+\[ k = \mbox{gcd}\{t: P(\theta_t=i|\theta_0=i)\}\]
+where gcd is the greatest common divisor. \pause If $k=1$, then the state is said to be \alert{aperiodic}, i.e.
+\[ P(\theta^{t'}=i|\theta^0=i)>0 \]
+for $t'>t$ for some $t$. \pause A Markov chain is \alert{aperiodic} if every state is aperiodic.
+\end{definition}
+
+\pause 
+{\small
+
+Periodic example:
+\[ P = \bordermatrix{ & 0 & 1 \cr 0 & 0 & 1 \cr 1 & 1 & 0 } \]
+\pause where $\pi=(0.5\, 0.5)$ is the stationary distribution\pause, but the Markov chain does not converge to this distribution.
+}
+\end{frame}
+
+
+
+\subsection{Finite support convergence}
+\begin{frame}\frametitle{Finite support convergence}
+
+\begin{lemma}
+Every state in an irreducible Markov chain has the same period. Thus, in an irreducible Markov chain, if one state is aperiodic, then the Markov chain is aperiodic. 
+\end{lemma}
+\pause
+\begin{theorem}
+A finite support, irreducible Markov chain has a unique stationary distribution $\pi$. If it is aperiodic, then $\lim_{t\to\infty} \pi^t=\pi$ for all $\pi^0$.
+\end{theorem}
+\pause
+Example
+\[ P = \bordermatrix{ & 0 & 1 \cr 0 & 1-p & p \cr 1 & q & 1-q } \]
+is irreducible and aperiodic or $0<p,q<1$\pause, thus the Markov chain with transition matrix $P$ has a stationary distribution and the chain converges to this distribution. 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Random walk on the integers}
+
+\[ p(\theta^t=j|\theta^{t-1}=i) = \left\{ \begin{array}{ll} 
+p & j=i+1 \\
+1-p & j=i-1 \\
+0 & \mbox{otherwise} \end{array} \right. \]
+which is 
+\begin{itemize}
+\item irreducible 
+\[ P(\theta^{|j-i|}=j|\theta^0=i) = 
+\left\{ \begin{array}{ll} 
+p^{j-i} & j>i \\
+(1-p)^{i-j} & i<j
+\end{array} \right. \]
+\item aperiodic 
+\end{itemize}
+
+\end{frame}
 
 \end{document}
