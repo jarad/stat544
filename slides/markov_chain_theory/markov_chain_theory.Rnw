@@ -481,7 +481,7 @@ If state $i$ of a Markov chain is aperiodic, then $\lim_{t\to\infty} \pi^t_i = 1
 
 \begin{frame}
 
-\frametitle{}
+\frametitle{Stationarity and convergence}
 \begin{theorem}
 For an \alert{irreducible} and \alert{aperiodic} Markov chain, 
 \begin{itemize}
@@ -491,7 +491,6 @@ For an \alert{irreducible} and \alert{aperiodic} Markov chain,
 \end{itemize}
 \end{theorem}
 \end{frame}
-
 
 
 
