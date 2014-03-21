@@ -1,0 +1,407 @@
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+\documentclass{beamer}
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\title{Sampling}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\I}{\mathrm{I}}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+library(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+####################################
+# L13 - Exact sampling             #
+####################################
+library(reshape2)
+library(plyr)
+library(ggplot2)
+library(rjags)
+@
+
+\frame{\maketitle}
+
+\section{Sampling}
+\frame{\frametitle{Sampling from an arbitrary distribution}
+  In Bayesian parameter estimation, we are interested in $p(\theta|y)$. \pause For simple models, $p(\theta|y)$ is available analytically perhaps as a known distribution. \pause For complex models, we resort to sampling $\theta \sim p(\theta|y)$. \pause Now we present a few general methods for sampling from an arbitrary distribution: \pause
+  
+  \begin{itemize}
+  \item Inverse CDF
+  \item Accept-reject
+  \item Metropolis-Hastings
+  \end{itemize}
+  
+  \pause 
+  
+  The examples shown will be univariate, but these methods can be used in multivariate settings. \pause 
+}
+
+\subsection{Inverse CDF method}
+\frame{\frametitle{Inverse cumulative distribution function}
+  \begin{definition}
+	The \alert{cumulative distribution function}  of a random variable $X$ is defined by 
+	\[ F_X(x) = P_X(X\le x) \qquad\mbox{for all }x. \]
+	\end{definition}
+	\pause e.g. $X\sim Exp(1)$, then $F_X(x) = \int_0^x e^{-a} da = 1-e^{-x}$.
+	
+	\vspace{0.2in} \pause
+	
+	\begin{definition}
+	For any non-decreasing function F on $\mathbb{R}$, \pause the \alert{generalized inverse of $F$}, $F^{-}$, is the function defined by 
+	\[ F^-(u) = \inf\{x: F(x)\ge u\}. \]
+	\end{definition}
+	\pause e.g. $F^-(u) = -\log(1-u)$ for the exponential example.
+}
+
+\frame{\frametitle{Inverse CDF method}
+	Suppose you want to sample $X\sim f(x)$ and you have access to the inverse cdf of X, $F^-$, then 
+	\begin{lemma}
+	If $U\sim Unif(0,1)$, then $X=F^-(U)$ is a simulation from $f(x)$. 
+	\end{lemma}
+	
+	\vspace{0.2in} \pause
+	
+	For example, to sample $X\sim Exp(1)$, 
+	\begin{enumerate}[\,1.]
+	\item Sample $U\sim Unif(0,1)$.
+	\item Set $X = -\log(1-U)$, or $X=-\log(U)$.  
+	\end{enumerate}
+}
+
+\begin{frame}[fragile]
+$X \sim Exp(1)$
+<<exponential, message=FALSE, fig.width=8>>=
+n.reps = 1e4
+d = data.frame(x = -log(runif(n.reps)))
+ggplot(d, aes(x=x))+geom_histogram(aes(y=..density..))+stat_function(fun=dexp, color="red")
+@
+\end{frame}
+
+\frame{\frametitle{Sampling from a univariate truncated normal}
+	Suppose you wish to sample from $X\sim N(\mu,\sigma^2)\mathrm{I}(a<X<b)$, i.e. a normal random variable with (untruncated) mean $\mu$ and variance $\sigma^2$, but truncated to the interval $(a,b)$. \pause Let $\mathrm{\Phi}$ be the standard normal cdf. \pause 
+	
+	\begin{enumerate}[\,1.]
+	\item Calculate endpoints $p_a = \mathrm{\Phi}([a-\mu]/\sigma)$ and $p_b = \mathrm{\Phi}([b-\mu]/\sigma)$. \pause
+	\item Sample $U\sim Unif(p_a,p_b)$. \pause
+	\item Set $X=\sigma \mathrm{\Phi}^{-}(U) + \mu$. \pause
+	\end{enumerate}	
+}
+
+\begin{frame}[fragile]
+$X\sim N(5,9)\mathrm{I}(1\le X \le 6)$
+<<truncated_normal, message=FALSE, fig.width=8>>=
+d = data.frame(x= 5+3*qnorm(runif(n.reps, pnorm((1-5)/3), pnorm((6-5)/3))))
+dtnorm = function(x,mu=5,sigma=3,a=1,b=6) {
+  dnorm(x,mu,sigma)/diff(pnorm(c(a,b),mu,sigma))
+} 
+ggplot(d, aes(x=x))+geom_histogram(aes(y=..density..))+stat_function(fun=dtnorm, color="red")
+@
+\end{frame}
+
+\subsection{Rejection sampling}
+
+\section{Accept-Reject}
+\frame{\frametitle{Accept-Reject}
+  Suppose you wish to obtain samples $X\sim f(x)$ where $f(x)$ is the probability density function for $X$, \pause the accept-reject method is \pause 
+	\begin{enumerate}[\,1.]
+	\item Sample a proposal $X^*\sim q(x)$ \pause and $U\sim Unif(0,1)$. \pause 
+	\item Accept $X=X^*$ if $U\le f(X^*)/Mq(X^*)$\pause, otherwise return to step 1. \pause
+	\end{enumerate}
+	where $M$ satisfies $M\, q(x)\ge f(x)$ for all $x$. 
+	
+	\vspace{0.2in} \pause
+	
+	\begin{itemize}[<+->]
+	\item For a given proposal distribution $q(x)$, an optimal $M$ is $M=\sup_x f(x)/q(x)$. 
+	\item The probability of acceptance is $1/M$.
+	\item $f(x)$ only needs to be known up to a normalizing constant.
+	\end{itemize}
+  \pause The accept-reject idea is to create an envelope, $M\, q(x)$, above $f(x)$ \pause and accept $X^*\sim q(x)$ with probability $f(X^*)/Mq(X^*)$. 
+}
+
+\begin{frame}[fragile]
+\frametitle{The idea}
+<<accept_reject, eval=FALSE>>=
+f = function(x) dnorm(x)/(1-pnorm(5))
+q = function(x) dexp(x-5)
+M = f(5)/q(5)
+
+plot.pt = function(x) {
+  u = runif(length(x))
+  points(x,u*M*q(x), 
+         pch=ifelse(M*q(x)*u<f(x), 19, 4),
+         col=ifelse(M*q(x)*u<f(x), "red", "blue"))
+}
+
+par(mfrow=c(1,2), mar=c(5,4,4,2)+0.1)
+curve(M*dexp(x-5), 5, 6, col="blue", lwd=2, xlab="x", ylab="u*M*q(x)", ylim=c(0,M), main=paste("M=",round(M,2)))
+curve(f, col="red",lwd=2, add=T)
+legend("topright",c("f(x)","M*q(x)"), col=c("red","blue"), lwd=2)
+plot.pt(5+qexp(runif(1e2,0,pexp(1))))
+
+
+
+M = f(5)/q(5)*10
+
+plot.pt = function(x) {
+  u = runif(length(x))
+  points(x,u*M*q(x), 
+         pch=ifelse(M*q(x)*u<f(x), 19, 4),
+         col=ifelse(M*q(x)*u<f(x), "red", "blue"))
+}
+
+curve(M*dexp(x-5), 5, 6, col="blue", lwd=2, xlab="x", ylab="u*M*q(x)", ylim=c(0,M), main=paste("M=",round(M,2)))
+curve(f, col="red",lwd=2, add=T)
+legend("topright",c("f(x)","M*q(x)"), col=c("red","blue"), lwd=2)
+plot.pt(5+qexp(runif(1e2,0,pexp(1))))
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{The idea}
+<<accept_reject_plot, echo=FALSE>>=
+<<accept_reject>>
+@
+\end{frame}
+
+\frame{\frametitle{Simulating extreme events}
+	Suppose you are interested in simulating $X\sim N(0,1)\mathrm{I}(X>5)$. \pause We know that 
+ 	\[ f(x) = \frac{(2\pi)^{-1/2} \exp(-x^2/2)}{1-\mathrm{\Phi}(5)}. \]
+	\pause We can use a shifted exponential distribution as a proposal, i.e. $X^* = 5+Y$ where $Y\sim Exp(1)$. \pause We calculate
+	{\small
+	\[ M = \sup_x \frac{f(x)}{q(x)} \pause = \frac{(2\pi)^{-1/2}}{1-\mathrm{\Phi}(5)} \sup_x \frac{\exp(-x^2/2)}{\exp(-[x-5])} \pause = \frac{(2\pi)^{-1/2}}{1-\mathrm{\Phi}(5)} \exp(-5^2/2) \pause \approx 5.19 \]
+	}
+}
+
+\begin{frame}[fragile]
+<<accept_reject2, eval=FALSE>>=
+M = f(5)/q(5)
+ar = function() {
+  x = 0
+  while(x<5) {
+    u = runif(1)
+    x = rexp(1)
+    x = ifelse(u<f(x)/(M*q(x)), x, 0)
+  }
+  return(x)
+}
+
+r = rdply(1e3, ar)
+ggplot(r, aes(x=V1))+
+  geom_histogram(aes(y=..density..), binwidth=.05)+
+  stat_function(fun=f, col="red")+
+  stat_function(fun=function(x) M*dexp(x-5), col="blue")
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<accept_reject2_plot, echo=FALSE, cache=TRUE>>=
+<<accept_reject2>>
+@
+\end{frame}
+
+\frame{\frametitle{Unknown normalizing constant}
+	Suppose you are interested in simulating $X\sim N(0,1)\mathrm{I}(X>5)$. \pause We know that 
+	\[ f(x)\propto f_2(x) = \exp(-x^2/2). \]
+	\pause We calculate
+	\[ M_2 = \sup_x \frac{f_2(x)}{q(x)} \pause = \sup_x \frac{\exp(-x^2/2)}{\exp(-[x-5])} \pause= \exp(-5^2/2) \pause \approx 3.73\times 10^{-6}  \]
+  \pause We can still draw $X^*\sim q(x)$ and accept with probability $f_2(x)/M_2 q(x)$ \pause since
+	\[ M = \frac{(2\pi)^{-1/2}}{1-\mathrm{\Phi}(5)} M_2 \pause \implies \frac{f_2(x)}{M_2} = \frac{f(x)}{M}  \] 
+	for all $x$. \pause But $M_2$ does not relate to the acceptance probability.
+}
+
+\section{Summary}
+\frame{\frametitle{Summary}
+	The accept-reject method is a way of obtaining samples from $f(x)$ \pause when
+	\begin{itemize}
+	\item the inverse cdf cannot be computed \pause or is expensive to compute \pause and
+	\item when $f(x)$ can be evaluated at least up to a normalizing constant. \pause 
+	\end{itemize}
+	Based on 
+	\begin{itemize}
+	\item a draw from a proposal $q(x)$, \pause 
+	\item a constant $M$ such that $f(x) \le M q(x)$\pause, and
+	\item a uniform draw.
+	\end{itemize}
+}
+
+
+
+\frame{\frametitle{Simulating from a distribution}
+  Suppose you wish to sample $X\sim f(x)$\pause, but cannot use 
+	\begin{itemize}
+	\item direct simulation
+	\item inverse cdf method
+	\item accept-reject method
+	\end{itemize}
+	
+	\vspace{0.2in} \pause
+	
+	But you can evaluate $f(x)$ at least up to a proportionality constant\pause, then you can use the Metropolis-Hastings algorithm.
+}
+
+\section{Metropolis-Hastings}
+\frame{\frametitle{Metropolis-Hastings algorithm}
+\small
+	Let $f(x)$ be the (possibly unnormalized) target density\pause, $x^{(j)}$ be a current value\pause, and $q(x|x^{(j)})$ be a proposal distribution\pause, then 
+	\begin{itemize}
+	\item Sample $x^*\sim q(x|x^{(j)})$. \pause
+	\item Calculate the acceptance probability
+	\[ \rho(x^{(j)},x^*)= \min\left\{1,\frac{f(x^*)}{f(x^{(j)})} \frac{q(x^{(j)}|x^*)}{q(x^*|x^{(j)})}\right\}.\pause \]
+	\item Set $x^{(j+1)}=x^*$ with probability $\rho(x^{(j)},x^*)$\pause, otherwise set $x^{(j+1)}=x^{(j)}$.
+	\end{itemize}
+	
+	\vspace{0.2in} \pause
+	
+	Notes:
+	\begin{itemize}
+	\item $x^{(j)} \stackrel{d}{\rightarrow} X$ where $X\sim f(x)$.  \pause
+	\item The sequence $x^{(j)}$ is not independent. \pause
+	\item 
+	\[  \frac{1}{J} \sum_{j=1}^J h\left(x^{(j)}\right) \rightarrow E_f[h(X)] = \int_{\mathcal{X}} h(x) f(x) dx  \]
+	\end{itemize}
+}
+
+\subsection{Random-walk}
+\frame{\frametitle{Random-walk Metropolis}
+	Suppose $q(x|x^{(j)}) = q(x^{(j)}|x)$\pause , then we call $q$ symmetric \pause and the acceptance probability is 
+	\[ \rho(x^{(j)},x^*)= \min\left\{1,\frac{f(x^*)}{f(x^{(j)})} \frac{q(x^{(j)}|x^*)}{q(x^*|x^{(j)})}\right\} \pause= \min\left\{1,\frac{f(x^*)}{f(x^{(j)})} \right\}.\pause \]
+	Consider $f(x)=N(5,9)\mathrm{I}(1\le x\le 6)$\pause, i.e.  
+	\[ f(x) \propto \exp(-(x-5)^2/18)\mathrm{I}(1\le x\le 6)\pause  \]
+	and let $q(x|x^{(j)}) = N(x|x^{(j)},1)$ and let $x^{(0)} = 5$.
+}
+
+\begin{frame}[fragile]
+\frametitle{}
+<<random_walk, eval=FALSE>>=
+lf = function(x) log(dnorm(x,5,3)*(x>1)*(x<6))
+
+# Random-walk proposal
+set.seed(1)
+n.reps = 1e4
+x = numeric(n.reps)
+x[1] = 5
+for (i in 2:n.reps) {
+  xp = rnorm(1, x[i-1])
+  logrho = lf(xp)-lf(x[i-1])
+  x[i] = ifelse(log(runif(1))<logrho, xp, x[i-1])
+}
+
+par(mfrow=c(2,3))
+plot(x[1:100], type="l", lwd=2, main="100 iterations")
+plot(x[1:1e3], type="l", lwd=2, main="1000 iterations")
+plot(x[1:1e4], type="l", lwd=2, main="10000 iterations")
+hist(x[1:100], seq(1,6,length=100), freq=F, ylim=c(0,.5), main="")
+curve(dnorm(x,5,3)/(pnorm(6,5,3)-pnorm(1,5,3)), add=T, col="red")
+hist(x[1:1e3], seq(1,6,length=100), freq=F, ylim=c(0,.5), main="")
+curve(dnorm(x,5,3)/(pnorm(6,5,3)-pnorm(1,5,3)), add=T, col="red")
+hist(x[1:1e4], seq(1,6,length=100), freq=F, ylim=c(0,.5), main="")
+curve(dnorm(x,5,3)/(pnorm(6,5,3)-pnorm(1,5,3)), add=T, col="red")
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{}
+<<random_walk_plot, echo=FALSE>>=
+<<random_walk>>
+@
+\end{frame}
+
+\subsection{Independent proposal}
+\frame{\frametitle{Independent Metropolis-Hastings proposal}
+	Suppose $q(x|x^{(j)}) = q(x)$\pause , then we call $q$ independent \pause and the acceptance probability is 
+	\[ \rho(x^{(j)},x^*)= \min\left\{1,\frac{f(x^*)}{f(x^{(j)})} \frac{q(x^{(j)}|x^*)}{q(x^*|x^{(j)})}\right\} \pause= \min\left\{1,\frac{f(x^*)}{f(x^{(j)})} \frac{q(x^{(j)})}{q(x^*)}\right\}.\pause \]
+	Consider $f(x)=N(5,9)\mathrm{I}(1\le x\le 6)$\pause, i.e.  
+	\[ f(x) \propto \exp(-(x-5)^2/18)\mathrm{I}(1\le x\le 6)\pause  \]
+	and let $q(x) = N(x|3,1)$ and let $x^{(0)} = 5$.
+}
+
+
+\begin{frame}[fragile]
+\frametitle{}
+<<independence, eval=FALSE>>=
+set.seed(1)
+n.reps = 1e4
+x = numeric(n.reps)
+x[1] = 5
+for (i in 2:n.reps) {
+  xp = rnorm(1, 3)
+  logrho = lf(xp)-lf(x[i-1])+dnorm(x[i-1],3,1,log=T)-dnorm(xp,3,1,log=T)
+  x[i] = ifelse(log(runif(1))<logrho, xp, x[i-1])
+}
+
+par(mfrow=c(2,3))
+plot(x[1:100], type="l", lwd=2, main="100 iterations")
+plot(x[1:1e3], type="l", lwd=2, main="1000 iterations")
+plot(x[1:1e4], type="l", lwd=2, main="10000 iterations")
+hist(x[1:100], seq(1,6,length=100), freq=F, ylim=c(0,.5), main="")
+curve(dnorm(x,5,3)/(pnorm(6,5,3)-pnorm(1,5,3)), add=T, col="red")
+hist(x[1:1e3], seq(1,6,length=100), freq=F, ylim=c(0,.5), main="")
+curve(dnorm(x,5,3)/(pnorm(6,5,3)-pnorm(1,5,3)), add=T, col="red")
+hist(x[1:1e4], seq(1,6,length=100), freq=F, ylim=c(0,.5), main="")
+curve(dnorm(x,5,3)/(pnorm(6,5,3)-pnorm(1,5,3)), add=T, col="red")
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{}
+<<independence_plot, echo=FALSE>>=
+<<independence>>
+@
+\end{frame}
+
+\section{Summary}
+\frame{\frametitle{Summary}
+	The Metropolis-Hastings algorithm can be used to draw samples from $f(x)$ \pause when
+	\begin{itemize}
+	\item other methods don't work well \pause and 
+	\item $f(x)$ can be evaluated up to a normalizing constant \pause
+	\end{itemize}
+	based on
+	\begin{itemize}
+	\item a proposal distribution $q(x|x^{(j)})$.
+	\end{itemize}
+  
+  \pause 
+  
+  Unlike the inverse CDF and accept-reject methods, the Metropolis-Hastings algorithm does not provide independent samples. \pause Instead it creates a Markov chain that is theoretically guaranteed to converge to samples from $f(x)$. 
+}
+
+
+\section{Example}
+\frame{\frametitle{Example}
+  Suppose $Y_i \stackrel{iid}{\sim} \mbox{Inv-}\chi^2(\nu, s^2)$ with $\nu\sim Unif(0,v_0)$ \pause and we are interested in inference on $\nu$. \pause Then 
+  \begin{align*} 
+  p(\nu|y) &\propto p(y|\nu)p(\nu) \\
+  &= \left[ \prod_{i=1}^n \frac{(\nu/2)^{\nu/2}}{\Gamma(\nu/2)}s^\nu y_i^{-(\nu/2+1)} e^{-\nu s^2/(2y_i)} \right] \mathrm{I}(0<\nu<v_0) \\
+  &= \frac{(\nu/2)^{n\nu/2}}{\Gamma(\nu/2)^n} s^{n\nu} \left[ \prod_{i=1}^n y_i \right]^{-(\nu/2+1)} e^{-vs^2/2 \sum_{i=1}^n 1/y_i} \mathrm{I}(0<\nu<v_0)
+  \end{align*}
+  
+  Let $P=\prod_{i=1}^n y_i$ and $S=\sum_{i=1}^n 1/y_i$, then 
+{\small 
+  \[ \log p(\nu|y) = n\nu\log(\nu/2)/2 + n\log(\Gamma(\nu/2) + n\nu\log(s) -(\nu/2+1)\log(P) -vs^2 S/2 \]
+}
+}
+
+
+\end{document}
