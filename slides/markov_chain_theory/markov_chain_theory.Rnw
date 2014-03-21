@@ -1,5 +1,6 @@
-\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-%\documentclass{beamer}
+\documentclass{beamer}
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+
 
 \usecolortheme[RGB={0,0,144}]{structure}
 \usetheme{AnnArbor}\usecolortheme{beaver}
@@ -15,7 +16,7 @@
 %\setbeamertemplate{block body theorem}{bg=orange}
 \setkeys{Gin}{width=0.6\textwidth}
 
-\title{Markov chain theory}
+\title[Markov chain theory]{Discrete-time, discrete-space Markov chain theory}
 \author[Jarad Niemi]{Dr. Jarad Niemi}
 \institute[Iowa State]{Iowa State University}
 \date{\today}
@@ -36,6 +37,7 @@ library(reshape2)
 library(plyr)
 library(ggplot2)
 library(rjags)
+set.seed(1)
 @
 
 \frame{\maketitle}
@@ -45,7 +47,7 @@ library(rjags)
 \frametitle{Markov chains}
 
 \begin{definition}
-A \alert{discrete-time, homogeneous Markov chain} is a sequence of random variables $\theta_t$ \pause such that
+A \alert{discrete-time, time-homogeneous Markov chain} is a sequence of random variables $\theta^t$ \pause such that
 \[ p(\theta^t|\theta^{t-1},\ldots,\theta^0) = p(\theta^t|\theta^{t-1}) \]
 \pause which is known as the \alert{transition distribution}.
 \end{definition}
@@ -59,7 +61,7 @@ The \alert{state space} is the support of the Markov chain.
 \pause 
 
 \begin{definition}
-A Markov chain who state space is discrete can be represented with a row stochastic transition matrix $P$ with element $P_{ij}$ representing the probability of moving from state $i$ to state $j$ in one time-step. 
+The transition distribution of a Markov chain whose state space is discrete \pause can be represented with a  \alert{transition matrix} $P$ \pause with elements $P_{ij}$ representing the probability of moving from state $i$ to state $j$ in one time-step. 
 \end{definition}
 \end{frame}
 
@@ -85,12 +87,12 @@ Let
 <<correlted_coin_flip, fig.width=10>>=
 rflip = function(n, p, q, theta0) {
   theta = rep(theta0, n+1)
-  for (i in 1:n) theta[i+1] = ifelse(theta[i], rbinom(1,1,q), rbinom(1,1,1-p))
+  for (i in 1:n) theta[i+1] = ifelse(theta[i], rbinom(1,1,1-q), rbinom(1,1,p))
   theta
 }
 set.seed(1)
 n = 100
-qplot(0:n, rflip(n,p <- .9,q <- .5, rbinom(1,1,.5)))+labs(x="Time",y="State",title="Correlated coin flip")
+qplot(0:n, rflip(n,p <- .2,q <- .4, rbinom(1,1,.5)))+labs(x="Time",y="State",title="Correlated coin flip")
 @
 \end{frame}
 
@@ -98,16 +100,15 @@ qplot(0:n, rflip(n,p <- .9,q <- .5, rbinom(1,1,.5)))+labs(x="Time",y="State",tit
 \subsection{DNA sequence}
 \begin{frame}
 \frametitle{DNA sequence}
-Let 
 \[ P = \bordermatrix{ & A & C & G & T \cr 
-A & 0.60 & 0.10 & 0.05 & 0.40 \cr 
-C & 0.10 & 0.50 & 0.20 & 0.05 \cr
-G & 0.10 & 0.30 & 0.70 & 0.05 \cr
-T & 0.20 & 0.10 & 0.05 & 0.50 } \]
+A & 0.60 & 0.10 & 0.10 & 0.20 \cr 
+C & 0.10 & 0.50 & 0.30 & 0.10 \cr
+G & 0.05 & 0.20 & 0.70 & 0.05 \cr
+T & 0.40 & 0.05 & 0.05 & 0.50 } \]
 \pause where 
 \begin{itemize}
-\item with state space \{A,C,G,T\} and
-\item each cell provides the probability of moving from the row nucleotide to the column nucleotide.
+\item with state space \{A,C,G,T\} \pause and
+\item each cell provides the probability of moving from the row nucleotide to the column nucleotide. \pause
 \end{itemize}
 
 {\tiny \url{http://tata-box-blog.blogspot.com/2012/04/introduction-to-markov-chains-and.html}}
@@ -115,17 +116,20 @@ T & 0.20 & 0.10 & 0.05 & 0.50 } \]
 
 
 \begin{frame}[fragile]
-<<dna_seq, fig.width=10>>=
+<<dna_seq, fig.width=12>>=
 nucleotides = factor(c("A","C","G","T"))
-dna_seq_m = matrix(cbind(c(.6,.1,.05,.4), c(.1,.5,.2,.05), c(.1,.3,.7,.05), c(.2,.1,.05,.5)),4)
+dna_seq_m = matrix(rbind(c(.6,.1,.1,.2), c(.1,.5,.3,.1), c(.05,.2,.7,.05), c(.4,.05,.05,.5)),4)
 r_dna_seq = function(n,theta0) {
   theta = rep(theta0,n+1)
   for (i in 1:n) theta[i+1] = sample(nucleotides,1,prob=dna_seq_m[as.numeric(theta[i]),])
   theta
 }
-qplot(0:n,r_dna_seq(n, sample(nucleotides,1)))+labs(x="Time",y="Nucleotide",main="Markov chain for a DNA sequence")
+(my_seq = r_dna_seq(n, sample(nucleotides,1)))
+qplot(0:n,my_seq)+labs(x="Time",y="Nucleotide",main="Markov chain for a DNA sequence")
 @
 \end{frame}
+
+
 
 \subsection{Random walk on the integers}
 \begin{frame}
@@ -139,7 +143,7 @@ P_{ij} = \left\{ \begin{array}{ll}
 \]
 where 
 \begin{itemize}
-\item the state space is $\{\ldots,-1,0,1,\ldots\}$ 
+\item the state space is the integers, i.e. $\{\ldots,-1,0,1,\ldots\}$ \pause and 
 \item the transition matrix $P$ is infinite-dimensional.
 \end{itemize}
 \end{frame}
@@ -152,125 +156,65 @@ rwalk = function(n, theta0) {
   for (i in 1:n) theta[i+1] = sample(c(-1,0,1), 1)+theta[i]
   theta
 }
-qplot(0:n, rwalk(n, theta0=0))
+qplot(0:n, rwalk(n, theta0=0))+labs(x="Time",y="State",title="Random walk on the integers")
 @
 \end{frame}
 
-\subsection{AR1}
-\begin{frame}
-\frametitle{Autoregressive process of order 1}
-With continuous support, the transition can be represented with a probability density function, e.g. 
-\[ \theta^t|\theta^{t-1} \sim N(\mu+ \rho [\theta^{t-1}-\mu], \sigma^2). \]
-\end{frame}
 
-\begin{frame}[fragile]
-<<autoregressive_process_1, fig.width=10>>=
-rar1 = function(n, mu, rho, sigma, theta0) {
-  theta = rep(theta0, n+1)
-  for (i in 1:n) theta[i+1] = rnorm(1, mu+rho*(theta[i]-mu), sigma)
-  theta
-}
-qplot(0:n, rar1(n, 0,.95,1,0), geom="point")
-@
-\end{frame}
+
+
+
+
 
 \subsection{Stationary distribution}
 \begin{frame}
 \frametitle{Stationary distribution}
-  A key question is `what is the distribution for $\theta^t$ as $t\to\infty$?'
-  
+\small
+  Let $\pi^t$ denote a row vector with 
+  \[ \pi_i^t = Pr(\theta^t=i). \]
+  \pause Then 
+  \[ \pi^t = \pi^{t-1} P. \]
+  \pause Thus, $\pi^0$ and $P$ completely characterizes $\pi^t$. \pause 
   \begin{definition}
-  The \emph{stationary distribution} is the distribution $\pi$ such that 
-  \begin{itemize}
-  \item finite support: $\pi P = \pi$. 
-  \item countable support: $\sum_{\theta^{t-1}} p(\theta^t|\theta^{t-1}) \pi(\theta^{t-1}) = \pi(\theta^t)$
-  \item continuous support: $\int p(\theta^t|\theta^{t-1}) \pi(\theta^{t-1}) d\theta^{t-1} = \pi(\theta^t)$
-  \end{itemize}
-  where $p(\theta^t|\theta^{t-1})$ is the transition distribution. This is also called the \alert{invariant} or \alert{equilibrium distribution}.
+  The \alert{stationary distribution} is the distribution $\pi$ 
+  \[ \pi = \pi P. \]
+  
+  \pause 
+  
+  This is also called the \alert{invariant} or \alert{equilibrium distribution}.
   \end{definition}
+
+  \pause 
+  
+  Given a transition matrix $P$, \pause 
+  \begin{itemize}
+  \item Does a $\pi$ exist such that $\pi = \pi P$? \pause 
+  \item If $\pi$ is unique, does $\lim_{t\to\infty} \pi^t = \pi$ for all $\pi^0$? \pause In this case, $\pi$ is often called the \alert{limiting distribution}.
+  \end{itemize}
+
 \end{frame}
+
+
+
 
 \begin{frame}
-\frametitle{Correlated coin flips}
+\frametitle{Stationary distribution exists, but is not unique}
 
-For \[ P = \bordermatrix{ & 0 & 1 \cr 0 & 1-p & p \cr 1 & q & 1-q } \]
-\pause we have $\pi = (q,p)/(p+q)$, \pause such that 
-
-\[ \begin{array}{ll}
-\pi P &= \frac{1}{p+q}\left[ \begin{array}{cc} q&p  \end{array} \right] 
-\left[ \begin{array}{cc}1-p & p \\ q & 1-q \end{array} \right] \\
-&= \frac{1}{p+q} \left[ \begin{array}{cc} q(1-p)+pq & pq+p(1-q) \end{array}  \right] \\
-&= \frac{1}{p+q} \left[ \begin{array}{cc} q & p \end{array}  \right] \\
-&= \pi
-\end{array} \]
-Thus $\pi$ is the stationary distribution for the Markov chain with transition matrix $P$.
-\end{frame}
-
-\begin{frame}[fragile]
-\frametitle{Calculate numerically}
-
-For finite support and $P^t = P^{t-1}P$, we have 
-\[ \lim_{t\to\infty} P^t = \left[ \begin{array}{c} \pi \\ \ldots \\ \pi \end{array} \right] \]
-
-<<P>>=
-p = 0.9; q = 0.5
-create_P = function(p,q) matrix(c(1-p,p,q,1-q), 2, byrow=TRUE)
-P = Pn = create_P(p,q)
-for (i in 1:100) Pn = Pn%*%P
-Pn
-c(q,p)/(p+q)
-@
-
-\end{frame}
-
-\begin{frame}
-\frametitle{Stationary distribution for AR1 process}
-
-Let $\theta^t|\theta^{t-1} \sim N(\mu+\rho[\theta^{t-1}-\mu],\sigma^2)$, or, equivalently
-\[ \theta^t = \mu+\rho[\theta^{t-1}-\mu] + \epsilon_t \]
-where $\epsilon_t \sim N(0,\sigma^2)$. \pause If $\theta_{t-1} \sim N(\mu,\sigma^2/[1-\rho^2])$, then 
-\[ \begin{array}{rl}
-E[\theta^t] &= \mu \\
-V[\theta^t] &= \rho^2 \frac{\sigma^2}{1-\rho^2} + \sigma^2 = \sigma^2
-\end{array} \]
-Thus $\theta^t \sim N(\mu,\sigma^2/[1-\rho^2])$ is the stationary distribution for an AR1 process.
-\end{frame}
-
-\begin{frame}[fragile]
-\frametitle{Approximate via simulation}
-<<ar1_stationary_distribution, fig.width=10>>=
-mu = 10; sigma = 4; rho = 0.9
-d = rdply(1000, function(x) {
-  x = rcauchy(1) # initial draw (clearly not from stationary distribution)
-  for (i in 1:100) x = rnorm(1,mu+rho*(x-mu),sigma)
-  data.frame(x=x)
-})
-ggplot(d, aes(x=x))+geom_histogram(aes(y=..density..), binwidth=1)+stat_function(fun = dnorm, arg = list(mean=mu,sd=sigma/sqrt(1-rho^2)),col=2,lwd=2)
-@
-\end{frame}
-
-
-
-\subsection{Convergence}
-\begin{frame}
-\frametitle{Convergence}
-
-Consider discrete support Markov chains. \pause Let 
-\[
-\pi^t_i = Pr(\theta^t=i) \mbox{ and } 
-P_{ij} = Pr(\theta^t=j|\theta^{t-1}=i) 
-\]
-with $\pi^t = (\pi_1^t,\pi_2^t,\ldots)$ and $P$ has elements $P_{ij}$. 
+Let 
+\[ P = \bordermatrix{ & 0 & 1 \cr 0 & 1 & 0 \cr 1 & 0 & 1 } \]
+\pause then 
+\[ \pi = \pi P \]
+for any $\pi$. 
 
 \vspace{0.2in} \pause 
 
-Two questions:
-\begin{itemize}
-\item Does $\pi$ exist, such that $\pi P = \pi$?
-\item Does $\lim_{t\to\infty} \pi^t = \pi$ for all $\pi^0$?
-\end{itemize}
+This Markov chain stays where it is.
 
 \end{frame}
+
+
+
+
 
 
 
@@ -281,14 +225,43 @@ Two questions:
 
 \begin{definition}
 A Markov chain is \alert{irreducible} if for all $i$ and $j$
-\[ P(\theta^{t_{ij}}=j|\theta^0=i) > 0 \]
+\[ Pr(\theta^{t_{ij}}=j|\theta^0=i) > 0 \]
 for some $t_{ij}\ge 0$.
 \end{definition}
 \pause 
 Reducible example:
-\[ P = \bordermatrix{ & 0 & 1 \cr 0 & 1 & 0 \cr 1 & 0 & 1 } \]
-\pause where $\pi P=\pi$ for any $\pi$\pause, i.e. the stationary distribution is not unique.
+\[ P = \bordermatrix{ & 0 & 1 & 2 & 3  \cr 
+0 & 0.5 & 0.5 & 0 & 0 \cr
+1 & 0.5 & 0.5 & 0 & 0 \cr
+2 & 0 & 0 & 0.5 & 0.5 \cr
+3 & 0 & 0 & 0.5 & 0.5 } \]
 \end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Stationary distribution is unique, but is not the limiting distribution.}
+
+Let 
+\[ P = \bordermatrix{ & 0 & 1 \cr 0 & 0 & 1  \cr 1 & 1 & 0 } \]
+\pause then $\pi=\left(\frac{1}{2}\,\,\frac{1}{2}\right)$ since $\pi=\pi P$\pause, but
+\[ \lim_{t\to\infty} \pi^t \ne \pi \,\forall\, \pi^0\]
+\pause since 
+
+\[ 
+\pi^t = 
+\left\{ \begin{array}{rll}
+\pi^0 & t\mbox{ even} \pause \\
+1-\pi^0 & t\mbox{ odd}
+\end{array} \right. \]
+
+\vspace{0.2in} \pause 
+
+This Markov chain jumps back and forth.
+
+\end{frame}
+
 
 
 
@@ -296,23 +269,45 @@ Reducible example:
 \subsection{Aperiodic}
 \begin{frame}\frametitle{Aperiodic}
 
-\vspace{-.2in}
-
 \begin{definition}
-The \alert{period} $k$ of a state $i$ is 
-\[ k = \mbox{gcd}\{t: P(\theta_t=i|\theta_0=i)>0\}\]
-where gcd is the greatest common divisor. \pause If $k=1$, then the state is said to be \alert{aperiodic}, i.e.
-\[ P(\theta^{t'}=i|\theta^0=i)>0 \]
+The \alert{period} $k_i$ of a state $i$ is 
+\[ k_i = \mbox{gcd}\{t: Pr(\theta^t=i|\theta^0=i)>0\}\]
+where gcd is the greatest common divisor. \pause If $k_i=1$, then state $i$ is said to be \alert{aperiodic}\pause, i.e.
+\[ Pr(\theta^{t'}=i|\theta^0=i)>0 \]
 for $t'>t$ for some $t$. \pause A Markov chain is \alert{aperiodic} if every state is aperiodic.
 \end{definition}
 
 \pause 
-{\small
+Period example:
+\[ P = \bordermatrix{ & 0 & 1 & 2 & 3  \cr 
+0 & 0 & 1 & 0 & 0 \cr
+1 & 0 & 0 & 1 & 0 \cr
+2 & 0 & 0 & 0 & 1 \cr
+3 & 1 & 0 & 0 & 0 } \]
 
-Periodic example:
-\[ P = \bordermatrix{ & 0 & 1 \cr 0 & 0 & 1 \cr 1 & 1 & 0 } \]
-\pause where $\pi=(0.5\, 0.5)$ is the stationary distribution\pause, but the Markov chain does not converge to this distribution.
-}
+\end{frame}
+
+
+\begin{frame}\frametitle{Example}
+Let
+\[ P = \left(
+\begin{array}{cc}
+0 & 1  \\
+\frac{1}{2} & \frac{1}{2} 
+\end{array}
+\right) \]
+\pause Note that 
+\[ \begin{array}{rl}
+Pr(\theta^1=0|\theta^0=0) &= \pause0 \pause  \\
+Pr(\theta^2=0|\theta^0=0) &= \pause\frac{1}{2} \pause \\
+Pr(\theta^3=0|\theta^0=0) &= \pause\frac{1}{2}\frac{1}{2} = \frac{1}{4} \pause \\
+Pr(\theta^4=0|\theta^0=0) &= \pause\frac{1}{2}\frac{1}{2}+\frac{1}{2}\frac{1}{2}\frac{1}{2} = \frac{3}{8} \pause \\ 
+\vdots
+\end{array} \]
+generally $Pr(\theta^t=0|\theta^0=0)>0$ for all $t>1$. \pause The \alert{period} $k$ of state 0 is 
+\[ \mbox{gcd}\{t: Pr(\theta^t=i|\theta^0=i)>0\}\pause =\mbox{gcd}\{2,3,4,5,\ldots \}\pause =1 \]
+\pause Thus state $0$ is aperiodic. \pause State $1$ is trivially aperiodic since $P(\theta^1=1|\theta^0=1)=1/2>0$. \pause Thus the Markov chain is aperiodic.
+
 \end{frame}
 
 
@@ -325,12 +320,53 @@ Every state in an irreducible Markov chain has the same period. Thus, in an irre
 \end{lemma}
 \pause
 \begin{theorem}
-A finite support, irreducible Markov chain has a unique stationary distribution $\pi$. If it is aperiodic, then $\lim_{t\to\infty} \pi^t=\pi$ for all $\pi^0$.
+A \alert{finite} state space, \alert{irreducible} Markov chain has a unique stationary distribution $\pi$. If it is \alert{aperiodic}, then $\lim_{t\to\infty} \pi^t=\pi$ for all $\pi^0$.
 \end{theorem}
-\pause
-Example
-\[ P = \bordermatrix{ & 0 & 1 \cr 0 & 1-p & p \cr 1 & q & 1-q } \]
-is irreducible and aperiodic or $0<p,q<1$\pause, thus the Markov chain with transition matrix $P$ has a stationary distribution and the chain converges to this distribution. 
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Correlated coin flips}
+\small
+
+For \[ P = \bordermatrix{ & 0 & 1 \cr 0 & 1-p & p \cr 1 & q & 1-q } \]
+is irreducible and aperiodic if $0<p,q<1$\pause, thus the Markov chain with transition matrix $P$ has a unique stationary distribution and the chain converges to this distribution. 
+
+\pause Since $\pi = \pi P$ and $\pi_0+\pi_1=1$, we have 
+
+\[ \begin{array}{rl}
+\pi_0 &= \pi_0(1-p)+\pi_1 q \pause \implies \\
+\frac{p}{q} &= \frac{\pi_1}{\pi_0} \pause = \frac{\pi_1}{1-\pi_1} \pause \implies \\
+\pi_1 &= \frac{p}{p+q} \pause \implies  \\
+\pi_0 &= \frac{q}{p+q}
+\end{array} \]
+\pause 
+
+So, the stationary distribution for $P$ is $\pi=(q,p)/(p+q)$.
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+\frametitle{Calculate numerically}
+
+For finite state space and $P^t = P^{t-1} P$\pause, we have 
+\[ \lim_{t\to\infty} \pi^t 
+= \lim_{t\to\infty} \pi^0 P^t \pause
+= \pi^0 \lim_{t\to\infty} P^t \pause 
+= \pi^0 \left[ \begin{array}{c} \pi \\ \vdots \\ \pi \end{array} \right] \pause 
+= \pi \pause  \]
+
+<<P>>=
+p = 0.2; q = 0.4
+create_P = function(p,q) matrix(c(1-p,p,q,1-q), 2, byrow=TRUE)
+P = Pt = create_P(p,q)
+for (i in 1:100) Pt = Pt%*%P
+Pt
+c(q,p)/(p+q)
+@
 
 \end{frame}
 
@@ -339,23 +375,25 @@ is irreducible and aperiodic or $0<p,q<1$\pause, thus the Markov chain with tran
 
 \begin{frame}
 \frametitle{Random walk on the integers}
-
-\[ p(\theta^t=j|\theta^{t-1}=i) = \left\{ \begin{array}{ll} 
+Let 
+\[ P_{ij} = \left\{ \begin{array}{ll} 
 1/3 & j\in \{i-1,i,i+1\} \\
-0 & \mbox{otherwise} \end{array} \right. \]
-which is 
+0 & \mbox{otherwise} \end{array} \right.. \]
+\pause 
+
+Then, this Markov chain is 
 \begin{itemize}
 \item irreducible 
-\[ 
-P(\theta^{|j-i|}=j|\theta^0=i) = 3^{-|j-i|}>0 
-\]
+\[ Pr(\theta^{|j-i|}=j|\theta^0=i) = 3^{-|j-i|}>0, \]
 
-\item aperiodic 
-\[ 
-P(\theta^t=i|\theta^{t-1}=i)=1/3
-\]
+\item and aperiodic 
+\[ Pr(\theta^t=i|\theta^{t-1}=i)=1/3, \]
 \end{itemize}
 but the Markov chain does not have a stationary distribution.
+
+\vspace{0.2in} \pause
+
+The Markov chain can wander off forever.
 
 \end{frame}
 
@@ -378,9 +416,9 @@ or, more succinctly,
 \[ \pi_i = \frac{1}{3}\pi_{i-1} +\frac{1}{3}\pi_{i} +\frac{1}{3}\pi_{i+1}. \]
 Thus we must solve for $\{\pi_i \}$ that satisfy
 \[ \begin{array}{rlrl}
-2\pi_i &= \pi_{i-1}+\pi_{i+1} \forall i\\
+2\pi_i &= \pi_{i-1}+\pi_{i+1} \,\forall\, i\\
 \sum_{i=-\infty}^\infty \pi_i&=1 \\
-\pi_i & \ge 0 \forall i
+\pi_i & \ge 0 \,\forall\, i
 \end{array} \]
 Note that 
 \[ \begin{array}{rlrl}
@@ -391,14 +429,14 @@ Note that
 \end{array} \]
 Thus
 \[ \begin{array}{rlrl}
-\mbox{if } \pi_1=\pi_0>0, & \mbox{then }\pi_i=\pi_1, \forall i\ge 2\mbox{ and } \sum_{i=0}^\infty \pi_i > 1 \\
+\mbox{if } \pi_1=\pi_0>0, & \mbox{then }\pi_i=\pi_1, \,\forall\, i\ge 2\mbox{ and } \sum_{i=0}^\infty \pi_i > 1 \\
 \mbox{if } \pi_1>\pi_0,   & \mbox{then } \pi_i \to  \infty \\
 \mbox{if } \pi_1<\pi_0,   & \mbox{then } \pi_i \to -\infty \\
-\mbox{if } \pi_1=\pi_0=0, & \mbox{then } \pi_i=0 \forall i\ge 0
+\mbox{if } \pi_1=\pi_0=0, & \mbox{then } \pi_i=0 \,\forall\, i\ge 0
 \end{array} \]
 But we also have $\pi_i = 2\pi_{i+1}-\pi_{i+2}$ so that 
 \[ \begin{array}{rlrl}
-\mbox{if } \pi_1=\pi_0=0, & \mbox{then } \pi_i=0 \forall i\le 0
+\mbox{if } \pi_1=\pi_0=0, & \mbox{then } \pi_i=0 \,\forall\, i\le 0
 \end{array} \]
 Thus a stationary distribution does not exist.
 
@@ -416,9 +454,10 @@ Thus a stationary distribution does not exist.
 \small
 
 \begin{definition}
-Let $T_i$ be the first return time to state $i$, i.e.
+Let $T_i$ be the first return time to state $i$\pause, i.e.
 \[ T_i =\mbox{inf}\{t\ge 1: \theta^t=i|\theta^0=i\} \]
-A state is \alert{recurrent} if $P(T_i<\infty)=1$ and is \alert{transient} otherwise. \pause A recurrent state is \alert{positive recurrent} if $E[T_i]<\infty$ and is \alert{null recurrent} otherwise. \pause A Markov chain is called \alert{positive recurrent} if all of its states are positive recurrent.
+\pause 
+A state is \alert{recurrent} if $Pr(T_i<\infty)=1$ and is \alert{transient} otherwise. \pause A recurrent state is \alert{positive recurrent} if $E[T_i]<\infty$ and is \alert{null recurrent} otherwise. \pause A Markov chain is called \alert{positive recurrent} if all of its states are positive recurrent.
 \end{definition}
 
 \pause
@@ -453,6 +492,57 @@ For an \alert{irreducible} and \alert{aperiodic} Markov chain,
 \end{theorem}
 \end{frame}
 
+
+
+
+
+\begin{comment}
+\subsection{AR1}
+\begin{frame}
+\frametitle{Autoregressive process of order 1}
+With continuous support, the transition can be represented with a probability density function, e.g. 
+\[ \theta^t|\theta^{t-1} \sim N(\mu+ \rho [\theta^{t-1}-\mu], \sigma^2). \]
+\end{frame}
+
+\begin{frame}[fragile]
+<<autoregressive_process_1, fig.width=10>>=
+rar1 = function(n, mu, rho, sigma, theta0) {
+  theta = rep(theta0, n+1)
+  for (i in 1:n) theta[i+1] = rnorm(1, mu+rho*(theta[i]-mu), sigma)
+  theta
+}
+qplot(0:n, rar1(n, 0,.95,1,0), geom="point")
+@
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Stationary distribution for AR1 process}
+
+Let $\theta^t|\theta^{t-1} \sim N(\mu+\rho[\theta^{t-1}-\mu],\sigma^2)$, or, equivalently
+\[ \theta^t = \mu+\rho[\theta^{t-1}-\mu] + \epsilon_t \]
+where $\epsilon_t \sim N(0,\sigma^2)$. \pause If $\theta_{t-1} \sim N(\mu,\sigma^2/[1-\rho^2])$, then 
+\[ \begin{array}{rl}
+E[\theta^t] &= \mu \\
+V[\theta^t] &= \rho^2 \frac{\sigma^2}{1-\rho^2} + \sigma^2 = \sigma^2
+\end{array} \]
+Thus $\theta^t \sim N(\mu,\sigma^2/[1-\rho^2])$ is the stationary distribution for an AR1 process.
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Approximate via simulation}
+<<ar1_stationary_distribution, fig.width=10>>=
+mu = 10; sigma = 4; rho = 0.9
+d = rdply(1000, function(x) {
+  x = rcauchy(1) # initial draw (clearly not from stationary distribution)
+  for (i in 1:100) x = rnorm(1,mu+rho*(x-mu),sigma)
+  data.frame(x=x)
+})
+ggplot(d, aes(x=x))+geom_histogram(aes(y=..density..), binwidth=1)+stat_function(fun = dnorm, arg = list(mean=mu,sd=sigma/sqrt(1-rho^2)),col=2,lwd=2)
+@
+\end{frame}
+\end{comment}
 
 
 \end{document}
