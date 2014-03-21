@@ -1,0 +1,145 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,syntonly,lastpage,hyperref,enumitem,graphicx}
+
+\hypersetup{colorlinks=true,urlcolor=black}
+
+\topmargin      -1.5cm   % read Lamport p.163
+\oddsidemargin  -0.04cm  % read Lamport p.163
+\evensidemargin -0.04cm  % same as oddsidemargin but for left-hand pages
+\textwidth      16.59cm
+\textheight     23.94cm
+\parskip         7.2pt   % sets spacing between paragraphs
+\parindent         0pt   % sets leading space for paragraphs
+\pagestyle{empty}        % Uncomment if don't want page numbers
+\pagestyle{fancyplain}
+
+
+\begin{document}
+\lhead{Homework 3}
+\chead{PSTAT 544 - Bayesian statistics}
+\rhead{Page \thepage\ of \pageref{LastPage}}
+
+This homework is due on Blackboard Learn by 8:00am on 6 Feb 2014. There will be a total of 10 points available. 
+
+<<>>=
+library(ggplot2)
+library(plyr)
+@
+
+\begin{enumerate}
+\item The data set below is the radon measurement in pCi/L for a random sample of houses in Minnesota. Provide a Bayesian estimate and credible interval for the probability that a randomly selected house will be at or above the federal limit of 4 pCi/L. 
+
+<<radon_data>>=
+radon = c(3.8,  1.7,  5.5,  2.1,  1.6,  6.5,  2.2,  4,  3.6,  3.5,  
+          10.1,  7,  5.5,  5.5,  2.7,  5.2,  3.1,  2.5,  8.6,  1.2,  
+          6.2,  4.2,  0.7,  2.8,  1.2,  2.7,  1.2,  4.9,  1,  2.6,  
+          1.2,  3.5,  3.5,  30.9,  0.5,  2.8,  2.2,  11.6,  3.1,  
+          3.9,  9.3,  5)
+@
+
+\paragraph{Solution}
+
+The only solution that will provide a credible interval is to treat the data as binary with $Y_i=1$ if county $i$ is at or above 4 pCi/L. Assuming the Jeffreys prior for the success probability results in the following estimate and credible interval.
+
+<<radon_data_binary>>=
+cutoff = 4
+y = radon >= cutoff
+a = b = .5
+ap = a+sum(y)
+bp = b+length(y)-sum(y)
+qbeta(c(.5,.025,.975), ap, bp)
+@
+
+Given the wording of the question (which could have been better), we are really looking for the (predictive) probability that a new house will be above 4 pCi/L. The interval that we calculated is for the parameter, not a new house. The posterior predictive probability is 
+\[ p(\tilde{y}=1|y) = \frac{Beta(a+\sum y_i+1,b+n-\sum y_i)}{Beta(a+\sum y_i,b+n-\sum y_i)}\]
+
+<<radon_data_binary_predictive>>=
+beta(ap+1,bp)/beta(ap,bp)
+@
+
+But there is no possibility of getting a credible interval from this quantity (thus the poor wording of the question). 
+
+On one hand, this seems like a good non-parametric approach to the problem since we are not assuming any distributional form for the actual data. On the other hand, this seems a bit unsatisfactory since we are throwing any of that distributional information. Making a histogram of the data (below) suggests the use of a log-normal distribution.
+
+<<radon_data_histogram, fig.height=4, fig.width=4>>=
+print(qplot(radon, geom="histogram"))
+@
+
+The easiest approach is to simply take a logarithm of the data and work with it on the logarithmic scale. Assuming the non-informative prior $p(\mu,\sigma^2)\propto 1/\sigma^2$, we have the posterior $p(\mu,\sigma^2|y) = N(\mu|\overline{y}, \sigma^2/n) \mbox{Inv-}\chi^2(\sigma^2|n-1,S^2)$.
+
+<<radon_data_lognormal>>=
+y = log(radon)
+n = length(radon)
+
+# Posterior
+post = list(k=n, v=n-1)
+post$m = mean(y)
+post$s2 = var(y)
+@
+
+To obtain the predictive probability for a new home, we need to find 
+\[ p(\tilde{y}|y) = \int \int p(\tilde{y}|\mu,\sigma^2) p(\mu,\sigma^2|y) d\mu d\sigma^2. \]
+As discussed on page 66 of Bayesian Data Analysis, this has a student $t$ distribution with location $\overline{y}$, scale $[1+1/n]^{1/2}s$, and degrees of freedom $n-1$. We can use the following relation to calculate the predictive probability that a new house will be over 4 pCi/L: 
+\[P(\tilde{y}>\log(4)) = P\left( \frac{\tilde{y}-\overline{y}}{[1+1/n]^{1/2}s} > \frac{\log(4)-\overline{y}}{[1+1/n]^{1/2}s} \right) = P\left(t_{n-1} > \frac{\log(4)-\overline{y}}{[1+1/n]^{1/2}s}\right) \]
+where $t_{n-1}$ is a standard t-distribution with $n-1$ degrees of freedom. 
+
+<<radon_data_lognormal_predictive>>=
+1-pt((log(4)-post$m)/(sqrt(1+1/n)*sqrt(post$s2)),n-1)
+@
+
+This is a model based estimate for the probability the next house will have radon above 4 pCi/L. 
+
+\item Consider the following data set.
+
+<<airline_fatalities>>=
+d = data.frame(year=1976:1985, 
+              fatal_accidents = c(24,25,31,31,22,21,26,20,16,22),
+              passenger_deaths = c(734,516,754,877,814,362,764,809,223,1066),
+              death_rate = c(0.19,0.12,0.15,0.16,0.14,0.06,0.13,0.13,0.03,0.15))
+d$miles_flown = d$passenger_deaths/d$death_rate # 100 million miles
+d
+@
+
+\begin{enumerate}
+\item Consider the model $Y_i\stackrel{ind}{\sim} Po(x_i \lambda)$ where $x_i$ are known \emph{exposures} and $\lambda$ is the rate. Model the rate of fatal accidents per miles flown, i.e. $y_i$ is the number of fatal accidents in year $i$ and $x_i$ are the number of miles flown (using 100 million miles is fine). Provide a 95\% credible interval for $\lambda$ and a 95\% prediction interval for the number of fatal accidents in 1986 assuming $8\times 10^{11}$ miles are flown. 
+
+\paragraph{Solution}
+
+The Jeffreys prior for $\lambda$ is $p(\lambda)\propto \lambda^{-1/2}$ and the posterior is $\lambda|y \sim Ga(1/2+\sum y_i, \sum x_i)$ which is proper so long as $x_i\ne 0$ for some $i$ (since $x_i>0$ for all $i$). The predictive distribution (modifying slightly from hw1) is a negative binomial with probability of success $1/(\tilde{x}+\sum x_i)$ and number of failures $1/2+\sum y_i$. Since $y_i$ are integers, the intuition makes sense only if our initial failures is an integer, i.e. not 1/2. Nonetheless, the math still works out if you use 1/2. 
+
+<<rate>>=
+a = 1/2+sum(d$fatal_accidents)
+b = sum(d$miles_flown)
+xtilde = 8000 # 100 million miles
+
+# Credible interval
+qgamma(c(.025,.975), a, b)
+
+# Prediction interval
+qnbinom(c(.025,.975), a, b/(xtilde+b)) # watch parameterization
+@
+
+You should always check that your prediction intervals make sense. This interval is on the high side relative to the previous years, but we are also assuming more miles flown than in previous years. 
+
+\item Consider the model $Y_i\stackrel{ind}{\sim} Po(x_i\lambda_i)$ where $\lambda_i$ is the rate for year $i$. Assume independent priors for $\lambda_i$ and calculate the probability that the rate in 1985 is greater than the rate in each of the years before it (there will be 9 probabilities). 
+
+\paragraph{Solution}
+
+Assuming independent priors for $\lambda_i$ provides an independent analysis for each year. Assuming Jeffreys prior, the posterior for each year is $\lambda_i|y\sim Ga(1/2+y_i,x_i)$ which will be proper so long as $x_i\ne 0$. To estimate the desired probabilities, we simulate from the posteriors.
+
+<<independent_lambda>>=
+d2 = data.frame(year=d$year, a=1/2+d$fatal_accidents, b=d$miles_flown)
+d2 = ddply(d2, .(year), function(x) data.frame(a=x$a, b=x$b, gamma=rgamma(1e4, x$a, x$b)))
+ddply(d2, .(year), summarize, prob=mean(d2$gamma[d2$year==1985]>gamma))
+@
+
+\end{enumerate}
+
+
+
+\end{enumerate}
+
+
+
+
+\end{document}

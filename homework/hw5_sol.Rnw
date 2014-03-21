@@ -1,0 +1,188 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,syntonly,lastpage,hyperref,enumitem,graphicx,verbatim}
+
+\hypersetup{colorlinks=true,urlcolor=black}
+
+\topmargin      -1.5cm   % read Lamport p.163
+\oddsidemargin  -0.04cm  % read Lamport p.163
+\evensidemargin -0.04cm  % same as oddsidemargin but for left-hand pages
+\textwidth      16.59cm
+\textheight     23.94cm
+\parskip         7.2pt   % sets spacing between paragraphs
+\parindent         0pt   % sets leading space for paragraphs
+\pagestyle{empty}        % Uncomment if don't want page numbers
+\pagestyle{fancyplain}
+
+
+
+\begin{document}
+\lhead{Homework 5}
+\chead{PSTAT 544 - Bayesian statistics}
+\rhead{Page \thepage\ of \pageref{LastPage}}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+library(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+@
+
+\begin{enumerate}
+\item Reconsider the airline fatality data shown below. Consider the model $Y_i\stackrel{ind}{\sim} Po(x_i \lambda_i)$ where $y_i$ is the number of fatal accidents in year $i$ and $x_i$ is the number of 100 million miles flown in year $i$. Build a hierarchical model for these data by putting a common prior on the $\lambda_i$ and learning the parameters in this prior. The choice of prior is up to you but you should justify this choice.
+
+<<airline_fatalities>>=
+d = data.frame(year=1976:1985, 
+              fatal_accidents = c(24,25,31,31,22,21,26,20,16,22),
+              passenger_deaths = c(734,516,754,877,814,362,764,809,223,1066),
+              death_rate = c(0.19,0.12,0.15,0.16,0.14,0.06,0.13,0.13,0.03,0.15))
+d$miles_flown = d$passenger_deaths/d$death_rate # 100 million miles
+d
+@
+
+Please provide posterior summaries of all model parameters, i.e. $\lambda_i$ and the parameters in your prior for the $\lambda_i$, through histograms of posterior samples or something similar.
+
+\paragraph{Solution:}
+
+There are certainly other solutions, but here is one. Assume the following hierarchical Poisson model
+\begin{align*}
+Y_i &\stackrel{ind}{\sim} Po(x_i \lambda_i) \\
+\lambda_i &\stackrel{iid}{\sim} Ga(\alpha,\beta) 
+\end{align*}
+where $x_i$ are the number of 100 million miles flown, $y_i$ are the number of fatal accidents both in year $i$, $\alpha$ can be interpreted as the prior number of fatal accidents, and $\beta$ can be interpreted as the prior number of 100 million miles flown. 
+
+Now we need to assign a prior to $\alpha$ and $\beta$. Rather than assigning a prior on these parameters, reparameterize the model via the prior mean $\mu=\alpha/\beta$. Based on prior experience, we may expect the number of fatal accidents per 100 million miles flown to be relatively small. So we might choose $\mu \sim Ga(1,5)$ which has 95\% probability that $\mu$ is between (approximately) 0 and 1. Now, we can put a prior on $\beta$ so that the data can inform us about how consistent the accident rates ($\lambda_i$s) are. If $\beta$ is small, then there is very little consistency across years while if $\beta$ is large, then the rate appears to be consistent from year to year. With $\beta$ around 6,000, the consistency across years will be worth about as much as the data for that year. 
+
+<<prior>>=
+prior=list(a_mu = 1,
+           b_mu = 5,
+           a_beta = 6/10,
+           b_beta = 1/10000)
+@
+
+So, a reasonable prior is $\beta \sim Ga(.6, .00001)$ which says that $\beta$ is between (approximately) \Sexpr{round(qgamma(.025,prior$a_beta,prior$b_beta))} and \Sexpr{round(qgamma(.975,prior$a_beta,prior$b_beta))} with 95\% probability.
+
+<<model, message=FALSE>>=
+library(rjags)
+model = "
+model {
+  for (i in 1:n) {
+    y[i] ~ dpois(x[i]*lambda[i])
+    lambda[i] ~ dgamma(alpha,beta)
+  }
+  alpha <- mu*beta
+  mu   ~ dgamma(a_mu,  b_mu)
+  beta ~ dgamma(a_beta,b_beta)
+  sigma <- sqrt(alpha)/beta
+}
+"
+
+dat = c(list(n=nrow(d), y=d$fatal_accidents, x=d$miles_flown), prior)
+m = jags.model(textConnection(model), dat, n.chains=3)
+res = coda.samples(m, c("lambda","alpha","beta","mu","sigma"), 1000)
+#gelman.diag(res)
+#sm = summary(res)
+@
+
+First let's look at the hyperparamters $\alpha$ and $\beta$ and compare their posteriors to priors.
+
+<<multiplot, echo=FALSE>>=
+# From http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_%28ggplot2%29/
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  require(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+@
+
+<<hyperparameters>>=
+library(ggplot2)
+library(plyr)
+library(reshape2)
+dr = ldply(res, function(x) {as.data.frame(x)})
+
+plots = list()
+plots[[1]] = ggplot(dr, aes(x=mu))+geom_histogram(aes(y=..density..))+
+   stat_function(fun=function(x) dgamma(x,prior$a_mu,prior$b_mu), col="red", lwd=2)
+plots[[2]] = ggplot(dr, aes(x=beta))+geom_histogram(aes(y=..density..))+
+   stat_function(fun=function(x) dgamma(x,prior$a_beta,prior$b_beta), col="red", lwd=2)
+plots[[3]] = ggplot(dr, aes(x=sigma))+geom_histogram(aes(y=..density..))
+plots[[4]] = ggplot(dr, aes(x=alpha))+geom_histogram(aes(y=..density..))
+multiplot(plotlist=plots, cols=2)
+@
+
+We can also look at posterior relationship between parameters of interest, e.g. $\alpha$ and $\beta$.
+
+<<posterior_correlation>>=
+(qplot(dr$alpha,dr$beta))
+@
+
+We are typically interested in inference on the accident rates ($\lambda_i$s).
+
+<<lambdas>>=
+m = melt(dr[,grep("lambda", names(dr))], variable.name="estimate", value.name="sample")
+(ggplot(m, aes(x=sample, color=estimate))+geom_density())
+@
+
+There appears to be a pattern of decreasing accident rates as the years increase. We can also see this when looking at the credible intervals below. 
+
+<<cis>>=
+ci = ddply(m, .(estimate), summarize, lcl=quantile(sample, .025), ucl=quantile(sample, .975))
+ci$year = d$year
+(ggplot(ci, aes(x=lcl,xend=ucl,y=year,yend=year,col=estimate))+geom_segment(lwd=2))
+@
+
+We can compare these results to the independent analysis, i.e. no borrowing of information across the years, using Jeffreys prior for each year.
+
+<<independent>>=
+ci$model = "hierarchical"
+ci$year = ci$year+0.1
+d$lcl = qgamma(.025, .5+d$fatal_accidents, d$miles_flown)
+d$ucl = qgamma(.975, .5+d$fatal_accidents, d$miles_flown)
+d$model = "independent"
+(ggplot(rbind(ci[,c("year","lcl","ucl","model")],d[,c("year","lcl","ucl","model")]), 
+        aes(x=lcl,xend=ucl,y=year,yend=year,col=model))+geom_segment(lwd=2))
+@
+
+We see the narrower credible intervals as well as shrinkage toward the overall average. 
+
+\end{enumerate}
+
+\end{document}
