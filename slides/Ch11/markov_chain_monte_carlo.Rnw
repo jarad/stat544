@@ -1,0 +1,72 @@
+\documentclass{beamer}
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\title[Markov chain theory]{Discrete-time, discrete-space Markov chain theory}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\I}{\mathrm{I}}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+library(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+##############################################
+# Markov chain Monte Carlo                   #
+##############################################
+library(reshape2)
+library(plyr)
+library(ggplot2)
+library(rjags)
+set.seed(1)
+@
+
+\frame{\maketitle}
+
+\section{Markov chain Monte Carlo}
+\begin{frame}
+\frametitle{Markov chain construction}
+
+Suppose we wish to simulate from $p(\theta|y)$, but cannot do so directly. 
+
+\vspace{0.2in} 
+
+Construct a Markov chain with stationary distributon $p(\theta|y)$ and run it long enough that the samples are approximately from $p(\theta|y)$. 
+
+\end{frame}
+
+
+\section{Metropolis-Hastings algorithm}
+\begin{frame}
+\frametitle{Metropolis-Hastings algorithm}
+
+\begin{enumerate}
+\item Sample $\theta^0\sim p^0(\theta|y)$ such that $p(\theta^0|y)>0.$
+\item For $i=1,2,\ldots$,
+  \begin{enumerate}
+  \item Sample $\theta^*\sim q(\theta)$pas
+  \end{enumerate}
+\end{enumerate}
+
+\end{frame}
+
+\end{document}
