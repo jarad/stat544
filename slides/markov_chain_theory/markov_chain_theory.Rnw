@@ -52,24 +52,30 @@ A \alert{discrete-time, homogeneous Markov chain} is a sequence of random variab
 
 \pause 
 
-Examples
-\begin{itemize}
-\item Correlated coin flip
-\item DNA sequence
-\item Random walk on the integers
-\item Autoregressive process of order 1
-\end{itemize}
+\begin{definition}
+The \alert{state space} is the support of the Markov chain.
+\end{definition}
 
+\pause 
+
+\begin{definition}
+A Markov chain who state space is discrete can be represented with a row stochastic transition matrix $P$ with element $P_{ij}$ representing the probability of moving from state $i$ to state $j$ in one time-step. 
+\end{definition}
 \end{frame}
+
+
+
+
 
 \subsection{Correlated coin flip}
 \begin{frame}
 \frametitle{Correlated coin flip}
-With finite support, the transition distribution can be represented as a row stochastic transition matrix, e.g. 
+Let 
 \[ P = \bordermatrix{ & 0 & 1 \cr 0 & 1-p & p \cr 1 & q & 1-q } \]
-where 
-\begin{itemize}
-\item $p$ is the probability of switching from 0 to 1 and 
+\pause where 
+\begin{itemize}[<+->]
+\item the state space is $\{0,1\}$, 
+\item $p$ is the probability of switching from 0 to 1, and 
 \item $q$ is the probability of switching from 1 to 0.
 \end{itemize}
 \end{frame}
@@ -84,7 +90,7 @@ rflip = function(n, p, q, theta0) {
 }
 set.seed(1)
 n = 100
-qplot(0:n, rflip(n,p <- .9,q <- .5, rbinom(1,1,.5)))
+qplot(0:n, rflip(n,p <- .9,q <- .5, rbinom(1,1,.5)))+labs(x="Time",y="State",title="Correlated coin flip")
 @
 \end{frame}
 
@@ -92,14 +98,15 @@ qplot(0:n, rflip(n,p <- .9,q <- .5, rbinom(1,1,.5)))
 \subsection{DNA sequence}
 \begin{frame}
 \frametitle{DNA sequence}
-With finite support, the transition distribution can be represented as a row stochastic transition matrix, e.g. 
+Let 
 \[ P = \bordermatrix{ & A & C & G & T \cr 
 A & 0.60 & 0.10 & 0.05 & 0.40 \cr 
 C & 0.10 & 0.50 & 0.20 & 0.05 \cr
 G & 0.10 & 0.30 & 0.70 & 0.05 \cr
 T & 0.20 & 0.10 & 0.05 & 0.50 } \]
-where 
+\pause where 
 \begin{itemize}
+\item with state space \{A,C,G,T\} and
 \item each cell provides the probability of moving from the row nucleotide to the column nucleotide.
 \end{itemize}
 
@@ -116,17 +123,25 @@ r_dna_seq = function(n,theta0) {
   for (i in 1:n) theta[i+1] = sample(nucleotides,1,prob=dna_seq_m[as.numeric(theta[i]),])
   theta
 }
-qplot(0:n,r_dna_seq(n, sample(nucleotides,1)))
+qplot(0:n,r_dna_seq(n, sample(nucleotides,1)))+labs(x="Time",y="Nucleotide",main="Markov chain for a DNA sequence")
 @
 \end{frame}
 
 \subsection{Random walk on the integers}
 \begin{frame}
 \frametitle{Random walk on the integers}
-With countable support, the transition can be represented with a probability mass function, e.g. 
-\[ p(\theta^t=j|\theta^{t-1}=i) = \left\{ \begin{array}{ll} 
-1/3 & j\in \{i-1,i,i+1\} \\
-0 & \mbox{otherwise} \end{array} \right. \]
+Let 
+\[ 
+P_{ij} = \left\{ \begin{array}{ll}
+1/3 &\mbox j\in \{i-1,i,i+1\} \\
+0 & \mbox{otherwise}
+\end{array} \right.
+\]
+where 
+\begin{itemize}
+\item the state space is $\{\ldots,-1,0,1,\ldots\}$ 
+\item the transition matrix $P$ is infinite-dimensional.
+\end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -337,11 +352,107 @@ P(\theta^{|j-i|}=j|\theta^0=i) = 3^{-|j-i|}>0
 
 \item aperiodic 
 \[ 
-\mbox{gcd}\{t: Pr(\theta^t=i|\theta^0=i)>0\}=\mbox{gcd}\{1,2,3,\ldots\} = 1
+P(\theta^t=i|\theta^{t-1}=i)=1/3
 \]
 \end{itemize}
 but the Markov chain does not have a stationary distribution.
 
 \end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{}
+\tiny 
+
+A stationary distribution must satisfy $\pi=\pi P$ with 
+\[ P = \left( \begin{array}{ccccccccc} 
+&&&& \vdots &&&& \\
+& 0 & 1/3 & 1/3 & 1/3 & 0 & 0 & 0 & \\
+\cdots & 0 & 0 & 1/3 & 1/3 & 1/3 & 0 & 0 & \cdots \\
+& 0 & 0 & 0 & 1/3 & 1/3 & 1/3 & 0 & \\
+&&&& \vdots &&&& 
+\end{array}  \right) \]
+or, more succinctly, 
+\[ \pi_i = \frac{1}{3}\pi_{i-1} +\frac{1}{3}\pi_{i} +\frac{1}{3}\pi_{i+1}. \]
+Thus we must solve for $\{\pi_i \}$ that satisfy
+\[ \begin{array}{rlrl}
+2\pi_i &= \pi_{i-1}+\pi_{i+1} \forall i\\
+\sum_{i=-\infty}^\infty \pi_i&=1 \\
+\pi_i & \ge 0 \forall i
+\end{array} \]
+Note that 
+\[ \begin{array}{rlrl}
+\pi_2 &= 2\pi_1-\pi_0 \\
+\pi_3 &= 2\pi_2-\pi_1 = 3\pi_1-2\pi_0 \\
+\vdots \\
+\pi_i &= i\pi_1-(i-1)\pi_0
+\end{array} \]
+Thus
+\[ \begin{array}{rlrl}
+\mbox{if } \pi_1=\pi_0>0, & \mbox{then }\pi_i=\pi_1, \forall i\ge 2\mbox{ and } \sum_{i=0}^\infty \pi_i > 1 \\
+\mbox{if } \pi_1>\pi_0,   & \mbox{then } \pi_i \to  \infty \\
+\mbox{if } \pi_1<\pi_0,   & \mbox{then } \pi_i \to -\infty \\
+\mbox{if } \pi_1=\pi_0=0, & \mbox{then } \pi_i=0 \forall i\ge 0
+\end{array} \]
+But we also have $\pi_i = 2\pi_{i+1}-\pi_{i+2}$ so that 
+\[ \begin{array}{rlrl}
+\mbox{if } \pi_1=\pi_0=0, & \mbox{then } \pi_i=0 \forall i\le 0
+\end{array} \]
+Thus a stationary distribution does not exist.
+
+\end{frame}
+
+
+
+
+\subsection{Recurrence}
+
+\begin{frame}
+
+\frametitle{Recurrence}
+
+\small
+
+\begin{definition}
+Let $T_i$ be the first return time to state $i$, i.e.
+\[ T_i =\mbox{inf}\{t\ge 1: \theta^t=i|\theta^0=i\} \]
+A state is \alert{recurrent} if $P(T_i<\infty)=1$ and is \alert{transient} otherwise. \pause A recurrent state is \alert{positive recurrent} if $E[T_i]<\infty$ and is \alert{null recurrent} otherwise. \pause A Markov chain is called \alert{positive recurrent} if all of its states are positive recurrent.
+\end{definition}
+
+\pause
+
+\begin{lemma}
+If a Markov chain is irreducible and one of its states is positive (null) recurrent, then all of its states are positive (null) recurrent.
+\end{lemma}
+
+\pause
+
+\begin{lemma}
+If state $i$ of a Markov chain is aperiodic, then $\lim_{t\to\infty} \pi^t_i = 1/E[T_i]$. 
+\end{lemma}
+
+\end{frame}
+
+
+
+
+
+
+\begin{frame}
+
+\frametitle{}
+\begin{theorem}
+For an \alert{irreducible} and \alert{aperiodic} Markov chain, 
+\begin{itemize}
+\item if the Markov chain is \alert{positive recurrent}, then there exists a unique $\pi$ so that $\pi=\pi P$ and $\lim_{t\to\infty} \pi^t = \pi$ with $\pi_i=1/E[T_i]$, \pause
+\item if there exists a positive vector $\pi$ such that $\pi=\pi P$ and $\sum_i \pi_i=1$, then it must be the stationary distribution and $\lim_{t\to\infty} \pi^t = \pi$, \pause and
+\item if there exists a positive vector $\pi$ such that $\pi=\pi P$ and $\sum_i \pi_i$ is infinite, then a stationary distribution does not exist and $\lim_{t\to\infty} \pi^t_i=0$ for all $i$. 
+\end{itemize}
+\end{theorem}
+\end{frame}
+
+
 
 \end{document}
