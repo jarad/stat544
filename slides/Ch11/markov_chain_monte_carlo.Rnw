@@ -1,5 +1,6 @@
-\documentclass{beamer}
-%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
 
 
 \usecolortheme[RGB={0,0,144}]{structure}
@@ -16,7 +17,7 @@
 %\setbeamertemplate{block body theorem}{bg=orange}
 \setkeys{Gin}{width=0.6\textwidth}
 
-\title[Markov chain theory]{Discrete-time, discrete-space Markov chain theory}
+\title[MCMC]{Markov chain Monte Carlo}
 \author[Jarad Niemi]{Dr. Jarad Niemi}
 \institute[Iowa State]{Iowa State University}
 \date{\today}
@@ -59,14 +60,235 @@ Construct a Markov chain with stationary distributon $p(\theta|y)$ and run it lo
 \begin{frame}
 \frametitle{Metropolis-Hastings algorithm}
 
+Let 
+\begin{itemize}
+\item $q(\theta|y)\propto q(\theta|y)$ be the target distribution and
+\item $\theta^t$ be the current value of the chain.
+\end{itemize}
+
+\vspace{0.2in} \pause
+
+The Metropolis-Hastings algorithm performs the following
 \begin{enumerate}
-\item Sample $\theta^0\sim p^0(\theta|y)$ such that $p(\theta^0|y)>0.$
-\item For $i=1,2,\ldots$,
-  \begin{enumerate}
-  \item Sample $\theta^*\sim q(\theta)$pas
-  \end{enumerate}
+\item propose $\theta^*\sim g(\theta|\theta^t)$
+\item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
+\[ r = 
+\frac{q(\theta^*|y)/g(\theta^*|\theta^t)}{q(\theta^t|y)/g(\theta^t|\theta^*)} = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{g(\theta^t|\theta^*)}{g(\theta^*|\theta^t)} \]
+otherwise, set $\theta^{t+1}=\theta^t$. 
 \end{enumerate}
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Ergodicity of the MH algorithm}
+\begin{itemize}
+\item Markov chain by construction
+\item Irreducible: 
+  \begin{itemize}
+  \item is the support of $p$ is connected?
+  \item does the support of $q$ match the support of $p$?
+  \end{itemize}
+\item Aperiodic: 
+  \begin{itemize}
+  \item non-zero probability of staying at $\theta$ for some $\theta$
+  \end{itemize}
+\item Recurrent: 
+  \begin{itemize}
+  \item believe me?
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+
+
+
+\subsection{Independence Metropolis-Hastings}
+\begin{frame}
+\frametitle{Independence Metropolis-Hastings}
+
+Let 
+\begin{itemize}
+\item $p(\theta|y)\propto q(\theta|y)$ be the target distribution, 
+\item $\theta^t$ be the current value of the chain, \pause and
+\item $g(\theta^*|\theta^t) = g(\theta^*)$, i.e. the proposal is \alert{independent} of the current value.
+\end{itemize}
+
+\vspace{0.2in} \pause
+
+The \alert{independence Metropolis-Hastings algorithm} performs the following
+\begin{enumerate}
+\item propose $\theta^*\sim g(\theta)$
+\item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
+\[ r = 
+\frac{q(\theta^*|y)/g(\theta^*)}{q(\theta^t|y)/g(\theta^t)} = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{g(\theta^t)}{g(\theta^*)} \]
+otherwise, set $\theta^{t+1}=\theta^t$. 
+\end{enumerate}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Example: Normal-Cauchy model}
+  Let $Y\sim N(\theta,1)$ with $\theta\sim Ca(0,1)$ \pause such that the posterior is
+  \[ p(\theta|y) \propto p(y|\theta)p(\theta) \propto \frac{\exp(-(y-\theta)^2/2)}{1+\theta^2} \]
+Use $N(y,1)$ as the proposal, then the Metropolis-Hastings acceptance probability is the $\min\{1,r\}$ with 
+\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{g(\theta^t)}{g(\theta^*)} = \frac{1+(\theta^t)^2}{1+(\theta^*)^2} \] 
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Example: Normal-Cauchy model}
+<<normal_cauchy_independence, fig.width=10>>=
+set.seed(1)
+y = 0 
+n = 100
+theta = rep(NA, n)
+theta[1] = rnorm(1,y)
+for (i in 2:n) {
+  theta_star = rnorm(1,y)
+  logr = log(1+theta[i-1]^2)-log(1+theta_star^2)
+  theta[i] = ifelse(log(runif(1))<logr, theta_star, theta[i-1])
+}
+qplot(1:n, theta)+labs(x="Time", y=expression(theta), title="Independence Metropolis-Hastings")
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Example: Normal-Cauchy model}
+<<normal_cauchy_independence2, fig.width=10>>=
+theta[1] = 10 # This line changed
+for (i in 2:n) {
+  theta_star = rnorm(1,y)
+  logr = log(1+theta[i-1]^2)-log(1+theta_star^2)
+  theta[i] = ifelse(log(runif(1))<logr, theta_star, theta[i-1])
+}
+qplot(1:n, theta)+labs(x="Time", y=expression(theta), title="Independence Metropolis-Hastings")
+@
+\end{frame}
+
+
+\subsection{Random-walk Metropolis}
+\begin{frame}
+\frametitle{Random-walk Metropolis}
+
+Let 
+\begin{itemize}
+\item $p(\theta|y)\propto q(\theta|y)$ be the target distribution, 
+\item $\theta^t$ be the current value of the chain, \pause and
+\item $g(\theta^*|\theta^t) = g(\theta^t|\theta^*)$, i.e. the proposal is \alert{symmetric}.
+\end{itemize}
+
+\vspace{0.2in} \pause
+
+The \alert{Metropolis algorithm} performs the following
+\begin{enumerate}
+\item propose $\theta^*\sim g(\theta)$
+\item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
+\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{g(\theta^t)}{g(\theta^*)} =
+\frac{q(\theta^*|y)}{q(\theta^t|y)} \]
+otherwise, set $\theta^{t+1}=\theta^t$. 
+\end{enumerate}
+This is also referred to as \alert{random-walk Metropolis}.
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Stochastic hill climbing}
+
+<<hill_climbing, fig.width=10>>=
+curve(dnorm, -3, 3, lwd=2)
+curve(dnorm, -1, 1, lwd=5, add=TRUE)
+segments(1,0,1,dnorm(1))
+curve(dnorm(x,1)/dnorm(0)*dnorm(1), add=TRUE, col="red", lwd=2)
+curve(dnorm(x,1)/dnorm(0)*dnorm(1), -1, 1, add=TRUE, col="red", lwd=5)
+segments(1,0,1,dnorm(1))
+legend("topright",c("Target","Proposal"), col=1:2, lwd=2)
+@
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Example: Normal-Cauchy model}
+  Let $Y\sim N(\theta,1)$ with $\theta\sim Ca(0,1)$ \pause such that the posterior is
+  \[ p(\theta|y) \propto p(y|\theta)p(\theta) \propto \frac{\exp(-(y-\theta)^2/2)}{1+\theta^2} \]
+Use $N(\theta^t,1)$ as the proposal, then the acceptance probability is the $\min\{1,r\}$ with 
+\[ r = \frac{p(\theta^*|y)}{p(\theta^t|y)} = \frac{p(y|\theta^*)p(\theta^*)}{p(y|\theta^t)p(\theta^t)}. \] 
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+\frametitle{Example: Normal-Cauchy model}
+<<normal_cauchy_random_walk, fig.width=10>>=
+p = function(theta,y) exp(dnorm(y,theta,log=TRUE)+dcauchy(theta,log=TRUE)) 
+theta[1] = rnorm(1,y)
+for (i in 2:n) {
+  theta_star = rnorm(1,theta[i-1])
+  logr = log(p(theta_star,y))-log(p(theta[i-1],y))
+  theta[i] = ifelse(log(runif(1))<logr, theta_star, theta[i-1])
+}
+qplot(1:n, theta)+labs(x="Time", y=expression(theta), title="Random-walk Metropolis")
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Example: Normal-Cauchy model}
+<<normal_cauchy_random_walk2, fig.width=10>>=
+theta[1] = 10 # This line changed
+for (i in 2:n) {
+  theta_star = rnorm(1,theta[i-1])
+  logr = log(p(theta_star,y))-log(p(theta[i-1],y))
+  theta[i] = ifelse(log(runif(1))<logr, theta_star, theta[i-1])
+}
+qplot(1:n, theta)+labs(x="Time", y=expression(theta), title="Random-walk Metropolis")
+@
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Random-walk tuning parameter}
+  Let $p(\theta|y)$ be the target distribution and suppose $\theta^t$ is (approximately) distributed according to $p(\theta|y)$.
+
+\begin{itemize}
+\item If $\tau^2\approx 0$, then $\theta^*\approx \theta^t$ and
+\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)} \approx 1 \]
+and all proposals are accepted.
+\item As $\tau^2\to\infty$, then $q(\theta^*|y)\approx 0$ since $\theta^*$ will be far from the mass of the target distribution and 
+\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)} \approx 0 \]
+so all proposed values are rejected.
+\end{itemize}
+
+So there is an optimal $\tau^2$ somewhere. \pause For normal targets, the optimal random-walk proposal variance is $2.4^2Var(\theta|y)/d$ where $d$ is the dimension of $\theta$ which results in an acceptance rate of 40\% for $d=1$ down to 20\% as $d\to\infty$. 
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+<<tuning_parameter, fig.width=10>>=
+random_walk = function(n, tau, theta0, target) {
+  theta = rep(theta0,n)
+  for (i in 2:n) {
+    theta_star = rnorm(1, theta[i-1], tau)
+    logr = log(target(theta_star,y))-log(target(theta[i-1],y))
+    theta[i] = ifelse(log(runif(1))<logr, theta_star, theta[i-1])
+  }
+  return(data.frame(iteration=1:n, theta=theta))
+}
+
+d = expand.grid(tau=c(1/10,10))
+r = ddply(d, .(tau), function(x) {
+  random_walk(100, x$tau, 0, p)
+})
+ggplot(r, aes(x=iteration, y=theta, color=as.factor(tau)))+geom_point()
+@
 
 \end{frame}
+
+
+
+
 
 \end{document}
