@@ -74,7 +74,7 @@ library(rjags)
 
 \subsection{Example: Normal-Cauchy model}
 \frame{\frametitle{Example: Normal-Cauchy model}
-  Let $Y\stackrel{iid}{\sim} N(\theta,1)$ with $\theta\sim Ca(0,1)$. \pause The posterior is 
+  Let $Y\sim N(\theta,1)$ with $\theta\sim Ca(0,1)$. \pause The posterior is 
   \[ p(\theta|y) \propto p(y|\theta)p(\theta) \propto \frac{\exp(-(y-\theta)^2/2)}{1+\theta^2} \]
   \pause which is not a known distribution. \pause We might be interested in
   \begin{enumerate}
