@@ -446,9 +446,7 @@ Thus a stationary distribution does not exist.
 
 
 \subsection{Recurrence}
-
 \begin{frame}
-
 \frametitle{Recurrence}
 
 \small
@@ -476,12 +474,29 @@ If state $i$ of a Markov chain is aperiodic, then $\lim_{t\to\infty} \pi^t_i = 1
 
 
 
+\begin{frame}
+\frametitle{Recurrence example}
+
+Let
+\[ P = \bordermatrix{
+  & 0   & 1   & 2 \cr 
+0 & 1/3 & 1/3 & 1/3 \cr 
+1 & 1/3 & 1/3 & 1/3 \cr
+2 & 0 & 0 & 1 } \]
+
+\vspace{0.2in} \pause
+
+\begin{itemize}
+\item States 0 and 1 are transient. \pause
+\item State 2 is (positive) recurrent \pause and absorbing.
+\end{itemize}
+\end{frame}
 
 
 
 \begin{frame}
 
-\frametitle{Stationarity and convergence}
+\frametitle{Ergodic theorem}
 \begin{theorem}
 For an \alert{irreducible} and \alert{aperiodic} Markov chain, 
 \begin{itemize}
