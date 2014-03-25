@@ -70,10 +70,10 @@ Let
 
 The Metropolis-Hastings algorithm performs the following
 \begin{enumerate}
-\item propose $\theta^*\sim g(\theta|\theta^t)$
+\item propose $\theta^*\sim J(\theta|\theta^t)$
 \item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
 \[ r = 
-\frac{q(\theta^*|y)/g(\theta^*|\theta^t)}{q(\theta^t|y)/g(\theta^t|\theta^*)} = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{g(\theta^t|\theta^*)}{g(\theta^*|\theta^t)} \]
+\frac{q(\theta^*|y)/J(\theta^*|\theta^t)}{q(\theta^t|y)/J(\theta^t|\theta^*)} = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t|\theta^*)}{J(\theta^*|\theta^t)} \]
 otherwise, set $\theta^{t+1}=\theta^t$. 
 \end{enumerate}
 \end{frame}
@@ -117,7 +117,7 @@ p(\theta^{t-1}=\theta_a, \theta^t=\theta_b) &= p(\theta_a|y)J(\theta_b|\theta_a)
 p(\theta^{t}=\theta_a, \theta^{t-1}=\theta_b) &= p(\theta_b|y)J(\theta_a|\theta_b) \frac{p(\theta_a|y) J(\theta_b|\theta_a)}{p(\theta_b|y) J(\theta_a|\theta_b)} \pause \\
 &= p(\theta_a|y) J(\theta_b|\theta_a)
 \end{array} \]
-\pause Since the joint distribution is symmetric, the marginal distributions for $\theta^{t-1}$ and $\theta^t$ are the same.
+\pause Since the joint distribution is symmetric, the marginal distributions for $\theta^{t-1}$ and $\theta^t$ are the same and equal to $p(\theta|y)$. 
 \end{proof}
 
 \end{frame}
@@ -206,7 +206,8 @@ The \alert{Metropolis algorithm} performs the following
 \item propose $\theta^*\sim J(\theta)$
 \item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
 \[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t)}{J(\theta^*)} =
-\frac{q(\theta^*|y)}{q(\theta^t|y)} \]
+\frac{q(\theta^*|y)}{q(\theta^t|y)} 
+\]
 otherwise, set $\theta^{t+1}=\theta^t$. 
 \end{enumerate}
 This is also referred to as \alert{random-walk Metropolis}.
