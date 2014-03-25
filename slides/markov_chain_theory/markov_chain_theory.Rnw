@@ -36,7 +36,6 @@ opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='
 library(reshape2)
 library(plyr)
 library(ggplot2)
-library(rjags)
 set.seed(1)
 @
 
@@ -174,7 +173,7 @@ qplot(0:n, rwalk(n, theta0=0))+labs(x="Time",y="State",title="Random walk on the
   \[ \pi_i^t = Pr(\theta^t=i). \]
   \pause Then 
   \[ \pi^t = \pi^{t-1} P. \]
-  \pause Thus, $\pi^0$ and $P$ completely characterizes $\pi^t$. \pause 
+  \pause Thus, $\pi^0$ and $P$ completely characterizes $\pi^t=\pi^0 P^t$. \pause 
   \begin{definition}
   The \alert{stationary distribution} is the distribution $\pi$ 
   \[ \pi = \pi P. \]
@@ -277,6 +276,8 @@ where gcd is the greatest common divisor. \pause If $k_i=1$, then state $i$ is s
 for $t'>t$ for some $t$. \pause A Markov chain is \alert{aperiodic} if every state is aperiodic.
 \end{definition}
 
+{\small
+
 \pause 
 Period example:
 \[ P = \bordermatrix{ & 0 & 1 & 2 & 3  \cr 
@@ -284,6 +285,7 @@ Period example:
 1 & 0 & 0 & 1 & 0 \cr
 2 & 0 & 0 & 0 & 1 \cr
 3 & 1 & 0 & 0 & 0 } \]
+}
 
 \end{frame}
 
@@ -490,6 +492,10 @@ Let
 \item States 0 and 1 are transient. \pause
 \item State 2 is (positive) recurrent \pause and absorbing.
 \end{itemize}
+
+\vspace{0.2in} \pause
+
+\alert{If state 2 is positive recurrent, why aren't all the states positive recurrent?}
 \end{frame}
 
 
@@ -510,12 +516,25 @@ For an \alert{irreducible} and \alert{aperiodic} Markov chain,
 
 
 
-\begin{comment}
 \subsection{AR1}
 \begin{frame}
 \frametitle{Autoregressive process of order 1}
-With continuous support, the transition can be represented with a probability density function, e.g. 
+Let the transition distribution be
 \[ \theta^t|\theta^{t-1} \sim N(\mu+ \rho [\theta^{t-1}-\mu], \sigma^2). \]
+with $|\rho|<1$. \pause This defines an autoregressive process of order 1.
+
+\vspace{0.2in} \pause
+
+It is 
+\begin{itemize}[<+->]
+\item irreducible
+\item aperiodic, and
+\item recurrent.
+\end{itemize}
+
+\vspace{0.2in} \pause 
+
+Thus has a stationary distribution and converges to that stationary distribution.
 \end{frame}
 
 \begin{frame}[fragile]
@@ -556,7 +575,6 @@ d = rdply(1000, function(x) {
 ggplot(d, aes(x=x))+geom_histogram(aes(y=..density..), binwidth=1)+stat_function(fun = dnorm, arg = list(mean=mu,sd=sigma/sqrt(1-rho^2)),col=2,lwd=2)
 @
 \end{frame}
-\end{comment}
 
 
 \end{document}
