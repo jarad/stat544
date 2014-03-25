@@ -86,7 +86,7 @@ otherwise, set $\theta^{t+1}=\theta^t$.
 \item Markov chain by construction
 \item Irreducible: 
   \begin{itemize}
-  \item is the support of $p$ is connected?
+  \item is the support of $p$ connected?
   \item does the support of $q$ match the support of $p$?
   \end{itemize}
 \item Aperiodic: 
@@ -101,6 +101,26 @@ otherwise, set $\theta^{t+1}=\theta^t$.
 \end{frame}
 
 
+\begin{frame}
+\frametitle{Proof }
+\begin{theorem}
+\small
+For Metropolis-Hastings, the target distribution is the stationary distribution of the Markov chain.
+\end{theorem}
+
+\begin{proof}
+For a Metropolis-Hastings chain with $\theta_a$ and $\theta_b$ drawn from $p(\theta|y)$ \pause such that 
+\[p(\theta_b|y)J(\theta_a|\theta_b)\ge p(\theta_a|y)J(\theta_b|\theta_a), \]
+\pause then 
+\[ \begin{array}{rl}
+p(\theta^{t-1}=\theta_a, \theta^t=\theta_b) &= p(\theta_a|y)J(\theta_b|\theta_a) \pause \\
+p(\theta^{t}=\theta_a, \theta^{t-1}=\theta_b) &= p(\theta_b|y)J(\theta_a|\theta_b) \frac{p(\theta_a|y) J(\theta_b|\theta_a)}{p(\theta_b|y) J(\theta_a|\theta_b)} \pause \\
+&= p(\theta_a|y) J(\theta_b|\theta_a)
+\end{array} \]
+\pause Since the joint distribution is symmetric, the marginal distributions for $\theta^{t-1}$ and $\theta^t$ are the same.
+\end{proof}
+
+\end{frame}
 
 
 \subsection{Independence Metropolis-Hastings}
@@ -111,17 +131,17 @@ Let
 \begin{itemize}
 \item $p(\theta|y)\propto q(\theta|y)$ be the target distribution, 
 \item $\theta^t$ be the current value of the chain, \pause and
-\item $g(\theta^*|\theta^t) = g(\theta^*)$, i.e. the proposal is \alert{independent} of the current value.
+\item $J(\theta^*|\theta^t) = J(\theta^*)$, i.e. the proposal is \alert{independent} of the current value.
 \end{itemize}
 
 \vspace{0.2in} \pause
 
 The \alert{independence Metropolis-Hastings algorithm} performs the following
 \begin{enumerate}
-\item propose $\theta^*\sim g(\theta)$
+\item propose $\theta^*\sim J(\theta)$
 \item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
 \[ r = 
-\frac{q(\theta^*|y)/g(\theta^*)}{q(\theta^t|y)/g(\theta^t)} = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{g(\theta^t)}{g(\theta^*)} \]
+\frac{q(\theta^*|y)/J(\theta^*)}{q(\theta^t|y)/J(\theta^t)} = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t)}{J(\theta^*)} \]
 otherwise, set $\theta^{t+1}=\theta^t$. 
 \end{enumerate}
 \end{frame}
@@ -132,7 +152,7 @@ otherwise, set $\theta^{t+1}=\theta^t$.
   Let $Y\sim N(\theta,1)$ with $\theta\sim Ca(0,1)$ \pause such that the posterior is
   \[ p(\theta|y) \propto p(y|\theta)p(\theta) \propto \frac{\exp(-(y-\theta)^2/2)}{1+\theta^2} \]
 Use $N(y,1)$ as the proposal, then the Metropolis-Hastings acceptance probability is the $\min\{1,r\}$ with 
-\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{g(\theta^t)}{g(\theta^*)} = \frac{1+(\theta^t)^2}{1+(\theta^*)^2} \] 
+\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t)}{J(\theta^*)} = \frac{1+(\theta^t)^2}{1+(\theta^*)^2} \] 
 \end{frame}
 
 
@@ -176,16 +196,16 @@ Let
 \begin{itemize}
 \item $p(\theta|y)\propto q(\theta|y)$ be the target distribution, 
 \item $\theta^t$ be the current value of the chain, \pause and
-\item $g(\theta^*|\theta^t) = g(\theta^t|\theta^*)$, i.e. the proposal is \alert{symmetric}.
+\item $J(\theta^*|\theta^t) = J(\theta^t|\theta^*)$, i.e. the proposal is \alert{symmetric}.
 \end{itemize}
 
 \vspace{0.2in} \pause
 
 The \alert{Metropolis algorithm} performs the following
 \begin{enumerate}
-\item propose $\theta^*\sim g(\theta)$
+\item propose $\theta^*\sim J(\theta)$
 \item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
-\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{g(\theta^t)}{g(\theta^*)} =
+\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t)}{J(\theta^*)} =
 \frac{q(\theta^*|y)}{q(\theta^t|y)} \]
 otherwise, set $\theta^{t+1}=\theta^t$. 
 \end{enumerate}
