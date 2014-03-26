@@ -1,5 +1,5 @@
-\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-%\documentclass{beamer}
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+\documentclass{beamer}
 
 
 
@@ -17,7 +17,7 @@
 %\setbeamertemplate{block body theorem}{bg=orange}
 \setkeys{Gin}{width=0.6\textwidth}
 
-\title[MCMC]{Markov chain Monte Carlo}
+\title[MCMC]{Metropolis-Hastings algorithm}
 \author[Jarad Niemi]{Dr. Jarad Niemi}
 \institute[Iowa State]{Iowa State University}
 \date{\today}
