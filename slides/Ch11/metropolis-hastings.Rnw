@@ -1,6 +1,5 @@
-\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-%\documentclass{beamer}
-
+\documentclass{beamer}
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
 
 
 \usecolortheme[RGB={0,0,144}]{structure}
@@ -405,7 +404,8 @@ ggplot(r, aes(x=iteration, y=theta, color=as.factor(tau)))+geom_point()
 \begin{frame}
 \frametitle{Beta-binomial example}
 
-Let $Y \sim Bin(n,\theta)$ and $\theta \sim Be(1/2,1/2)$\pause, thus the posterior is \pause $p(\theta|y)\propto \theta^{y-0.5}(1-\theta)^{n-y-0.5}\mathrm{I}(0<\theta<1)$. 
+Let $Y \sim Bin(n,\theta)$ and $\theta \sim Be(1/2,1/2)$\pause, thus the posterior is \pause 
+\[ p(\theta|y)\propto \theta^{y-0.5}(1-\theta)^{n-y-0.5}\mathrm{I}(0<\theta<1). \] 
 
 \vspace{0.2in} \pause
 
