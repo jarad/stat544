@@ -401,6 +401,53 @@ ggplot(r, aes(x=iteration, y=theta, color=as.factor(tau)))+geom_point()
 
 
 
+\subsection{A real example}
+\begin{frame}
+\frametitle{Beta-binomial example}
+
+Let $Y \sim Bin(n,\theta)$ and $\theta \sim Be(1/2,1/2)$\pause, thus the posterior is \pause $p(\theta|y)\propto \theta^{y-0.5}(1-\theta)^{n-y-0.5}\mathrm{I}(0<\theta<1)$. 
+
+\vspace{0.2in} \pause
+
+To construct a random-walk Metropolis algorithm, we choose the proposal 
+\[ \theta \sim N(\theta^t,\sigma^2) \]
+\pause and accept with probability $\min\{1,r\}$ \pause where 
+\[ r = \frac{p(\theta^*|y)}{p(\theta^t|y)} \pause = \frac{(\theta^*)^{y-0.5}(1-\theta^*)^{n-y-0.5}\mathrm{I}(0<\theta^*<1)}{(\theta^t)^{y-0.5}(1-\theta^t)^{n-y-0.5}\mathrm{I}(0<\theta^t<1)} \]
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Beta-binomial}
+
+<<beta_binomial>>=
+n = 10000
+logp = function(theta, y=3, n=10) (y-0.5)*log(theta)+(n-y-0.5)*log(1-theta)
+theta = rep(0.5,n) # initial draw is 0.5
+for (i in 2:n) {
+  theta_star = rnorm(1,theta[i-1],0.4)
+  if (theta_star > 1 | theta_star < 0) {
+    theta[i] = theta[i-1]
+  } else {
+    logr = logp(theta_star)-logp(theta[i-1])
+    theta[i] = ifelse(log(runif(1))<logr, theta_star, theta[i-1])
+  }
+}
+length(unique(theta))/n # acceptance rate
+@
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Beta-binomial}
+
+<<beta_binomial_traceplot, fig.width=10>>=
+par(mfrow=c(1,2))
+plot(theta, type="l")
+hist(theta, prob=TRUE)
+curve(dbeta(x, 3.5,7.5), add=TRUE, col="red", lwd=2)
+@
+
+\end{frame}
 
 
 \end{document}
