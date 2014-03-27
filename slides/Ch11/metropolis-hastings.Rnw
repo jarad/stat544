@@ -1,5 +1,5 @@
-\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-%\documentclass{beamer}
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+\documentclass{beamer}
 
 
 
@@ -17,7 +17,11 @@
 %\setbeamertemplate{block body theorem}{bg=orange}
 \setkeys{Gin}{width=0.6\textwidth}
 
+<<<<<<< HEAD:slides/Ch11/metropolis-hastings.Rnw
 \title[MCMC]{Metropolis-Hastings}
+=======
+\title[MCMC]{Metropolis-Hastings algorithm}
+>>>>>>> fc8c4381927038d337fe6046daf9dbd1013929dc:slides/Ch11/markov_chain_monte_carlo.Rnw
 \author[Jarad Niemi]{Dr. Jarad Niemi}
 \institute[Iowa State]{Iowa State University}
 \date{\today}
@@ -129,17 +133,26 @@ qplot(1:n, theta-1)+labs(x="Time",y=expression(theta))
 \item Irreducible: 
   \begin{itemize}
   \item is the support of $p$ connected?
-  \item does the support of $q$ match the support of $p$?
+  \item does the support of $J$ match the support of $p$?
   \end{itemize}
 \item Aperiodic: 
   \begin{itemize}
   \item non-zero probability of staying at $\theta$ for some $\theta$
   \end{itemize}
-\item Recurrent: 
-  \begin{itemize}
-  \item believe me?
-  \end{itemize}
 \end{itemize}
+
+\vspace{0.2in} \pause
+
+\begin{itemize}
+\item Is there a stationary distribution?
+\item Does the chain converge to the stationary distribution?
+\end{itemize} 
+
+\vspace{0.2in} \pause
+
+\begin{theorem}
+For an \alert{irreducible} and \alert{aperiodic} Markov chain, if there exists a positive vector $\pi$ such that $\pi=\pi P$ and $\sum_i \pi_i=1$, then it must be the stationary distribution and $\lim_{t\to\infty} \pi^t = \pi$.
+\end{theorem}
 \end{frame}
 
 
@@ -149,17 +162,17 @@ qplot(1:n, theta-1)+labs(x="Time",y=expression(theta))
 \small
 For Metropolis-Hastings, the target distribution is the stationary distribution of the Markov chain.
 \end{theorem}
-
+\pause
 \begin{proof}
 For a Metropolis-Hastings chain with $\theta_a$ and $\theta_b$ drawn from $p(\theta|y)$ \pause such that 
 \[p(\theta_b|y)J(\theta_a|\theta_b)\ge p(\theta_a|y)J(\theta_b|\theta_a), \]
 \pause then 
 \[ \begin{array}{rl}
-p(\theta^{t-1}=\theta_a, \theta^t=\theta_b) &= p(\theta_a|y)J(\theta_b|\theta_a) \pause \\
-p(\theta^{t}=\theta_a, \theta^{t-1}=\theta_b) &= p(\theta_b|y)J(\theta_a|\theta_b) \frac{p(\theta_a|y) J(\theta_b|\theta_a)}{p(\theta_b|y) J(\theta_a|\theta_b)} \pause \\
+p(\theta^{t}=\theta_a, \theta^{t+1}=\theta_b) &= p(\theta_a|y)J(\theta_b|\theta_a) \pause \\
+p(\theta^{t}=\theta_b, \theta^{t+1}=\theta_a) &= p(\theta_b|y)J(\theta_a|\theta_b) \frac{p(\theta_a|y) J(\theta_b|\theta_a)}{p(\theta_b|y) J(\theta_a|\theta_b)} \pause \\
 &= p(\theta_a|y) J(\theta_b|\theta_a)
 \end{array} \]
-\pause Since the joint distribution is symmetric, the marginal distributions for $\theta^{t-1}$ and $\theta^t$ are the same and equal to $p(\theta|y)$. 
+\pause Since the joint distribution is symmetric, the marginal distributions for $\theta^{t}$ and $\theta^{t+1}$ are the same and equal to $p(\theta|y)$. 
 \end{proof}
 
 \end{frame}
@@ -173,7 +186,7 @@ Let
 \begin{itemize}
 \item $p(\theta|y)\propto q(\theta|y)$ be the target distribution, 
 \item $\theta^t$ be the current value of the chain, \pause and
-\item $J(\theta^*|\theta^t) = J(\theta^*)$, i.e. the proposal is \alert{independent} of the current value.
+\item $J(\theta|\theta^t) = J(\theta)$, i.e. the proposal is \alert{independent} of the current value.
 \end{itemize}
 
 \vspace{0.2in} \pause
@@ -184,7 +197,7 @@ The \alert{independence Metropolis-Hastings algorithm} performs the following
 \item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
 \[ r = 
 \frac{q(\theta^*|y)/J(\theta^*)}{q(\theta^t|y)/J(\theta^t)} = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t)}{J(\theta^*)} \]
-otherwise, set $\theta^{t+1}=\theta^t$. 
+\pause otherwise, set $\theta^{t+1}=\theta^t$. 
 \end{enumerate}
 \end{frame}
 
@@ -193,8 +206,8 @@ otherwise, set $\theta^{t+1}=\theta^t$.
 \frametitle{Example: Normal-Cauchy model}
   Let $Y\sim N(\theta,1)$ with $\theta\sim Ca(0,1)$ \pause such that the posterior is
   \[ p(\theta|y) \propto p(y|\theta)p(\theta) \propto \frac{\exp(-(y-\theta)^2/2)}{1+\theta^2} \]
-Use $N(y,1)$ as the proposal, then the Metropolis-Hastings acceptance probability is the $\min\{1,r\}$ with 
-\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t)}{J(\theta^*)} = \frac{1+(\theta^t)^2}{1+(\theta^*)^2} \] 
+\pause Use $N(y,1)$ as the proposal, \pause then the Metropolis-Hastings acceptance probability is the $\min\{1,r\}$ with 
+\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t|\theta^*)}{J(\theta^*|\theta^t)} = \frac{1+(\theta^t)^2}{1+(\theta^*)^2} \] 
 \end{frame}
 
 
@@ -243,14 +256,14 @@ Let
 
 \vspace{0.2in} \pause
 
-The \alert{Metropolis algorithm} performs the following
-\begin{enumerate}
-\item propose $\theta^*\sim J(\theta)$
+The \alert{Metropolis algorithm} performs the following \pause
+\begin{enumerate}[<+->]
+\item propose $\theta^*\sim J(\theta|\theta^t)$
 \item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
 \[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t)}{J(\theta^*)} =
 \frac{q(\theta^*|y)}{q(\theta^t|y)} 
 \]
-otherwise, set $\theta^{t+1}=\theta^t$. 
+\pause otherwise, set $\theta^{t+1}=\theta^t$. 
 \end{enumerate}
 This is also referred to as \alert{random-walk Metropolis}.
 \end{frame}
