@@ -1,12 +1,11 @@
-\documentclass{beamer}
-%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
 
 \usecolortheme[RGB={0,0,144}]{structure}
 \usetheme{AnnArbor}\usecolortheme{beaver}
 %\usetheme{CambridgeUS}\usecolortheme{crane}
 
-\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\usepackage{verbatim,xmpmulti,color,multicol,multirow,tikz,animate}
 \setlength{\unitlength}{\textwidth}  % measure in textwidths
 \usepackage[normalem]{ulem}
 
@@ -37,6 +36,7 @@ opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='
 library(reshape2)
 library(plyr)
 library(ggplot2)
+library(mvtnorm)
 set.seed(2)
 @
 
@@ -57,31 +57,33 @@ Construct a Markov chain with stationary distributon $p(\theta|y)$ and run it lo
 
 \section{Gibbs sampling}
 \frame{\frametitle{Gibbs sampling}
-  Suppose $\theta_1,\theta_2\sim p\left(\theta_1,\theta_2\right)$ \pause and we can sample from $p\left(\theta_1|\theta_2\right)$ and $p\left(\theta_2|\theta_1\right)$\pause. Beginning with an initial value $\left(\theta_1^{(0)}, \theta_2^{(0)}\right)$\pause, the Gibbs sampler is 
+  Suppose our target distribution is $p(\theta|y)$ with $\theta=(\theta_1,\theta_2)$  \pause and we can sample from $p\left(\theta_1|\theta_2\right)$ and $p\left(\theta_2|\theta_1\right)$\pause. Beginning with an initial value $\left(\theta_1^0, \theta_2^0\right)$\pause, the \alert{Gibbs sampler} is 
 	\begin{enumerate}[\quad1.]
-	\item sample $\theta_1^{(j)}\sim p\left(\theta_1|\theta_2^{(j-1)}\right)$ \pause and then 
-	\item sample $\theta_2^{(j)}\sim p\left(\theta_2|\theta_1^{(j)}\right)$. 
+	\item sample $\theta_1^{t}\sim p\left(\theta_1|\theta_2^{t-1}\right)$ \pause and then 
+	\item sample $\theta_2^{t}\sim p\left(\theta_2|\theta_1^{t}\right)$. 
 	\end{enumerate}
 	
 	\vspace{0.2in} \pause
 	
 	Notes:
-	\begin{itemize}
-	\item $\theta^{(j)} \stackrel{d}{\rightarrow} \theta$ where $\theta = (\theta_1,\theta_2)' \sim p\left(\theta_1,\theta_2\right)$.  \pause
-	\item The sequence $\theta^{(j)}$ is not independent. \pause
-	\item 
-	\[  \frac{1}{J} \sum_{j=1}^J h\left(\theta^{(j)}\right) \rightarrow E_p[h(\theta)] = \int_{\Theta} h(\theta) f(\theta) d\theta  \]
+	\begin{itemize}[<+->]
+  \item The sequence $\{\theta^0,\theta^1,\ldots,\}$ is a Markov chain with transition distribution 
+  \[ p(\theta^{t}|\theta^{t-1}) = p(\theta_2^{t}|\theta_1^{t})p(\theta_1^{t}|\theta_2^{t-1}). \]
+	\item $\theta^{t} \stackrel{d}{\rightarrow} \theta$ where $\theta \sim p\left(\theta|y\right)$.  
+%	\item 
+%	\[  \frac{1}{J} \sum_{j=1}^J h\left(\theta^{t}\right) \rightarrow E_p[h(\theta)] = \int_{\Theta} h(\theta) f(\theta) d\theta  \]
 	\end{itemize}
 }
 
 \subsection{Bivariate normal example}
 \frame{\frametitle{Bivariate normal example}
-	Suppose 
+\small
+	Let our target be 
 	\[ \theta \sim N_2(0,\mathrm\Sigma) \pause \qquad \mathrm{\Sigma} = \left[ \begin{array}{cc} 1 & \rho \\ \rho & 1 \end{array} \right].\]
 	\pause Then 
 	\[ \begin{array}{rl}
-	\theta_1|\theta_2 &\sim N\left(\rho\theta_2, [1-\rho^2]\right) \pause \\
-	\theta_2|\theta_1 &\sim N\left(\rho\theta_1, [1-\rho^2]\right) 
+	\theta_1|\theta_2 &\sim \pause N\left(\rho\theta_2, [1-\rho^2]\right) \pause \\
+	\theta_2|\theta_1 &\sim \pause N\left(\rho\theta_1, [1-\rho^2]\right) 
 	\end{array} \]
 	are the conditional distributions. 
 	
@@ -98,74 +100,74 @@ Construct a Markov chain with stationary distributon $p(\theta|y)$ and run it lo
 	\end{array} \]	
 }
 
-\begin{frame}
+\begin{frame}[fragile]
 \frametitle{Bivariate normal with $\rho=0.9$}
-<<>>=
-library(mvtnorm)
+<<bivariate_normal_mcmc>>=
+gibbs_bivariate_normal = function(x0, n_points, rho) {
+  x = matrix(x0, nrow=n_points, ncol=2, byrow=TRUE)
+  v = sqrt(1-rho^2)
+  for (i in 2:n_points) {
+    x[i,1] = rnorm(1, rho*x[i-1,2], v)
+    x[i,2] = rnorm(1, rho*x[i  ,1], v)
+  }
+  return(x)
+}
 
+set.seed(1)
+x = gibbs_bivariate_normal(c(-3,3), n<-20, rho=rho<-0.9)
+@
+\end{frame}
 
+<<bivariate_normal, eval=FALSE, echo=FALSE>>=
+# Create plot
 n.out = 101
 xx <- seq(-3, 3, length=n.out)
 grid <- expand.grid(x=xx, y=xx)
-rho = 0.9
 Sigma = diag(rep(.1,2))+rho
 like <- matrix(apply(grid, 1, function(x) dmvnorm(x,sigma=Sigma)),n.out,n.out)
 
-contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3),
+contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
         xlab=expression(theta[1]), ylab=expression(theta[2]))
-# dev.copy2pdf(file="normal-0.pdf")
+points(x[1,1],x[1,2],col="red", pch=19)
 
-x = c(-3,3) 
-v = sqrt(1-rho^2)
-
-plot_null = function() plot(0,0,type="n", axes=F, xlab="", ylab="", xlim=c(-3,3), ylim=c(-3,3))
-
-set.seed(1)
-
-plot_null()
-points(x[1],x[2],col="red", pch=19)
-# dev.copy2pdf(file="normal-1.pdf")
-
-for (i in 1:5) {
-  plot_null()
-  segments(x[1], x[2], x[1] <- rnorm(1, rho*x[2], v), x[2], col="gray")
-  # dev.copy2pdf(file=paste("normal-",2*i,".pdf",sep=""))
-
-  plot_null()
-  segments(x[1], x[2], x[1], x[2]<- rnorm(1, rho*x[1], v), col="gray")
-  points(x[1],x[2],col="red", pch=19)
-  # dev.copy2pdf(file=paste("normal-",2*i+1,".pdf",sep=""))
+for (i in 2:nrow(x)) {
+  plot.new()
+  contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
+        xlab=expression(theta[1]), ylab=expression(theta[2]))
+  
+  for (j in 2:i) {
+    points(x[j-1,1],x[j-1,2],col="red", pch=19)
+    segments(x[j-1,1], x[j-1,2], x[j,1], x[j-1,2],col="gray")
+    segments(x[j  ,1], x[j-1,2], x[j,1], x[j  ,2],col="gray")
+  }
 }
+@
 
-plot_null()
-for (i in 1:100) {
-  x[1] = rnorm(1, rho*x[2], v)
-  x[2] = rnorm(1, rho*x[1], v)
-  points(x[1],x[2],col="red", pch=19)
-}
-# dev.copy2pdf(file="normal-12.pdf")
+\begin{frame}[fragile]
+<<bivariate_normal_animation, fig.show='animate', echo=FALSE>>=
+<<bivariate_normal>>
 @
 \end{frame}
+
 
 \subsection{Extending the Gibbs sampler}
 \frame{\frametitle{$K$-component Gibbs sampler}
 	Suppose $\theta = (\theta_1,\ldots,\theta_K)$\pause, then the following Gibbs sampler can be constructed \pause
 	\[ \begin{array}{rl}
-	\theta_1^{(j)} &\sim p\left(\theta_1|\theta_2^{(j-1)},\ldots, \theta_K^{(j-1)}\right) \pause \\ \\
-	\theta_2^{(j)} &\sim p\left(\theta_2|\theta_1^{(j)}, \theta_3^{(j-1)},\ldots, \theta_K^{(j-1)}\right) \pause\\
+	\theta_1^{t} &\sim p\left(\theta_1|\theta_2^{t-1},\ldots, \theta_K^{t-1}\right) \pause \\ \\
+	\theta_2^{t} &\sim p\left(\theta_2|\theta_1^{t}, \theta_3^{t-1},\ldots, \theta_K^{t-1}\right) \pause\\
 	&\vdots \\
-	\theta_k^{(j)} &\sim p\left(\theta_k|\theta_1^{(j)}\ldots,\theta_{k-1}^{(j)}, \theta_{k+1}^{(j-1)},\ldots, \theta_K^{(j-1)}\right) \\
+	\theta_k^{t} &\sim p\left(\theta_k|\theta_1^{t}\ldots,\theta_{k-1}^{t}, \theta_{k+1}^{t-1},\ldots, \theta_K^{t-1}\right) \\
 	&\vdots \pause\\
-	\theta_K^{(j)} &\sim p\left(\theta_K|\theta_1^{(j)},\ldots, \theta_{K-1}^{(j)}\right) \pause
+	\theta_K^{t} &\sim p\left(\theta_K|\theta_1^{t},\ldots, \theta_{K-1}^{t}\right) \pause
 	\end{array} \]
 	The distributions above are called the \alert{full conditional distributions}.
 }
 
 
-
 \section{Metropolis-within-Gibbs}
 \frame{\frametitle{Metropolis-within-Gibbs}
-  Previously we have discussed two Markov chain approaches to sampling from target distributions:
+  We have discussed two Markov chain approaches to sampling from target distributions:
 	\begin{itemize}
 	\item Metropolis-Hastings algorithm
 	\item Gibbs sampling
@@ -173,445 +175,444 @@ for (i in 1:100) {
 	
 	\vspace{0.2in} \pause
 	
-	Gibbs sampling assumed we can sample from $p(\theta_k|\theta_{-k})$ for all $k$\pause, but what if cannot sample from all of these full conditional distributions? \pause For those $p(\theta_k|\theta_{-k})$ that cannot be sampled directly, a Metropolis-Hastings step can be substituted. \pause All the convergence results for Gibbs sampling and Metropolis-Hastings algorithm still hold. 
-}
-
-\subsection{Poisson hierarchical model example}
-\frame{\frametitle{Poisson hierarchical model example}
-	Consider the bladder cancer data set previously discussed, namely
-	\begin{itemize}
-	\item $y_k$ be the number of observed deaths in county $k$ \pause 
-	\item $n_k$ be the number of person-years in county $k$ divided by 100,000 \pause
-	\item $\theta_k$ is the expected deaths per 100,000 person-years
-	\end{itemize}
-	
-	\vspace{0.2in} \pause
-	
-	Assume 
-	\[ \begin{array}{rl}
-	y_k &\stackrel{ind}{\sim} Po(n_k\theta_k) \pause \\
-	\theta_k &\stackrel{iid}{\sim} Ga(\alpha,\beta) \pause \\
-	\alpha &\sim Unif(0,a_0) \\
-	\beta &\sim Unif(0,b_0) \pause
-	\end{array} \]
-	with $\alpha$ and $\beta$ independent and for some chosen values of $a_0$ and $b_0$. 
-}
-
-\subsection{Full conditional distributions}
-\frame{\frametitle{Full conditional distributions}
-\footnotesize 
-	The target distribution here is 
-	\[ 
-	\begin{array}{rl}
-	p(\theta,\alpha,\beta|y) &\pause \propto \prod_{k=1}^K \left[p(y_k|\theta_k,n_k) p(\theta_k|\alpha,\beta)\right] p(\alpha)p(\beta) \pause \\
-	& \propto \prod_{k=1}^K \left[e^{-n_k\theta_k}\theta_k^{y_k} \frac{\beta^\alpha}{\mathrm{\Gamma}(\alpha)} \theta_k^{\alpha-1}e^{-\theta_k \beta} \right] \mathrm{I}(0<\alpha<a_0) \mathrm{I}(0<\beta<b_0) \\
-	\end{array} 
-	\]
-	\pause The full conditionals are 
-	\[ \begin{array}{rl}
-	p(\theta_k|y,\theta_{-k},\alpha,\beta) &\propto p(\theta,\alpha,\beta|y) \pause \\
-	&\propto e^{-n_k\theta_k}\theta_k^{y_k}  \theta_k^{\alpha-1}e^{-\theta_k \beta} \pause \\
-	&= \theta_k^{y_k+\alpha-1}e^{-\theta_k(n_k+\beta)} \pause \\
-	&\propto Ga(y_k+\alpha, n_k+\beta) \pause \\
-	\\
-	p(\alpha|y,\theta,\beta) &\propto p(\theta,\alpha,\beta|y) \pause \\
-	&\propto \prod_{k=1}^K \left[\theta_k^{\alpha-1} \frac{\beta^\alpha}{\mathrm{\Gamma}(\alpha)} \right] \mathrm{I}(0<\alpha<a_0) \pause \\
-	&= \left( \prod_{k=1}^K \theta_k \right)^{\alpha} \beta^{K\alpha} \mathrm{\Gamma}(\alpha)^{-K} \mathrm{I}(0<\alpha<a_0) \pause \\
-	\\
-	p(\beta|y,\theta,\alpha) &\propto p(\theta,\alpha,\beta|y) \pause \\
-	&\propto \prod_{k=1}^K \left[e^{-\theta_k \beta} \beta^\alpha \right] \mathrm{I}(0<\beta<b_0) \pause \\
-	&= \beta^{K\alpha} e^{- \beta\sum_{k=1}^K \theta_k} \mathrm{I}(0<\beta<b_0) \pause \\
-	&\propto Ga(K\alpha+1, \sum_{k=1}^K \theta_k) \mathrm{I}(0<\beta<b_0) 
-	\end{array} \]
-}
-
-\subsection{Graphical models}
-\frame{\frametitle{Graphical model for $n=2$}
-\begin{center}
-	\begin{tikzpicture}
-\tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 16mm]
-\tikzstyle{connect}=[-latex, thick]
-\tikzstyle{box}=[rectangle, draw=black!100]
-  \node[main] (y1)  { $y_1$ }; 
-  \node[main] (theta1) [above=of y1] {$\theta_1$}; 
-  \node[main] (n1) [above=of y1, left=of theta1] {$n_1$}; 
-  \node[rectangle, inner sep=4.4mm, draw=black!100, fit= (y1) (theta1) (n1)] {}; 
-  \node[rectangle, inner sep=-4.5mm, fit= (y1) (theta1) (n1), label=below left:county 1, xshift=12mm] {}; 
-  \node[main] (y2) [right=of y1] { $y_2$ }; 
-  \node[main] (theta2) [above=of y2] {$\theta_2$}; 
-  \node[main] (n2) [above=of y2, right=of theta2] {$n_2$}; 
-  \node[rectangle, inner sep=4.4mm, draw=black!100, fit= (y2) (theta2) (n2)] {}; 
-  \node[rectangle, inner sep=-4.5mm, fit= (y2) (theta2) (n2), label=below right:county 2, xshift=-12mm] {}; 
-  \node[main] (alpha) [above=of theta1] {$\alpha$};
-  \node[main] (beta) [above=of theta2] {$\beta$};
-  \path (theta1) edge [connect] (y1)
-           (alpha) edge [connect] (theta1)
-           (beta) edge [connect] (theta1)
-           (theta2) edge [connect] (y2)
-           (alpha) edge [connect] (theta2)
-           (beta) edge [connect] (theta2); 
-  \path [dashed] (n1) edge [connect] (y1)
-                          (n2) edge [connect] (y2);
-\end{tikzpicture}
-\end{center}
+	Gibbs sampling assumed we can sample from $p(\theta_k|\theta_{-k})$ for all $k$\pause, but what if we cannot sample from all of these full conditional distributions? \pause For those $p(\theta_k|\theta_{-k})$ that cannot be sampled directly, a Metropolis-Hastings step can be substituted. \pause All the convergence results for Gibbs sampling and Metropolis-Hastings algorithm still hold. 
 }
 
 
-\frame{\frametitle{Graphical model for $J$ groups}
-\begin{columns}
-\begin{column}{0.45\textwidth}
-\begin{center}
-	\begin{tikzpicture}
-\tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 16mm]
-\tikzstyle{connect}=[-latex, thick]
-\tikzstyle{box}=[rectangle, draw=black!100]
-  \node[main] (y)  { $y_k$ }; 
-  \node[main] (theta) [above=of y] {$\theta_k$}; 
-  \node[main] (n) [above=of y, right=of theta] {$n_k$}; 
-  \node[rectangle, inner sep=4.4mm, draw=black!100, fit= (y) (theta) (n)] {}; 
-  \node[rectangle, inner sep=-4.5mm, fit= (y) (theta) (n), label=below right:county $k$, xshift=-12mm] {}; 
-  \node[main] (alpha) [above=of theta, xshift=-10mm] {$\alpha$};
-  \node[main] (beta) [above=of theta, xshift=10mm] {$\beta$};
-  \path (theta) edge [connect] (y)
-           (alpha) edge [connect] (theta)
-           (beta) edge [connect] (theta); 
-  \path [dashed] (n) edge [connect] (y);
-\end{tikzpicture}
-\end{center}
-\end{column}
-
-\pause
-
-\begin{column}{0.55\textwidth}
-Conditional independence rules for DAGs/hierarchical models: 
-
-\vspace{0.1in} \pause
-
-\begin{itemize}
-\item Conditional on its parents, a node is conditionally independent of all other nodes except its descendants\pause, e.g. {\small \[ p(\theta_k|y,\theta_{-k},\alpha,\beta) = p(\theta_k|y_k,\alpha,\beta). \]}\pause
-\item Generally, top level parents will not be conditionally independent.
-\end{itemize}
-\end{column}
-\end{columns}
-}
-
-\subsection{Random-walk Metropolis}
-\frame{\frametitle{Random-walk Metropolis for $\alpha$}
-	The full conditional distribution for $\alpha$ is not a known distribution
-	\[ p(\alpha|y,\theta,\beta) = p(\alpha|\theta,\beta) \propto \left( \prod_{k=1}^K \theta_k \right)^{\alpha} \beta^{K\alpha} \mathrm{\Gamma}(\alpha)^{-K} \mathrm{I}(0<\alpha<a_0). \]
-	So we will use a random-walk Metropolis algorithm with $N(\alpha^{(j)},\sigma^2)$ as our proposal distribution. \pause The acceptance probability is the minimum of 1 and 
-	\[ \frac{p(\alpha^*|y,\theta,\beta)}{p(\alpha^{(j)}|y,\theta,\beta)} = \left( \prod_{k=1}^K \theta_k \right)^{\alpha^*-\alpha^{(j)}} \beta^{K(\alpha^*-\alpha^{(j)})} \left( \frac{\mathrm{\Gamma}(\alpha^*)}{\mathrm{\Gamma}(\alpha^{(j)})} \right)^{-K} \mathrm{I}(0<\alpha^*<a_0) \]
-	Notice that $0< \alpha^{(j)} < a_0$ or else the result is undefined. \pause This means that $\alpha^{(0)}$ must be between 0 and $a_0$. \pause $\sigma^2$ is a tuning parameter
-}
-
-\frame{\frametitle{Tuning a random-walk}
-\small
-	Random-walk proposals typically have a \alert{tuning parameter}, e.g. $\sigma^2$ in $N(\alpha^{(j)},\sigma^2)$, which must be set. \pause 
-	\begin{center}
-	\includegraphics{tuning}
-	\end{center}
-	\pause Adjust $\sigma$ so that the overall acceptance rate is 0.44 for 1-dimensional random walks \pause down to 0.23 for $d$-dimensional random walks with $d>5$. \pause Fix after burn-kn.
-}
-
-\subsection{Inverse CDF method}
-\frame{\frametitle{Inverse CDF method for $\beta$}
-	The full conditional distribution for $\beta$ is a truncated gamma
-	\[ p(\beta|y,\theta,\alpha) =p(\beta|\theta,\alpha)= Ga\left(K\alpha+1, \sum_{k=1}^K \theta_k\right) \mathrm{I}(0<\beta<b_0) \]
-	\pause so we can use the inverse CDF method to obtain a draw from $\beta$\pause. Let $F$ be the cdf of $Ga\left(K\alpha^{(j+1)}+1, \sum_{k=1}^K \theta_k^{(j+1)}\right)$. \pause Then an inverse CDF method \pause is 
-	\begin{enumerate}[\quad 1.]
-	\item Sample $U\sim Unif(0,F(b_0))$. \pause
-	\item Set $\beta^{(j+1)} = F^{-1}(U)$.
-	\end{enumerate}
-}
-
-\subsection{Markov chain Monte Carlo}
-\frame{\frametitle{Markov chain Monte Carlo}
-	The following algorithm
-	\begin{enumerate}[\quad1.]
-	\item Sample $\theta^{(j+1)}\sim p\left(\theta|y,\alpha^{(j)},\beta^{(j)}\right)$: \pause 
-		\begin{itemize}
-		\item For $k=1,\ldots,K$, sample $\theta_k^{(j+1)} \sim p\left(\theta_k|y_k,\alpha^{(j)},\beta^{(j)}\right)$. \pause
-		\end{itemize} 
-	\item Sample $\alpha^{(j+1)} \sim p\left(\alpha|\theta^{(j+1)},\beta^{(j)}\right)$ using random walk Metropolis. \pause 
-	\item Sample $\beta^{(j+1)} \sim p\left(\beta|\theta^{(j+1)},\alpha^{(j+1)}\right)$ using the inverse CDF method. \pause
-	\end{enumerate}
-	is a \alert{Markov chain Monte Carlo} algorithm \pause whose stationary distribution, by construction, is $p(\theta,\alpha,\beta|y)$. \pause So, we know $\left(\theta^{(j)},\alpha^{(j)},\beta^{(j)}\right)$ converges to a draw from $p(\theta,\alpha,\beta|y)$.
-}
-
-\subsection{Monitoring convergence}
-\frame{\frametitle{Monitoring convergence}
-	\alert{We can never know if we've reached convergence!} \pause \\ But we can know if we have not.
-	
-	\vspace{0.2in} \pause
-	
-	Using multiple chains from dispersed starting points\pause, check
-	\begin{itemize}
-	\item Traceplots: parameter value vs iteration \pause
-	\item Gelman-Rubin potential scale reduction factor
-	\[ \hat{R} = \sqrt{\frac{\frac{n-1}{n}W+\frac{1}{n}B}{W}} \pause \approx \sqrt{1+\frac{B}{nW}} \]
-	\pause where $n$ is the number of iterations, $B$ is the between chain variability, and $W$ is the within chain variability.
-	\end{itemize}
-}
-
-\frame{\frametitle{Burn-in}
-	\begin{center}
-	\multiinclude[format=pdf]{burnin}
-	\end{center}
-}
-
-\begin{comment}
-\frame{\frametitle{Traceplots}
-
-	\vspace{-0.3in}
-
-	\begin{center}
-	\multiinclude[format=jpeg]{trace}
-	\end{center}
-	\pause
-	$\hat{R}$ are both 1.04 with upper CIs of 1.10
-}
-\end{comment}
-
-
-\subsection{JAGS}
-\frame[containsverbatim]{\frametitle{Using JAGS to perform the analysis}
-\tiny
-\begin{verbatim}
-library(rjags)
-
-# Read data
-d = read.csv("full-bladder.csv")
-d = d[d$Geo<99999,] # All data combined
-
-summary(d)
-
-# Write model to file
-bladder_model <- "
-model {
-  for (k in 1:K) {
-    y[k] ~ dpois(n[k]*theta[k])
-    theta[k] ~ dgamma(a,b)
+\begin{frame}[fragile]
+\frametitle{Bivariate normal with $\rho=0.9$}
+<<gibbs_and_metropolis_mcmc>>=
+gibbs_and_metropolis = function(x0, n_points, rho) {
+  x = matrix(x0, nrow=n_points, ncol=2, byrow=TRUE)
+  v = sqrt(1-rho^2)
+  for (i in 2:n_points) {
+    x[i,1] = rnorm(1, rho*x[i-1,2], v)
+    
+    # Now do a random-walk Metropolis step
+    x_prop = rnorm(1, x[i-1,2], 2.4*v) # optimal proposal variance
+    logr   = dnorm(1, rho*x_prop,   v, log=TRUE) - 
+             dnorm(1, rho*x[i-1,2], v, log=TRUE)
+    x[i,2] = ifelse(log(runif(1))<logr, x_prop, x[i-1,2])
   }
-  a ~ dunif(0,a0)
-  b ~ dunif(0,b0)
-}
-"
-
-# Set data up for analysis
-dat = list(y = d$No.., n = d$Per/100000, K=nrow(d), a0=100, b0=10)
-
-# Run JAGS
-
-m = jags.model(textConnection(bladder_model), dat, n.adapt=1000, n.chains=3)
-\end{verbatim}
+  return(x)
 }
 
-\frame[containsverbatim]{\frametitle{Convergence issues arising in JAGS}
-\tiny
-Lack of convergence detected
-\begin{verbatim}
-> m2 = jags.model(textConnection(bladder_model), dat, n.adapt=10, n.chains=3)
-Compiling model graph
-   Resolving undeclared variables
-   Allocating nodes
-   Graph Size: 12226
-
-Initializing model
-
-Warning message:
-In jags.model(textConnection(bladder_model), dat, n.adapt = 10,  :
-  Adaptation incomplete
-\end{verbatim}
-Insufficient inferential iterations
-\begin{verbatim}
-> res = coda.samples(m, c("theta","a","b"), 1e3, thin=1)
-> gelman.diag(res)
-Error in chol.default(W) : 
-  the leading minor of order 3001 is not positive definite
-> gelman.diag(res[,c("a","b")])
-Potential scale reduction factors:
-
-  Point est. Upper C.I.
-a       2.26       4.00
-b       2.23       3.92
-
-Multivariate psrf
-
-1.98
-\end{verbatim}
-}
-
-\frame[containsverbatim]{\frametitle{Visualizing convergence}
-\tiny
-\begin{verbatim}
-m = jags.model(textConnection(bladder_model), dat, n.adapt=1, n.chains=3)
-res = coda.samples(m, c("a","b"), 1e3)
-plot(res, smooth=F)
-\end{verbatim}
-
-\begin{center}
-\includegraphics{converge}
-\end{center}
-}
-
-\begin{comment}
-\frame[containsverbatim]{\frametitle{}
-\begin{verbatim}
-res = coda.samples(m, c("theta","a","b"), 2e4, thin=20)
-gelman.diag(res)
-\end{verbatim}
-}
-\end{comment}
-
-\frame[containsverbatim]{\frametitle{Has it converged?}
-\begin{verbatim}
-> res = coda.samples(m, c("theta","a","b"), 2e4, thin=20)
-  |**************************************************| 100%
-> gelman.diag(res[,c("a","b")])
-Potential scale reduction factors:
-
-  Point est. Upper C.I.
-a       1.03        1.1
-b       1.03        1.1
-
-Multivariate psrf
-
-1.03
-> gelman.diag(res)
-Error in chol.default(W) : 
-  the leading minor of order 1575 is not positive definite
-\end{verbatim}
-}
-
-\subsection{Summary}
-\frame{\frametitle{Summary}
-	\begin{itemize}
-	\item JAGS constructs an MCMC algorithm to sample from the posterior \pause
-	\item When this is inefficient, you should consider implementing your own sampler \pause
-	\item To implement your own sampler, consider many different possible algorithms\pause, e.g.
-		\begin{itemize} 
-		\item Using accept-reject to sample $\alpha$ \pause 
-		\item Sampling $\alpha$ and $\beta$ jointly \pause 
-		\item Sampling $\theta$, $\alpha$, and $\beta$ jointly \pause
-		\end{itemize}
-	\item For any MCMC, you must monitor convergence and be confident your chain has converged \pause
-		\begin{itemize}
-		\item I suggest you let one chain run a long time
-		\end{itemize}
-	\end{itemize}
-}
-
-
-\subsection{The Future}
-\frame{\frametitle{The Future}
-	Recall that 
-	\[ p(\theta|\alpha,\beta,y) = \prod_{k=1}^K p(\theta_k|y_k,\alpha,\beta) \]
-	since the $\theta_k$ are conditionally independent of $\theta_{-k}$ given its parents $\alpha$ and $\beta$.
-	
-	\vspace{0.2in} \pause
-	
-	So this step is trivially parallelized and could, in theory, lead to a 3,000-fold speedup. \pause Why isn't there a JAGS module that takes advantage of parallelism via multi-core CPU or GPUs?
-}
-
-<<eval=FALSE>>=
-library(mvtnorm)
-
-
-n.out = 101
-xx <- seq(-3, 3, length=n.out)
-grid <- expand.grid(x=xx, y=xx)
-rho = 0.9
-Sigma = diag(rep(.1,2))+rho
-like <- matrix(apply(grid, 1, function(x) dmvnorm(x,sigma=Sigma)),n.out,n.out)
-
-contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3),
-        xlab=expression(theta[1]), ylab=expression(theta[2]))
-dev.copy2pdf(file="normal-0.pdf")
-
-x = c(-3,3) 
-v = sqrt(1-rho^2)
-
-plot_null = function() plot(0,0,type="n", axes=F, xlab="", ylab="", xlim=c(-3,3), ylim=c(-3,3))
-
-set.seed(1)
-
-plot_null()
-points(x[1],x[2],col="red", pch=19)
-dev.copy2pdf(file="normal-1.pdf")
-
-for (i in 1:5) {
-  plot_null()
-  segments(x[1], x[2], x[1] <- rnorm(1, rho*x[2], v), x[2], col="gray")
-  dev.copy2pdf(file=paste("normal-",2*i,".pdf",sep=""))
-
-  plot_null()
-  segments(x[1], x[2], x[1], x[2]<- rnorm(1, rho*x[1], v), col="gray")
-  points(x[1],x[2],col="red", pch=19)
-  dev.copy2pdf(file=paste("normal-",2*i+1,".pdf",sep=""))
-}
-
-plot_null()
-for (i in 1:100) {
-  x[1] = rnorm(1, rho*x[2], v)
-  x[2] = rnorm(1, rho*x[1], v)
-  points(x[1],x[2],col="red", pch=19)
-}
-dev.copy2pdf(file="normal-12.pdf")
-
-
-
-# Tuning random-walk Metropolis
-x1 = x2 = numeric(100)
-x1[1] = x2[1] = 1
-
-for (i in 2:100) {
-  xp = rnorm(1,x1[i-1],.1)
-  x1[i] = ifelse( log(runif(1))<dnorm(xp,log=T)-dnorm(x1[i-1],log=T), xp, x1[i-1])
-  xp = rnorm(1,x2[i-1],10)
-  x2[i] = ifelse( log(runif(1))<dnorm(xp,log=T)-dnorm(x2[i-1],log=T), xp, x2[i-1])
-}
-
-pdf("tuning.pdf", height=5)
-par(mfrow=c(2,2), mar=c(5,4,4,1))
-curve(dnorm,-3,3, main="sigma=0.1", ylim=c(0,1))
-curve(dnorm(x,1,.1), col="red", add=T)
-curve(dnorm,-3,3, main="sigma=10", ylim=c(0,1))
-curve(dnorm(x,1,10), col="red", add=T)
-plot(x1, type="l", ylim=c(-3,3))
-plot(x2, type="l", ylim=c(-3,3))
-dev.off()
-
-
-# Burnin
-x1 = numeric(1000)
-x1[1]=10
-set.seed(1)
-for (i in 2:1000) x1[i] = 0.99*x1[i-1]+rnorm(1, 0, 0.1)
-
-plot_null = function() plot(0,0,type="n", xlim=c(0,1000), ylim=c(-2,10), xlab="", ylab="")
-
-par(mar=c(5,4,1,1))
-plot(x1, type="l", xlab="Iteration",ylab=expression(theta[i]), xlim=c(0,1000), ylim=c(-2,10))
-dev.copy2pdf(file="burnin-0.pdf")
-
-plot_null()
-abline(v=500, col="blue")
-dev.copy2pdf(file="burnin-1.pdf")
-
-plot_null()
-text(200,-1, "burnin", col="red", cex=2)
-text(800,4, "inference", col="blue", cex=2)
-dev.copy2pdf(file="burnin-2.pdf")
-
-plot_null()
-lines(cumsum(x1)/1:1000, col="red")
-dev.copy2pdf(file="burnin-3.pdf")
-
-plot_null()
-legend("topright", c("Samples","MC mean","Post-burnin MC mean"), col=c("black","red","blue"), lwd=1)
-lines(501:1000, cumsum(x1[501:1000])/1:500, col="blue")
-dev.copy2pdf(file="burnin-4.pdf")
+x = gibbs_and_metropolis(c(-3,3), n, rho)
 @
+\end{frame}
+
+<<gibbs_and_metropolis, eval=FALSE, echo=FALSE>>=
+# Create plot
+contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
+        xlab=expression(theta[1]), ylab=expression(theta[2]))
+points(x[1,1],x[1,2],col="red", pch=19)
+
+for (i in 2:nrow(x)) {
+  plot.new()
+  contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
+        xlab=expression(theta[1]), ylab=expression(theta[2]))
+  
+  for (j in 2:i) {
+    points(x[j-1,1],x[j-1,2],col="red", pch=19)
+    segments(x[j-1,1], x[j-1,2], x[j,1], x[j-1,2],col="gray")
+    segments(x[j  ,1], x[j-1,2], x[j,1], x[j  ,2],col="gray")
+  }
+}
+@
+
+\begin{frame}[fragile]
+<<gibbs_and_metropolis_animation, fig.show='animate', echo=FALSE>>=
+<<gibbs_and_metropolis>>
+@
+\end{frame}
+% 
+% \subsection{Graphical models}
+% \frame{\frametitle{Graphical model for $n=2$}
+% \begin{center}
+% 	\begin{tikzpicture}
+% \tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 16mm]
+% \tikzstyle{connect}=[-latex, thick]
+% \tikzstyle{box}=[rectangle, draw=black!100]
+%   \node[main] (y1)  { $y_1$ }; 
+%   \node[main] (theta1) [above=of y1] {$\theta_1$}; 
+%   \node[main] (n1) [above=of y1, left=of theta1] {$n_1$}; 
+%   \node[rectangle, inner sep=4.4mm, draw=black!100, fit= (y1) (theta1) (n1)] {}; 
+%   \node[rectangle, inner sep=-4.5mm, fit= (y1) (theta1) (n1), label=below left:county 1, xshift=12mm] {}; 
+%   \node[main] (y2) [right=of y1] { $y_2$ }; 
+%   \node[main] (theta2) [above=of y2] {$\theta_2$}; 
+%   \node[main] (n2) [above=of y2, right=of theta2] {$n_2$}; 
+%   \node[rectangle, inner sep=4.4mm, draw=black!100, fit= (y2) (theta2) (n2)] {}; 
+%   \node[rectangle, inner sep=-4.5mm, fit= (y2) (theta2) (n2), label=below right:county 2, xshift=-12mm] {}; 
+%   \node[main] (alpha) [above=of theta1] {$\alpha$};
+%   \node[main] (beta) [above=of theta2] {$\beta$};
+%   \path (theta1) edge [connect] (y1)
+%            (alpha) edge [connect] (theta1)
+%            (beta) edge [connect] (theta1)
+%            (theta2) edge [connect] (y2)
+%            (alpha) edge [connect] (theta2)
+%            (beta) edge [connect] (theta2); 
+%   \path [dashed] (n1) edge [connect] (y1)
+%                           (n2) edge [connect] (y2);
+% \end{tikzpicture}
+% \end{center}
+% }
+% 
+% 
+% \frame{\frametitle{Graphical model for $J$ groups}
+% \begin{columns}
+% \begin{column}{0.45\textwidth}
+% \begin{center}
+% 	\begin{tikzpicture}
+% \tikzstyle{main}=[circle, minimum size = 10mm, thick, draw =black!80, node distance = 16mm]
+% \tikzstyle{connect}=[-latex, thick]
+% \tikzstyle{box}=[rectangle, draw=black!100]
+%   \node[main] (y)  { $y_k$ }; 
+%   \node[main] (theta) [above=of y] {$\theta_k$}; 
+%   \node[main] (n) [above=of y, right=of theta] {$n_k$}; 
+%   \node[rectangle, inner sep=4.4mm, draw=black!100, fit= (y) (theta) (n)] {}; 
+%   \node[rectangle, inner sep=-4.5mm, fit= (y) (theta) (n), label=below right:county $k$, xshift=-12mm] {}; 
+%   \node[main] (alpha) [above=of theta, xshift=-10mm] {$\alpha$};
+%   \node[main] (beta) [above=of theta, xshift=10mm] {$\beta$};
+%   \path (theta) edge [connect] (y)
+%            (alpha) edge [connect] (theta)
+%            (beta) edge [connect] (theta); 
+%   \path [dashed] (n) edge [connect] (y);
+% \end{tikzpicture}
+% \end{center}
+% \end{column}
+% 
+% \pause
+% 
+% \begin{column}{0.55\textwidth}
+% Conditional independence rules for DAGs/hierarchical models: 
+% 
+% \vspace{0.1in} \pause
+% 
+% \begin{itemize}
+% \item Conditional on its parents, a node is conditionally independent of all other nodes except its descendants\pause, e.g. {\small \[ p(\theta_k|y,\theta_{-k},\alpha,\beta) = p(\theta_k|y_k,\alpha,\beta). \]}\pause
+% \item Generally, top level parents will not be conditionally independent.
+% \end{itemize}
+% \end{column}
+% \end{columns}
+% }
+% 
+% \subsection{Random-walk Metropolis}
+% \frame{\frametitle{Random-walk Metropolis for $\alpha$}
+% 	The full conditional distribution for $\alpha$ is not a known distribution
+% 	\[ p(\alpha|y,\theta,\beta) = p(\alpha|\theta,\beta) \propto \left( \prod_{k=1}^K \theta_k \right)^{\alpha} \beta^{K\alpha} \mathrm{\Gamma}(\alpha)^{-K} \mathrm{I}(0<\alpha<a_0). \]
+% 	So we will use a random-walk Metropolis algorithm with $N(\alpha^{t},\sigma^2)$ as our proposal distribution. \pause The acceptance probability is the minimum of 1 and 
+% 	\[ \frac{p(\alpha^*|y,\theta,\beta)}{p(\alpha^{t}|y,\theta,\beta)} = \left( \prod_{k=1}^K \theta_k \right)^{\alpha^*-\alpha^{t}} \beta^{K(\alpha^*-\alpha^{t})} \left( \frac{\mathrm{\Gamma}(\alpha^*)}{\mathrm{\Gamma}(\alpha^{t})} \right)^{-K} \mathrm{I}(0<\alpha^*<a_0) \]
+% 	Notice that $0< \alpha^{t} < a_0$ or else the result is undefined. \pause This means that $\alpha^{(0)}$ must be between 0 and $a_0$. \pause $\sigma^2$ is a tuning parameter
+% }
+% 
+% \frame{\frametitle{Tuning a random-walk}
+% \small
+% 	Random-walk proposals typically have a \alert{tuning parameter}, e.g. $\sigma^2$ in $N(\alpha^{t},\sigma^2)$, which must be set. \pause 
+% 	\begin{center}
+% 	# \includegraphics{tuning}
+% 	\end{center}
+% 	\pause Adjust $\sigma$ so that the overall acceptance rate is 0.44 for 1-dimensional random walks \pause down to 0.23 for $d$-dimensional random walks with $d>5$. \pause Fix after burn-kn.
+% }
+% 
+% \subsection{Inverse CDF method}
+% \frame{\frametitle{Inverse CDF method for $\beta$}
+% 	The full conditional distribution for $\beta$ is a truncated gamma
+% 	\[ p(\beta|y,\theta,\alpha) =p(\beta|\theta,\alpha)= Ga\left(K\alpha+1, \sum_{k=1}^K \theta_k\right) \mathrm{I}(0<\beta<b_0) \]
+% 	\pause so we can use the inverse CDF method to obtain a draw from $\beta$\pause. Let $F$ be the cdf of $Ga\left(K\alpha^{(j+1)}+1, \sum_{k=1}^K \theta_k^{(j+1)}\right)$. \pause Then an inverse CDF method \pause is 
+% 	\begin{enumerate}[\quad 1.]
+% 	\item Sample $U\sim Unif(0,F(b_0))$. \pause
+% 	\item Set $\beta^{(j+1)} = F^{-1}(U)$.
+% 	\end{enumerate}
+% }
+% 
+% \subsection{Markov chain Monte Carlo}
+% \frame{\frametitle{Markov chain Monte Carlo}
+% 	The following algorithm
+% 	\begin{enumerate}[\quad1.]
+% 	\item Sample $\theta^{(j+1)}\sim p\left(\theta|y,\alpha^{t},\beta^{t}\right)$: \pause 
+% 		\begin{itemize}
+% 		\item For $k=1,\ldots,K$, sample $\theta_k^{(j+1)} \sim p\left(\theta_k|y_k,\alpha^{t},\beta^{t}\right)$. \pause
+% 		\end{itemize} 
+% 	\item Sample $\alpha^{(j+1)} \sim p\left(\alpha|\theta^{(j+1)},\beta^{t}\right)$ using random walk Metropolis. \pause 
+% 	\item Sample $\beta^{(j+1)} \sim p\left(\beta|\theta^{(j+1)},\alpha^{(j+1)}\right)$ using the inverse CDF method. \pause
+% 	\end{enumerate}
+% 	is a \alert{Markov chain Monte Carlo} algorithm \pause whose stationary distribution, by construction, is $p(\theta,\alpha,\beta|y)$. \pause So, we know $\left(\theta^{t},\alpha^{t},\beta^{t}\right)$ converges to a draw from $p(\theta,\alpha,\beta|y)$.
+% }
+% 
+% \subsection{Monitoring convergence}
+% \frame{\frametitle{Monitoring convergence}
+% 	\alert{We can never know if we've reached convergence!} \pause \\ But we can know if we have not.
+% 	
+% 	\vspace{0.2in} \pause
+% 	
+% 	Using multiple chains from dispersed starting points\pause, check
+% 	\begin{itemize}
+% 	\item Traceplots: parameter value vs iteration \pause
+% 	\item Gelman-Rubin potential scale reduction factor
+% 	\[ \hat{R} = \sqrt{\frac{\frac{n-1}{n}W+\frac{1}{n}B}{W}} \pause \approx \sqrt{1+\frac{B}{nW}} \]
+% 	\pause where $n$ is the number of iterations, $B$ is the between chain variability, and $W$ is the within chain variability.
+% 	\end{itemize}
+% }
+% 
+% \frame{\frametitle{Burn-in}
+% 	\begin{center}
+% 	\multiinclude[format=pdf]{burnin}
+% 	\end{center}
+% }
+% 
+% \begin{comment}
+% \frame{\frametitle{Traceplots}
+% 
+% 	\vspace{-0.3in}
+% 
+% 	\begin{center}
+% 	\multiinclude[format=jpeg]{trace}
+% 	\end{center}
+% 	\pause
+% 	$\hat{R}$ are both 1.04 with upper CIs of 1.10
+% }
+% \end{comment}
+% 
+% 
+% \subsection{JAGS}
+% \frame[containsverbatim]{\frametitle{Using JAGS to perform the analysis}
+% \tiny
+% \begin{verbatim}
+% library(rjags)
+% 
+% # Read data
+% d = read.csv("full-bladder.csv")
+% d = d[d$Geo<99999,] # All data combined
+% 
+% summary(d)
+% 
+% # Write model to file
+% bladder_model <- "
+% model {
+%   for (k in 1:K) {
+%     y[k] ~ dpois(n[k]*theta[k])
+%     theta[k] ~ dgamma(a,b)
+%   }
+%   a ~ dunif(0,a0)
+%   b ~ dunif(0,b0)
+% }
+% "
+% 
+% # Set data up for analysis
+% dat = list(y = d$No.., n = d$Per/100000, K=nrow(d), a0=100, b0=10)
+% 
+% # Run JAGS
+% 
+% m = jags.model(textConnection(bladder_model), dat, n.adapt=1000, n.chains=3)
+% \end{verbatim}
+% }
+% 
+% \frame[containsverbatim]{\frametitle{Convergence issues arising in JAGS}
+% \tiny
+% Lack of convergence detected
+% \begin{verbatim}
+% > m2 = jags.model(textConnection(bladder_model), dat, n.adapt=10, n.chains=3)
+% Compiling model graph
+%    Resolving undeclared variables
+%    Allocating nodes
+%    Graph Size: 12226
+% 
+% Initializing model
+% 
+% Warning message:
+% In jags.model(textConnection(bladder_model), dat, n.adapt = 10,  :
+%   Adaptation incomplete
+% \end{verbatim}
+% Insufficient inferential iterations
+% \begin{verbatim}
+% > res = coda.samples(m, c("theta","a","b"), 1e3, thin=1)
+% > gelman.diag(res)
+% Error in chol.default(W) : 
+%   the leading minor of order 3001 is not positive definite
+% > gelman.diag(res[,c("a","b")])
+% Potential scale reduction factors:
+% 
+%   Point est. Upper C.I.
+% a       2.26       4.00
+% b       2.23       3.92
+% 
+% Multivariate psrf
+% 
+% 1.98
+% \end{verbatim}
+% }
+% 
+% \frame[containsverbatim]{\frametitle{Visualizing convergence}
+% \tiny
+% \begin{verbatim}
+% m = jags.model(textConnection(bladder_model), dat, n.adapt=1, n.chains=3)
+% res = coda.samples(m, c("a","b"), 1e3)
+% plot(res, smooth=F)
+% \end{verbatim}
+% 
+% \begin{center}
+% # \includegraphics{converge}
+% \end{center}
+% }
+% 
+% \begin{comment}
+% \frame[containsverbatim]{\frametitle{}
+% \begin{verbatim}
+% res = coda.samples(m, c("theta","a","b"), 2e4, thin=20)
+% gelman.diag(res)
+% \end{verbatim}
+% }
+% \end{comment}
+% 
+% \frame[containsverbatim]{\frametitle{Has it converged?}
+% \begin{verbatim}
+% > res = coda.samples(m, c("theta","a","b"), 2e4, thin=20)
+%   |**************************************************| 100%
+% > gelman.diag(res[,c("a","b")])
+% Potential scale reduction factors:
+% 
+%   Point est. Upper C.I.
+% a       1.03        1.1
+% b       1.03        1.1
+% 
+% Multivariate psrf
+% 
+% 1.03
+% > gelman.diag(res)
+% Error in chol.default(W) : 
+%   the leading minor of order 1575 is not positive definite
+% \end{verbatim}
+% }
+% 
+% \subsection{Summary}
+% \frame{\frametitle{Summary}
+% 	\begin{itemize}
+% 	\item JAGS constructs an MCMC algorithm to sample from the posterior \pause
+% 	\item When this is inefficient, you should consider implementing your own sampler \pause
+% 	\item To implement your own sampler, consider many different possible algorithms\pause, e.g.
+% 		\begin{itemize} 
+% 		\item Using accept-reject to sample $\alpha$ \pause 
+% 		\item Sampling $\alpha$ and $\beta$ jointly \pause 
+% 		\item Sampling $\theta$, $\alpha$, and $\beta$ jointly \pause
+% 		\end{itemize}
+% 	\item For any MCMC, you must monitor convergence and be confident your chain has converged \pause
+% 		\begin{itemize}
+% 		\item I suggest you let one chain run a long time
+% 		\end{itemize}
+% 	\end{itemize}
+% }
+% 
+% 
+% \subsection{The Future}
+% \frame{\frametitle{The Future}
+% 	Recall that 
+% 	\[ p(\theta|\alpha,\beta,y) = \prod_{k=1}^K p(\theta_k|y_k,\alpha,\beta) \]
+% 	since the $\theta_k$ are conditionally independent of $\theta_{-k}$ given its parents $\alpha$ and $\beta$.
+% 	
+% 	\vspace{0.2in} \pause
+% 	
+% 	So this step is trivially parallelized and could, in theory, lead to a 3,000-fold speedup. \pause Why isn't there a JAGS module that takes advantage of parallelism via multi-core CPU or GPUs?
+% }
+% 
+% <<eval=FALSE>>=
+% library(mvtnorm)
+% 
+% 
+% n.out = 101
+% xx <- seq(-3, 3, length=n.out)
+% grid <- expand.grid(x=xx, y=xx)
+% rho = 0.9
+% Sigma = diag(rep(.1,2))+rho
+% like <- matrix(apply(grid, 1, function(x) dmvnorm(x,sigma=Sigma)),n.out,n.out)
+% 
+% contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3),
+%         xlab=expression(theta[1]), ylab=expression(theta[2]))
+% dev.copy2pdf(file="normal-0.pdf")
+% 
+% x = c(-3,3) 
+% v = sqrt(1-rho^2)
+% 
+% plot_null = function() plot(0,0,type="n", axes=F, xlab="", ylab="", xlim=c(-3,3), ylim=c(-3,3))
+% 
+% set.seed(1)
+% 
+% plot_null()
+% points(x[1],x[2],col="red", pch=19)
+% dev.copy2pdf(file="normal-1.pdf")
+% 
+% for (i in 1:5) {
+%   plot_null()
+%   segments(x[1], x[2], x[1] <- rnorm(1, rho*x[2], v), x[2], col="gray")
+%   dev.copy2pdf(file=paste("normal-",2*i,".pdf",sep=""))
+% 
+%   plot_null()
+%   segments(x[1], x[2], x[1], x[2]<- rnorm(1, rho*x[1], v), col="gray")
+%   points(x[1],x[2],col="red", pch=19)
+%   dev.copy2pdf(file=paste("normal-",2*i+1,".pdf",sep=""))
+% }
+% 
+% plot_null()
+% for (i in 1:100) {
+%   x[1] = rnorm(1, rho*x[2], v)
+%   x[2] = rnorm(1, rho*x[1], v)
+%   points(x[1],x[2],col="red", pch=19)
+% }
+% dev.copy2pdf(file="normal-12.pdf")
+% 
+% 
+% 
+% # Tuning random-walk Metropolis
+% x1 = x2 = numeric(100)
+% x1[1] = x2[1] = 1
+% 
+% for (i in 2:100) {
+%   xp = rnorm(1,x1[i-1],.1)
+%   x1[i] = ifelse( log(runif(1))<dnorm(xp,log=T)-dnorm(x1[i-1],log=T), xp, x1[i-1])
+%   xp = rnorm(1,x2[i-1],10)
+%   x2[i] = ifelse( log(runif(1))<dnorm(xp,log=T)-dnorm(x2[i-1],log=T), xp, x2[i-1])
+% }
+% 
+% pdf("tuning.pdf", height=5)
+% par(mfrow=c(2,2), mar=c(5,4,4,1))
+% curve(dnorm,-3,3, main="sigma=0.1", ylim=c(0,1))
+% curve(dnorm(x,1,.1), col="red", add=T)
+% curve(dnorm,-3,3, main="sigma=10", ylim=c(0,1))
+% curve(dnorm(x,1,10), col="red", add=T)
+% plot(x1, type="l", ylim=c(-3,3))
+% plot(x2, type="l", ylim=c(-3,3))
+% dev.off()
+% 
+% 
+% # Burnin
+% x1 = numeric(1000)
+% x1[1]=10
+% set.seed(1)
+% for (i in 2:1000) x1[i] = 0.99*x1[i-1]+rnorm(1, 0, 0.1)
+% 
+% plot_null = function() plot(0,0,type="n", xlim=c(0,1000), ylim=c(-2,10), xlab="", ylab="")
+% 
+% par(mar=c(5,4,1,1))
+% plot(x1, type="l", xlab="Iteration",ylab=expression(theta[i]), xlim=c(0,1000), ylim=c(-2,10))
+% dev.copy2pdf(file="burnin-0.pdf")
+% 
+% plot_null()
+% abline(v=500, col="blue")
+% dev.copy2pdf(file="burnin-1.pdf")
+% 
+% plot_null()
+% text(200,-1, "burnin", col="red", cex=2)
+% text(800,4, "inference", col="blue", cex=2)
+% dev.copy2pdf(file="burnin-2.pdf")
+% 
+% plot_null()
+% lines(cumsum(x1)/1:1000, col="red")
+% dev.copy2pdf(file="burnin-3.pdf")
+% 
+% plot_null()
+% legend("topright", c("Samples","MC mean","Post-burnin MC mean"), col=c("black","red","blue"), lwd=1)
+% lines(501:1000, cumsum(x1[501:1000])/1:500, col="blue")
+% dev.copy2pdf(file="burnin-4.pdf")
+% @
 
 
 \end{document}
