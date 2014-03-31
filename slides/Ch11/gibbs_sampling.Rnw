@@ -16,7 +16,7 @@
 \setkeys{Gin}{width=0.6\textwidth}
 
 
-\title[Metropolis-Hastings]{Gibbs sampling}
+\title[Gibbs sampling]{Gibbs sampling}
 \author[Jarad Niemi]{Dr. Jarad Niemi}
 \institute[Iowa State]{Iowa State University}
 \date{\today}
@@ -74,6 +74,27 @@ Construct a Markov chain with stationary distributon $p(\theta|y)$ and run it lo
 %	\[  \frac{1}{J} \sum_{j=1}^J h\left(\theta^{t}\right) \rightarrow E_p[h(\theta)] = \int_{\Theta} h(\theta) f(\theta) d\theta  \]
 	\end{itemize}
 }
+
+
+\begin{frame}
+\frametitle{}
+\begin{theorem}
+If $K(\theta,\theta')= p(\theta_2'|\theta_1',y)p(\theta_1'|\theta_2,y)$ then $p(\theta)$ is the stationary distribution, i.e.
+\[ p(\theta'|y) = \int K(\theta,\theta') p(\theta|y) d\theta. \]
+\end{theorem}
+
+\begin{proof}
+\[ \begin{array}{rl}
+p(\theta'|y) &= p(\theta_2'|\theta_1',y)p(\theta_1'|y) \\
+&= p(\theta_2'|\theta_1',y)\int p(\theta_1'|\theta_2,y) p(\theta_2|y) d\theta_2 \\
+&= p(\theta_2'|\theta_1',y)\int p(\theta_1'|\theta_2,y) \int p(\theta_2|\theta_1,y)p(\theta_1|y) d\theta_1 d\theta_2 \\
+&= \int \int p(\theta_2'|\theta_1',y) p(\theta_1'|\theta_2,y) \int p(\theta_2|\theta_1,y)p(\theta_1|y) d\theta_1 d\theta_2 \\
+&= \int K(\theta,\theta') p(\theta|y) d\theta 
+\end{array} \]
+\end{proof}
+
+\end{frame}
+
 
 \subsection{Bivariate normal example}
 \frame{\frametitle{Bivariate normal example}
