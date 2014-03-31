@@ -1,5 +1,5 @@
-\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-%\documentclass{beamer}
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+\documentclass{beamer}
 
 \usecolortheme[RGB={0,0,144}]{structure}
 \usetheme{AnnArbor}\usecolortheme{beaver}
@@ -57,10 +57,10 @@ Construct a Markov chain with stationary distributon $p(\theta|y)$ and run it lo
 
 \section{Gibbs sampling}
 \frame{\frametitle{Gibbs sampling}
-  Suppose our target distribution is $p(\theta|y)$ with $\theta=(\theta_1,\theta_2)$  \pause and we can sample from $p\left(\theta_1|\theta_2\right)$ and $p\left(\theta_2|\theta_1\right)$\pause. Beginning with an initial value $\left(\theta_1^0, \theta_2^0\right)$\pause, the \alert{Gibbs sampler} is 
+  Suppose our target distribution is $p(\theta|y)$ with $\theta=(\theta_1,\theta_2)$  \pause and we can sample from $p\left(\theta_1|\theta_2,y\right)$ and $p\left(\theta_2|\theta_1, y\right)$\pause. Beginning with an initial value $\left(\theta_1^0, \theta_2^0\right)$\pause, the \alert{Gibbs sampler} is 
 	\begin{enumerate}[\quad1.]
-	\item sample $\theta_1^{t}\sim p\left(\theta_1|\theta_2^{t-1}\right)$ \pause and then 
-	\item sample $\theta_2^{t}\sim p\left(\theta_2|\theta_1^{t}\right)$. 
+	\item sample $\theta_1^{t}\sim p\left(\theta_1|\theta_2^{t-1},y\right)$ \pause and then 
+	\item sample $\theta_2^{t}\sim p\left(\theta_2|\theta_1^{t},y\right)$. 
 	\end{enumerate}
 	
 	\vspace{0.2in} \pause
@@ -68,7 +68,7 @@ Construct a Markov chain with stationary distributon $p(\theta|y)$ and run it lo
 	Notes:
 	\begin{itemize}[<+->]
   \item The sequence $\{\theta^0,\theta^1,\ldots,\}$ is a Markov chain with transition distribution 
-  \[ p(\theta^{t}|\theta^{t-1}) = p(\theta_2^{t}|\theta_1^{t})p(\theta_1^{t}|\theta_2^{t-1}). \]
+  \[ p(\theta^{t}|\theta^{t-1},y) = p(\theta_2^{t}|\theta_1^{t},y)p(\theta_1^{t}|\theta_2^{t-1,y}). \]
 	\item $\theta^{t} \stackrel{d}{\rightarrow} \theta$ where $\theta \sim p\left(\theta|y\right)$.  
 %	\item 
 %	\[  \frac{1}{J} \sum_{j=1}^J h\left(\theta^{t}\right) \rightarrow E_p[h(\theta)] = \int_{\Theta} h(\theta) f(\theta) d\theta  \]
@@ -79,16 +79,16 @@ Construct a Markov chain with stationary distributon $p(\theta|y)$ and run it lo
 \begin{frame}
 \frametitle{}
 \begin{theorem}
-If $K(\theta,\theta')= p(\theta_2'|\theta_1',y)p(\theta_1'|\theta_2,y)$ then $p(\theta)$ is the stationary distribution, i.e.
+If $K(\theta,\theta')= p(\theta_2'|\theta_1',y)p(\theta_1'|\theta_2,y)$ then $p(\theta|y)$ is the stationary distribution, \pause i.e.
 \[ p(\theta'|y) = \int K(\theta,\theta') p(\theta|y) d\theta. \]
 \end{theorem}
-
+\pause 
 \begin{proof}
 \[ \begin{array}{rl}
-p(\theta'|y) &= p(\theta_2'|\theta_1',y)p(\theta_1'|y) \\
-&= p(\theta_2'|\theta_1',y)\int p(\theta_1'|\theta_2,y) p(\theta_2|y) d\theta_2 \\
-&= p(\theta_2'|\theta_1',y)\int p(\theta_1'|\theta_2,y) \int p(\theta_2|\theta_1,y)p(\theta_1|y) d\theta_1 d\theta_2 \\
-&= \int \int p(\theta_2'|\theta_1',y) p(\theta_1'|\theta_2,y) \int p(\theta_2|\theta_1,y)p(\theta_1|y) d\theta_1 d\theta_2 \\
+p(\theta'|y) &= p(\theta_2'|\theta_1',y)p(\theta_1'|y) \pause \\
+&= p(\theta_2'|\theta_1',y)\int p(\theta_1'|\theta_2,y) p(\theta_2|y) d\theta_2 \pause \\
+&= p(\theta_2'|\theta_1',y)\int p(\theta_1'|\theta_2,y) \int p(\theta_2,\theta_1|y) d\theta_1 d\theta_2 \pause \\
+&= \int \int p(\theta_2'|\theta_1',y) p(\theta_1'|\theta_2,y) p(\theta_2,\theta_1|y) d\theta_1 d\theta_2 \pause \\
 &= \int K(\theta,\theta') p(\theta|y) d\theta 
 \end{array} \]
 \end{proof}
@@ -110,13 +110,13 @@ p(\theta'|y) &= p(\theta_2'|\theta_1',y)p(\theta_1'|y) \\
 	
 	\vspace{0.2in} \pause
 	
-	Assuming initial value $\left(\theta_1^{(0)}, \theta_2^{(0)}\right)$, the Gibbs sampler proceeds as follows:
+	Assuming initial value $\left(\theta_1^{0}, \theta_2^{0}\right)$, the Gibbs sampler proceeds as follows:
 	\[ \begin{array}{ccc}
 	\mbox{Iteration} & \mbox{Sample }\theta_1 & \mbox{Sample }\theta_2 \pause \\
 	\hline 
-	1 & \theta_1\sim N\left(\rho\theta_2^{(0)}, [1-\rho^2]\right) &\theta_2 \sim N\left(\rho\theta_1^{(1)}, [1-\rho^2]\right) \pause \\
+	1 & \theta_1^1\sim N\left(\rho\theta_2^{0}, [1-\rho^2]\right) &\theta_2^1 \sim N\left(\rho\theta_1^{1}, [1-\rho^2]\right) \pause \\
 	& \vdots & \\
-	k & \theta_1\sim N\left(\rho\theta_2^{(k-1)}, [1-\rho^2]\right) &\theta_2 \sim N\left(\rho\theta_1^{(k)}, [1-\rho^2]\right) \pause \\
+	t & \theta_1^t\sim N\left(\rho\theta_2^{t-1}, [1-\rho^2]\right) &\theta_2^t \sim N\left(\rho\theta_1^{t}, [1-\rho^2]\right) \pause \\
 	& \vdots &
 	\end{array} \]	
 }
@@ -175,12 +175,12 @@ for (i in 2:nrow(x)) {
 \frame{\frametitle{$K$-component Gibbs sampler}
 	Suppose $\theta = (\theta_1,\ldots,\theta_K)$\pause, then the following Gibbs sampler can be constructed \pause
 	\[ \begin{array}{rl}
-	\theta_1^{t} &\sim p\left(\theta_1|\theta_2^{t-1},\ldots, \theta_K^{t-1}\right) \pause \\ \\
-	\theta_2^{t} &\sim p\left(\theta_2|\theta_1^{t}, \theta_3^{t-1},\ldots, \theta_K^{t-1}\right) \pause\\
+	\theta_1^{t} &\sim p\left(\theta_1|\theta_2^{t-1},\ldots, \theta_K^{t-1},y\right) \pause \\ \\
+	\theta_2^{t} &\sim p\left(\theta_2|\theta_1^{t}, \theta_3^{t-1},\ldots, \theta_K^{t-1},y\right) \pause\\
 	&\vdots \\
-	\theta_k^{t} &\sim p\left(\theta_k|\theta_1^{t}\ldots,\theta_{k-1}^{t}, \theta_{k+1}^{t-1},\ldots, \theta_K^{t-1}\right) \\
+	\theta_k^{t} &\sim p\left(\theta_k|\theta_1^{t}\ldots,\theta_{k-1}^{t}, \theta_{k+1}^{t-1},\ldots, \theta_K^{t-1},y\right) \\
 	&\vdots \pause\\
-	\theta_K^{t} &\sim p\left(\theta_K|\theta_1^{t},\ldots, \theta_{K-1}^{t}\right) \pause
+	\theta_K^{t} &\sim p\left(\theta_K|\theta_1^{t},\ldots, \theta_{K-1}^{t},y\right) \pause
 	\end{array} \]
 	The distributions above are called the \alert{full conditional distributions}.
 }
@@ -255,13 +255,16 @@ for (i in 2:nrow(x)) {
 Suppose the target distribution is $p(\theta|y)$ with scalar $\theta$. \pause Then,
 \[ p(\theta|y) = \int_0^{p(\theta|y)} du \]
 \pause Thus, $p(\theta|y)$ can be thought of as the marginal distribution of 
-\[ (\theta,U) \sim \mbox{Unif}\{(\theta,u):0<u<p(\theta|y)\}. \]
-\pause \alert{Slice sampling} performs the following Gibbs sampler: \pause 
+\[ (\theta,U) \sim \mbox{Unif}\{(\theta,u):0<u<p(\theta|y)\} \]
+where $u$ is an \alert{auxiliary variable}.
+
+\vspace{0.2in} \pause 
+
+\alert{Slice sampling} performs the following Gibbs sampler: \pause 
 \begin{enumerate}
-\item $u^t|\theta^{t-1} \sim \mbox{Unif}(0<u<p(\theta^{t-1}|y)$ \pause and
+\item $u^t|\theta^{t-1} \sim \mbox{Unif}\{u:0<u<p(\theta^{t-1}|y)\}$ \pause and
 \item $\theta^t|u^t \sim \mbox{Unif}\{\theta: u<p(\theta|y) \}$.
 \end{enumerate}
-This is a \alert{latent variable augmentation}.
 \end{frame}
 
 
@@ -269,8 +272,26 @@ This is a \alert{latent variable augmentation}.
 
 
 \begin{frame}[fragile]
+\frametitle{Slice sampler for exponential distribution}
 Consider the target $\theta|y \sim Exp(1)$,\pause  then 
 \[ \{\theta: u<p(\theta|y) \} = (0,-\log(u)). \]
+
+\pause 
+
+<<uniform_region>>=
+u = 0.5; x = -log(u)
+curve(dexp, 0, 1.5, ylab="u", xlab=expression(theta), main="Target disribution", ylim=c(0,1))
+curve(dexp, 0, x, add=TRUE, lwd=3, col="red")
+segments(0,u,x,u,col="gray")
+segments(x,0,x,u,col="gray")
+segments(0,0,x,0,lwd=3, col="red")
+@
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
 <<slice_sampler>>=
 # Slice sampler 
 slice = function(n,init_theta,target,A) {
@@ -297,14 +318,14 @@ res = slice(10, 0.1, dexp, A)
 <<slice_sampling_plot, fig.show='animate', echo=FALSE>>=
 attach(res)
 par(pch=19)
-curve(dexp,0,3,ylim=c(0,1))
+curve(dexp,0,1.5,ylim=c(0,1))
 points(theta[1],u[1])
 
 for (i in 1:10) {
   plot.new()
-  curve(dexp,0,3,ylim=c(0,1))
+  curve(dexp,0,3,ylim=c(0,1),ylab="u", xlab=expression(theta), main="Target disribution")
   for (j in 1:i) {
-    points(  theta[j], u[j  ])
+    points(  theta[j], u[j  ], col="red")
     segments(theta[j], u[j  ], theta[j  ], u[j+1], col="gray")
     segments(theta[j], u[j+1], theta[j+1], u[j+1], col="gray")
   }
@@ -320,6 +341,65 @@ hist(slice(1e4, 0.1, dexp, A)$theta, freq=F, 100, main="Slice sampling approxima
 curve(dexp, add=TRUE)
 @
 \end{frame}
+
+
+\section{Extended example}
+\begin{frame}
+\frametitle{Beta-binomial example}
+
+Let 
+\[ \begin{array}{rl}
+Y_i&\stackrel{ind}{\sim} Bin(n_i,\theta_i) \pause \\
+\theta_i &\stackrel{iid}{\sim} Be(\alpha,\beta) \pause \\
+p(\alpha,\beta) &\propto (\alpha+\beta)^{-5/2} \pause
+\end{array} \]
+
+We will use a Gibbs sampler to sample from $\theta_1,\ldots,\theta_n,\alpha,\beta$\pause, so we need to derive the following conditional distributions:\pause
+\begin{itemize}
+\item $\theta_i|\theta_1,\ldots,\theta_{i-1},\theta_{i+1},\ldots,\theta_n,\alpha,\beta,y$ \pause
+\item $\alpha|\theta_1,\ldots,\theta_n,\beta,y$ \pause 
+\item $\beta|\theta_1,\ldots,\theta_n,\alpha,y$ \pause
+\end{itemize}
+For shorthand, we often use $\theta_i|\ldots$ where $\ldots$ indicates \emph{everything else}.
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Full conditional for $\theta_i$}
+To find a full conditional, start by writing it proportional to the posterior, \pause 
+
+\[ \begin{array}{rl}
+p(\theta_i|\ldots) &\propto p(y|\theta)p(\theta|\alpha,\beta)p(\alpha,\beta) \pause \\
+p(\theta_i|\ldots) &\propto \left[ \prod_{i=1}^n p(y_i|\theta_i) \right] \left[ \prod_{i=1}^n  p(\theta_i|\alpha,\beta) \right] \pause \\
+&\propto \left[\prod_{j=1}^n \theta_j^{y_j}(1-\theta_j)^{n_j-y_j} \theta_j^{\alpha-1}(1-\theta_j)^{\beta-1} \right] \pause \\
+&\propto \theta_i^{\alpha+y_i-1}(1-\theta_i)^{\beta+n_i-y_i-1} \pause
+\end{array} \]
+Thus $\theta_i|\ldots Be(\alpha+y_i,\beta+n_i-y_i)$.
+\end{frame}
+
+\begin{frame}
+\frametitle{Full conditional for $\alpha$ and $\beta$}
+The full conditional for $\alpha$ \pause is 
+\[ \begin{array}{rl}
+p(\alpha|\ldots) &\propto p(y|\theta)p(\theta|\alpha,\beta)p(\alpha,\beta) \pause \\
+&\propto \left[ \prod_{i=1}^n  p(\theta_i|\alpha,\beta) \right] p(\alpha,\beta) \pause \\
+&\propto \frac{\left(\prod_{i=1}^n \theta_i\right)^\alpha}{Beta(\alpha,\beta)^n}(\alpha+\beta)^{-5/2}
+\end{array} \]
+which has no known form. 
+
+\vspace{0.2in} \pause
+
+The full conditional for $\beta$ is 
+\[ \begin{array}{rl}
+p(\beta|\ldots) &\propto p(y|\theta)p(\theta|\alpha,\beta)p(\alpha,\beta) \pause \\
+&\propto \left[ \prod_{i=1}^n  p(\theta_i|\alpha,\beta) \right] p(\alpha,\beta) \pause \\
+&\propto \frac{\left(\prod_{i=1}^n [1-\theta_i]\right)^\beta}{Beta(\alpha,\beta)^n}(\alpha+\beta)^{-5/2}
+\end{array} \]
+which also has no known form.
+
+\end{frame}
+
 
 
  
