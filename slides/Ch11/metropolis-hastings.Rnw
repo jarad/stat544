@@ -61,19 +61,20 @@ Construct a Markov chain with stationary distributon $p(\theta|y)$ and run it lo
 
 Let 
 \begin{itemize}
-\item $q(\theta|y)\propto q(\theta|y)$ be the target distribution and
+\item $p(\theta|y)\propto q(\theta|y)$ be the target distribution and
 \item $\theta^t$ be the current value of the chain.
 \end{itemize}
 
 \vspace{0.2in} \pause
 
-The Metropolis-Hastings algorithm performs the following
+The Metropolis-Hastings algorithm performs the following \pause 
 \begin{enumerate}
-\item propose $\theta^*\sim J(\theta|\theta^t)$
-\item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
-\[ r = r(\theta^t,\theta^*) = \pause 
-\frac{q(\theta^*|y)/J(\theta^*|\theta^t)}{q(\theta^t|y)/J(\theta^t|\theta^*)} = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t|\theta^*)}{J(\theta^*|\theta^t)} \]
-otherwise, set $\theta^{t+1}=\theta^t$. 
+\item propose $\theta^*\sim J(\theta|\theta^t)$ \pause 
+\item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ \pause where 
+\[ r = r(\theta^t,\theta^*) \pause 
+= \frac{q(\theta^*|y)/J(\theta^*|\theta^t)}{q(\theta^t|y)/J(\theta^t|\theta^*)} \pause 
+= \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t|\theta^*)}{J(\theta^*|\theta^t)} \]
+\pause otherwise, set $\theta^{t+1}=\theta^t$. 
 \end{enumerate}
 \end{frame}
 
@@ -84,14 +85,14 @@ otherwise, set $\theta^{t+1}=\theta^t$.
 \footnotesize
 Let the state space be $\{0,1\}$ with target distribution $(2/3\,\,1/3)$ \pause and 
 \[ J = \bordermatrix{ & 0 & 1 \cr 0 & 0.5 & 0.5 \cr 1 & 0.3 & 0.7 } \]
-\pause and acceptance probability is $\min\{1,r\}$ where 
-\[ r = \bordermatrix{ & 0 & 1 \cr 0 & 1 & \frac{1/3}{2/3} \frac{0.3}{0.5} \cr 1 & \frac{2/3}{1/3} \frac{0.5}{0.3} & 1 } = \bordermatrix{ & 0 & 1 \cr 0 & 1 & 0.3 \cr 1 & 3.33 & 1 }  \]
-Thus, the transition distribution is 
+\pause and acceptance probability is $\min\{1,r\}$ \pause where 
+\[ r = \bordermatrix{ & 0 & 1 \cr 0 & 1 & \frac{1/3}{2/3} \frac{0.3}{0.5} \cr 1 & \frac{2/3}{1/3} \frac{0.5}{0.3} & 1 } \pause = \bordermatrix{ & 0 & 1 \cr 0 & 1 & 0.3 \cr 1 & 3.33 & 1 }  \]
+\pause Thus, the transition distribution is 
 \[\begin{array}{rlll}
-p &= p(\theta^{t+1}=1|\theta^t=0) = p(\theta^*=1|\theta^t=0)p(\theta^*\mbox{ accepted}) &= 0.5\times 0.3 &= 0.15 \\
-q &= p(\theta^{t+1}=0|\theta^t=1) = p(\theta^*=0|\theta^t=1)p(\theta^*\mbox{ accepted}) &= 0.3\times 1 &= 0.3
+p &= p(\theta^{t+1}=1|\theta^t=0) \pause = p(\theta^*=1|\theta^t=0)p(\theta^*\mbox{ accepted}) &\pause= 0.5\times 0.3 &= 0.15 \pause \\
+q &= p(\theta^{t+1}=0|\theta^t=1) \pause = p(\theta^*=0|\theta^t=1)p(\theta^*\mbox{ accepted}) &\pause = 0.3\times 1 &\pause = 0.3
 \end{array} \]
-and we know the station distribution is $(0.3,0.15)/(0.3+0.15)=(2/3\,\,1/3)$. 
+and the stationary distribution is $(0.3,0.15)/(0.3+0.15)=(2/3\,\,1/3)$. 
 \end{frame}
 
 
@@ -112,7 +113,7 @@ for (i in 2:n) {
   r = q[theta_star]/q[theta[i-1]] * J[theta_star,theta[i-1]]/J[theta[i-1],theta_star]
   theta[i] = ifelse(runif(1)<r, theta_star, theta[i-1])
 }
-table(theta)/n
+table(theta-1)/n
 qplot(1:n, theta-1)+labs(x="Time",y=expression(theta))
 @
 \end{frame}
@@ -122,7 +123,7 @@ qplot(1:n, theta-1)+labs(x="Time",y=expression(theta))
 
 \begin{frame}
 \frametitle{Ergodicity of the MH algorithm}
-\begin{itemize}
+\begin{itemize}[<+->]
 \item Markov chain by construction
 \item Irreducible: 
   \begin{itemize}
@@ -137,7 +138,7 @@ qplot(1:n, theta-1)+labs(x="Time",y=expression(theta))
 
 \vspace{0.2in} \pause
 
-\begin{itemize}
+\begin{itemize}[<+->]
 \item Is there a stationary distribution?
 \item Does the chain converge to the stationary distribution?
 \end{itemize} 
@@ -186,10 +187,10 @@ Let
 
 \vspace{0.2in} \pause
 
-The \alert{independence Metropolis-Hastings algorithm} performs the following
+The \alert{independence Metropolis-Hastings algorithm} performs the following \pause
 \begin{enumerate}
-\item propose $\theta^*\sim J(\theta)$
-\item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
+\item propose $\theta^*\sim J(\theta)$ \pause
+\item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ \pause where 
 \[ r = 
 \frac{q(\theta^*|y)/J(\theta^*)}{q(\theta^t|y)/J(\theta^t)} = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t)}{J(\theta^*)} \]
 \pause otherwise, set $\theta^{t+1}=\theta^t$. 
@@ -201,8 +202,8 @@ The \alert{independence Metropolis-Hastings algorithm} performs the following
 \frametitle{Example: Normal-Cauchy model}
   Let $Y\sim N(\theta,1)$ with $\theta\sim Ca(0,1)$ \pause such that the posterior is
   \[ p(\theta|y) \propto p(y|\theta)p(\theta) \propto \frac{\exp(-(y-\theta)^2/2)}{1+\theta^2} \]
-\pause Use $N(y,1)$ as the proposal, \pause then the Metropolis-Hastings acceptance probability is the $\min\{1,r\}$ with 
-\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t|\theta^*)}{J(\theta^*|\theta^t)} = \frac{1+(\theta^t)^2}{1+(\theta^*)^2} \] 
+\pause Use $N(y,1)$ as the proposal, \pause then the Metropolis-Hastings acceptance probability is the $\min\{1,r\}$ \pause with 
+\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t|\theta^*)}{J(\theta^*|\theta^t)} \pause = \frac{1+(\theta^t)^2}{1+(\theta^*)^2} \] 
 \end{frame}
 
 
@@ -243,18 +244,21 @@ qplot(1:n, theta)+labs(x="Time", y=expression(theta), title="Independence Metrop
 \frametitle{Need heavy tails}
 
 Recall that 
-\begin{itemize}
+\begin{itemize}[<+->]
 \item rejection sampling required the proposal to have heavy tails
 \item importance sampling was efficient only when the proposal has heavy tails
 \end{itemize}
-Independence Metropolis-Hastings also requires heavy tailed proposals since if $\theta^t$ is 
+
+\vspace{0.2in} \pause
+
+Independence Metropolis-Hastings also requires heavy tailed proposals \pause since if $\theta^t$ is 
 \begin{itemize}
-\item in a region where $q(\theta^t|y)>>J(\theta^t)$ then
-\item any proposal $\theta^*$ such that $p(\theta^*)\approx J(\theta^*)$ 
+\item in a region where $q(\theta^t|y)>>J(\theta^t)$ \pause then
+\item any proposal $\theta^*$ such that $p(\theta^*)\approx J(\theta^*)$ \pause 
 \end{itemize}
 will result in 
-\[ r = \frac{J(\theta^t)}{q(\theta^t|y)}\frac{q(\theta^*|y)}{J(\theta^*)} \approx 0 \]
-and few samples will be accepted.
+\[ r = \frac{J(\theta^t)}{q(\theta^t|y)}\frac{q(\theta^*|y)}{J(\theta^*)} \pause \approx 0 \]
+\pause and few samples will be accepted.
 \end{frame}
 
 
@@ -291,15 +295,15 @@ Let
 \vspace{0.2in} \pause
 
 The \alert{Metropolis algorithm} performs the following \pause
-\begin{enumerate}[<+->]
-\item propose $\theta^*\sim J(\theta|\theta^t)$
-\item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ where 
-\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t|\theta^*)}{J(\theta^*|\theta^t)} =
+\begin{enumerate}
+\item propose $\theta^*\sim J(\theta|\theta^t)$ \pause 
+\item accept $\theta^{t+1}=\theta^*$ with probability $\min\{1,r\}$ \pause where 
+\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)}\frac{J(\theta^t|\theta^*)}{J(\theta^*|\theta^t)} \pause =
 \frac{q(\theta^*|y)}{q(\theta^t|y)} 
 \]
 \pause otherwise, set $\theta^{t+1}=\theta^t$. 
 \end{enumerate}
-This is also referred to as \alert{random-walk Metropolis}.
+\pause This is also referred to as \alert{random-walk Metropolis}.
 \end{frame}
 
 
@@ -323,8 +327,11 @@ legend("topright",c("Target","Proposal"), col=1:2, lwd=2)
 \frametitle{Example: Normal-Cauchy model}
   Let $Y\sim N(\theta,1)$ with $\theta\sim Ca(0,1)$ \pause such that the posterior is
   \[ p(\theta|y) \propto p(y|\theta)p(\theta) \propto \frac{\exp(-(y-\theta)^2/2)}{1+\theta^2} \]
-Use $N(\theta^t,1)$ as the proposal, then the acceptance probability is the $\min\{1,r\}$ with 
-\[ r = \frac{p(\theta^*|y)}{p(\theta^t|y)} = \frac{p(y|\theta^*)p(\theta^*)}{p(y|\theta^t)p(\theta^t)}. \] 
+
+\vspace{0.2in} \pause 
+
+Use $N(\theta^t,\tau^2)$ as the proposal\pause, then the acceptance probability is the $\min\{1,r\}$ \pause with 
+\[ r = \frac{p(\theta^*|y)}{p(\theta^t|y)} \pause = \frac{p(y|\theta^*)p(\theta^*)}{p(y|\theta^t)p(\theta^t)}. \] 
 \end{frame}
 
 
@@ -361,15 +368,16 @@ qplot(1:n, theta)+labs(x="Time", y=expression(theta), title="Random-walk Metropo
 
 \begin{frame}
 \frametitle{Random-walk tuning parameter}
-  Let $p(\theta|y)$ be the target distribution and suppose $\theta^t$ is (approximately) distributed according to $p(\theta|y)$.
+\small 
+  Let $p(\theta|y)$ be the target distribution\pause, $N(\theta^t,\tau^2)$ is the proposal\pause, and $\theta^t$ is (approximately) distributed according to $p(\theta|y)$. \pause 
 
 \begin{itemize}
-\item If $\tau^2\approx 0$, then $\theta^*\approx \theta^t$ and
+\item If $\tau^2\approx 0$\pause, then $\theta^*\approx \theta^t$ \pause and
 \[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)} \approx 1 \]
-and all proposals are accepted.
-\item As $\tau^2\to\infty$, then $q(\theta^*|y)\approx 0$ since $\theta^*$ will be far from the mass of the target distribution and 
-\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)} \approx 0 \]
-so all proposed values are rejected.
+\pause and all proposals are accepted. \pause 
+\item As $\tau^2\to\infty$\pause, then $q(\theta^*|y)\approx 0$ \pause since $\theta^*$ will be far from the mass of the target distribution \pause and 
+\[ r = \frac{q(\theta^*|y)}{q(\theta^t|y)} \pause \approx 0 \]
+\pause so all proposed values are rejected.
 \end{itemize}
 
 So there is an optimal $\tau^2$ somewhere. \pause For normal targets, the optimal random-walk proposal variance is $2.4^2Var(\theta|y)/d$ where $d$ is the dimension of $\theta$ which results in an acceptance rate of 40\% for $d=1$ down to 20\% as $d\to\infty$. 
@@ -410,7 +418,7 @@ Let $Y \sim Bin(n,\theta)$ and $\theta \sim Be(1/2,1/2)$\pause, thus the posteri
 \vspace{0.2in} \pause
 
 To construct a random-walk Metropolis algorithm, we choose the proposal 
-\[ \theta \sim N(\theta^t,\sigma^2) \]
+\[ \theta \sim N(\theta^t,\tau^2) \]
 \pause and accept with probability $\min\{1,r\}$ \pause where 
 \[ r = \frac{p(\theta^*|y)}{p(\theta^t|y)} \pause = \frac{(\theta^*)^{y-0.5}(1-\theta^*)^{n-y-0.5}\mathrm{I}(0<\theta^*<1)}{(\theta^t)^{y-0.5}(1-\theta^t)^{n-y-0.5}\mathrm{I}(0<\theta^t<1)} \]
 \end{frame}

@@ -1,0 +1,305 @@
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow,tikz,animate}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+
+\title[Metropolis-Hastings]{Gibbs sampling}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\I}{\mathrm{I}}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+library(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+##############################################
+# Markov chain Monte Carlo                   #
+##############################################
+library(reshape2)
+library(plyr)
+library(ggplot2)
+library(mvtnorm)
+set.seed(2)
+@
+
+\frame{\maketitle}
+
+\section{Markov chain Monte Carlo}
+\begin{frame}
+\frametitle{Markov chain construction}
+
+Suppose we wish to simulate from $p(\theta|y)$, but cannot do so directly. 
+
+\vspace{0.2in} 
+
+Construct a Markov chain with stationary distributon $p(\theta|y)$ and run it long enough that the samples are approximately from $p(\theta|y)$. 
+
+\end{frame}
+
+
+\section{Gibbs sampling}
+\frame{\frametitle{Gibbs sampling}
+  Suppose our target distribution is $p(\theta|y)$ with $\theta=(\theta_1,\theta_2)$  \pause and we can sample from $p\left(\theta_1|\theta_2\right)$ and $p\left(\theta_2|\theta_1\right)$\pause. Beginning with an initial value $\left(\theta_1^0, \theta_2^0\right)$\pause, the \alert{Gibbs sampler} is 
+	\begin{enumerate}[\quad1.]
+	\item sample $\theta_1^{t}\sim p\left(\theta_1|\theta_2^{t-1}\right)$ \pause and then 
+	\item sample $\theta_2^{t}\sim p\left(\theta_2|\theta_1^{t}\right)$. 
+	\end{enumerate}
+	
+	\vspace{0.2in} \pause
+	
+	Notes:
+	\begin{itemize}[<+->]
+  \item The sequence $\{\theta^0,\theta^1,\ldots,\}$ is a Markov chain with transition distribution 
+  \[ p(\theta^{t}|\theta^{t-1}) = p(\theta_2^{t}|\theta_1^{t})p(\theta_1^{t}|\theta_2^{t-1}). \]
+	\item $\theta^{t} \stackrel{d}{\rightarrow} \theta$ where $\theta \sim p\left(\theta|y\right)$.  
+%	\item 
+%	\[  \frac{1}{J} \sum_{j=1}^J h\left(\theta^{t}\right) \rightarrow E_p[h(\theta)] = \int_{\Theta} h(\theta) f(\theta) d\theta  \]
+	\end{itemize}
+}
+
+\subsection{Bivariate normal example}
+\frame{\frametitle{Bivariate normal example}
+\small
+	Let our target be 
+	\[ \theta \sim N_2(0,\mathrm\Sigma) \pause \qquad \mathrm{\Sigma} = \left[ \begin{array}{cc} 1 & \rho \\ \rho & 1 \end{array} \right].\]
+	\pause Then 
+	\[ \begin{array}{rl}
+	\theta_1|\theta_2 &\sim \pause N\left(\rho\theta_2, [1-\rho^2]\right) \pause \\
+	\theta_2|\theta_1 &\sim \pause N\left(\rho\theta_1, [1-\rho^2]\right) 
+	\end{array} \]
+	are the conditional distributions. 
+	
+	\vspace{0.2in} \pause
+	
+	Assuming initial value $\left(\theta_1^{(0)}, \theta_2^{(0)}\right)$, the Gibbs sampler proceeds as follows:
+	\[ \begin{array}{ccc}
+	\mbox{Iteration} & \mbox{Sample }\theta_1 & \mbox{Sample }\theta_2 \pause \\
+	\hline 
+	1 & \theta_1\sim N\left(\rho\theta_2^{(0)}, [1-\rho^2]\right) &\theta_2 \sim N\left(\rho\theta_1^{(1)}, [1-\rho^2]\right) \pause \\
+	& \vdots & \\
+	k & \theta_1\sim N\left(\rho\theta_2^{(k-1)}, [1-\rho^2]\right) &\theta_2 \sim N\left(\rho\theta_1^{(k)}, [1-\rho^2]\right) \pause \\
+	& \vdots &
+	\end{array} \]	
+}
+
+\begin{frame}[fragile]
+\frametitle{Bivariate normal with $\rho=0.9$}
+<<bivariate_normal_mcmc>>=
+gibbs_bivariate_normal = function(x0, n_points, rho) {
+  x = matrix(x0, nrow=n_points, ncol=2, byrow=TRUE)
+  v = sqrt(1-rho^2)
+  for (i in 2:n_points) {
+    x[i,1] = rnorm(1, rho*x[i-1,2], v)
+    x[i,2] = rnorm(1, rho*x[i  ,1], v)
+  }
+  return(x)
+}
+
+set.seed(1)
+x = gibbs_bivariate_normal(c(-3,3), n<-20, rho=rho<-0.9)
+@
+\end{frame}
+
+<<bivariate_normal, eval=FALSE, echo=FALSE>>=
+# Create plot
+n.out = 101
+xx <- seq(-3, 3, length=n.out)
+grid <- expand.grid(x=xx, y=xx)
+Sigma = diag(rep(.1,2))+rho
+like <- matrix(apply(grid, 1, function(x) dmvnorm(x,sigma=Sigma)),n.out,n.out)
+
+contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
+        xlab=expression(theta[1]), ylab=expression(theta[2]))
+points(x[1,1],x[1,2],col="red", pch=19)
+
+for (i in 2:nrow(x)) {
+  plot.new()
+  contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
+        xlab=expression(theta[1]), ylab=expression(theta[2]))
+  
+  for (j in 2:i) {
+    points(x[j-1,1],x[j-1,2],col="red", pch=19)
+    segments(x[j-1,1], x[j-1,2], x[j,1], x[j-1,2],col="gray")
+    segments(x[j  ,1], x[j-1,2], x[j,1], x[j  ,2],col="gray")
+  }
+}
+@
+
+\begin{frame}[fragile]
+<<bivariate_normal_animation, fig.show='animate', echo=FALSE>>=
+<<bivariate_normal>>
+@
+\end{frame}
+
+
+\subsection{Extending the Gibbs sampler}
+\frame{\frametitle{$K$-component Gibbs sampler}
+	Suppose $\theta = (\theta_1,\ldots,\theta_K)$\pause, then the following Gibbs sampler can be constructed \pause
+	\[ \begin{array}{rl}
+	\theta_1^{t} &\sim p\left(\theta_1|\theta_2^{t-1},\ldots, \theta_K^{t-1}\right) \pause \\ \\
+	\theta_2^{t} &\sim p\left(\theta_2|\theta_1^{t}, \theta_3^{t-1},\ldots, \theta_K^{t-1}\right) \pause\\
+	&\vdots \\
+	\theta_k^{t} &\sim p\left(\theta_k|\theta_1^{t}\ldots,\theta_{k-1}^{t}, \theta_{k+1}^{t-1},\ldots, \theta_K^{t-1}\right) \\
+	&\vdots \pause\\
+	\theta_K^{t} &\sim p\left(\theta_K|\theta_1^{t},\ldots, \theta_{K-1}^{t}\right) \pause
+	\end{array} \]
+	The distributions above are called the \alert{full conditional distributions}.
+}
+
+
+\section{Metropolis-within-Gibbs}
+\frame{\frametitle{Metropolis-within-Gibbs}
+  We have discussed two Markov chain approaches to sampling from target distributions:
+	\begin{itemize}
+	\item Metropolis-Hastings algorithm
+	\item Gibbs sampling
+	\end{itemize}
+	
+	\vspace{0.2in} \pause
+	
+	Gibbs sampling assumed we can sample from $p(\theta_k|\theta_{-k})$ for all $k$\pause, but what if we cannot sample from all of these full conditional distributions? \pause For those $p(\theta_k|\theta_{-k})$ that cannot be sampled directly, a Metropolis-Hastings step can be substituted. \pause All the convergence results for Gibbs sampling and Metropolis-Hastings algorithm still hold. 
+}
+
+
+\begin{frame}[fragile]
+\frametitle{Bivariate normal with $\rho=0.9$}
+<<gibbs_and_metropolis_mcmc>>=
+gibbs_and_metropolis = function(x0, n_points, rho) {
+  x = matrix(x0, nrow=n_points, ncol=2, byrow=TRUE)
+  v = sqrt(1-rho^2)
+  for (i in 2:n_points) {
+    x[i,1] = rnorm(1, rho*x[i-1,2], v)
+    
+    # Now do a random-walk Metropolis step
+    x_prop = rnorm(1, x[i-1,2], 2.4*v) # optimal proposal variance
+    logr   = dnorm(1, rho*x_prop,   v, log=TRUE) - 
+             dnorm(1, rho*x[i-1,2], v, log=TRUE)
+    x[i,2] = ifelse(log(runif(1))<logr, x_prop, x[i-1,2])
+  }
+  return(x)
+}
+
+x = gibbs_and_metropolis(c(-3,3), n, rho)
+@
+\end{frame}
+
+<<gibbs_and_metropolis, eval=FALSE, echo=FALSE>>=
+# Create plot
+contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
+        xlab=expression(theta[1]), ylab=expression(theta[2]))
+points(x[1,1],x[1,2],col="red", pch=19)
+
+for (i in 2:nrow(x)) {
+  plot.new()
+  contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
+        xlab=expression(theta[1]), ylab=expression(theta[2]))
+  
+  for (j in 2:i) {
+    points(x[j-1,1],x[j-1,2],col="red", pch=19)
+    segments(x[j-1,1], x[j-1,2], x[j,1], x[j-1,2],col="gray")
+    segments(x[j  ,1], x[j-1,2], x[j,1], x[j  ,2],col="gray")
+  }
+}
+@
+
+\begin{frame}[fragile]
+<<gibbs_and_metropolis_animation, fig.show='animate', echo=FALSE>>=
+<<gibbs_and_metropolis>>
+@
+\end{frame}
+
+
+
+\section{Slice sampling}
+\begin{frame}
+\frametitle{Slice sampling}
+Suppose the target distribution is $p(\theta|y)$ with scalar $\theta$. \pause Then,
+\[ p(\theta|y) = \int_0^{p(\theta|y)} du \]
+\pause Thus, $p(\theta|y)$ can be thought of as the marginal distribution of 
+\[ (\theta,U) \sim \mbox{Unif}\{(\theta,u):0<u<p(\theta|y)\}. \]
+\pause \alert{Slice sampling} performs the following Gibbs sampler: \pause 
+\begin{enumerate}
+\item $u^t|\theta^{t-1} \sim \mbox{Unif}(0<u<p(\theta^{t-1}|y)$ \pause and
+\item $\theta^t|u^t \sim \mbox{Unif}\{\theta: u<p(\theta|y) \}$.
+\end{enumerate}
+This is a \alert{latent variable augmentation}.
+\end{frame}
+
+
+
+
+
+\begin{frame}[fragile]
+Consider the target $\theta|y \sim Exp(1)$,\pause  then 
+\[ \{\theta: u<p(\theta|y) \} = (0,-\log(u)). \]
+<<slice_sampler>>=
+# Slice sampler 
+slice = function(n,init_theta,target,A) {
+  u = theta = rep(NA,n)
+  theta[1] = init_theta
+  u[1] = runif(1,0,target(theta[1])) # This never actually gets used
+
+  for (i in 2:n) {
+    u[i] = runif(1,0,target(theta[i-1]))
+    endpoints = A(u[i],theta[i-1]) # The second argument is used in the second example
+    theta[i] = runif(1, endpoints[1],endpoints[2])
+  }
+  return(list(theta=theta,u=u))
+}
+# Exponential example
+set.seed(6)
+A = function(u,theta=NA) c(0,-log(u))
+res = slice(10, 0.1, dexp, A)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{}
+<<slice_sampling_plot, fig.show='animate', echo=FALSE>>=
+attach(res)
+par(pch=19)
+curve(dexp,0,3,ylim=c(0,1))
+points(theta[1],u[1])
+
+for (i in 1:10) {
+  plot.new()
+  curve(dexp,0,3,ylim=c(0,1))
+  for (j in 1:i) {
+    points(  theta[j], u[j  ])
+    segments(theta[j], u[j  ], theta[j  ], u[j+1], col="gray")
+    segments(theta[j], u[j+1], theta[j+1], u[j+1], col="gray")
+  }
+}
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+<<slice_sampling_histogram>>=
+hist(slice(1e4, 0.1, dexp, A)$theta, freq=F, 100, main="Slice sampling approximation to Exp(1) distribution", xlab=expression(theta))
+curve(dexp, add=TRUE)
+@
+\end{frame}
+
+
+ 
+\end{document}
