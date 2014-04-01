@@ -1,5 +1,5 @@
-\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-%\documentclass{beamer}
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+\documentclass{beamer}
 
 
 \usecolortheme[RGB={0,0,144}]{structure}
@@ -38,7 +38,6 @@ library(reshape2)
 library(plyr)
 library(ggplot2)
 library(mvtnorm)
-library(rjags)
 set.seed(2)
 @
 
@@ -81,14 +80,14 @@ Construct a Markov chain with stationary distributon $p(\theta|y)$ and run it lo
 \begin{frame}
 \frametitle{}
 \begin{theorem}
-If $K(\theta,\theta')= p(\theta_2'|\theta_1',y)p(\theta_1'|\theta_2,y)$ then $p(\theta|y)$ is the stationary distribution, \pause i.e.
+If $K(\theta,\theta')= p(\theta_2'|\theta_1',y)p(\theta_1'|\theta_2,y)$ \pause then $p(\theta|y)$ is the stationary distribution, \pause i.e.
 \[ p(\theta'|y) = \int K(\theta,\theta') p(\theta|y) d\theta. \]
 \end{theorem}
 \pause 
 \begin{proof}
 \[ \begin{array}{rl}
 p(\theta'|y) &= p(\theta_2'|\theta_1',y)p(\theta_1'|y) \pause \\
-&= p(\theta_2'|\theta_1',y)\int p(\theta_1'|\theta_2,y) p(\theta_2|y) d\theta_2 \pause \\
+&= p(\theta_2'|\theta_1',y) \int p(\theta_1'|\theta_2,y) p(\theta_2|y) d\theta_2 \pause \\
 &= p(\theta_2'|\theta_1',y)\int p(\theta_1'|\theta_2,y) \int p(\theta_2,\theta_1|y) d\theta_1 d\theta_2 \pause \\
 &= \int \int p(\theta_2'|\theta_1',y) p(\theta_1'|\theta_2,y) p(\theta_2,\theta_1|y) d\theta_1 d\theta_2 \pause \\
 &= \int K(\theta,\theta') p(\theta|y) d\theta 
@@ -184,7 +183,7 @@ for (i in 2:nrow(x)) {
 	&\vdots \pause\\
 	\theta_K^{t} &\sim p\left(\theta_K|\theta_1^{t},\ldots, \theta_{K-1}^{t},y\right) \pause
 	\end{array} \]
-	The distributions above are called the \alert{full conditional distributions}.
+	The distributions above are called the \alert{full conditional distributions}. \pause If some of the $\theta_k$ are vectors, then this is called a \alert{block} Gibbs sampler.
 }
 
 
@@ -369,16 +368,15 @@ For shorthand, we often use $\theta_i|\ldots$ where $\ldots$ indicates \emph{eve
 
 \begin{frame}
 \frametitle{Full conditional for $\theta_i$}
-To find a full conditional, start by writing it proportional to the posterior, \pause 
-
+The full conditional for $\theta_i$ is 
 \[ \begin{array}{rl}
 p(\theta_i|\ldots)
 &\propto p(y|\theta)p(\theta|\alpha,\beta)p(\alpha,\beta) \pause \\
 &\propto \left[ \prod_{i=1}^n p(y_i|\theta_i) \right] \left[ \prod_{i=1}^n  p(\theta_i|\alpha,\beta) \right] \pause \\
-&\propto \left[\prod_{j=1}^n \theta_j^{y_j}(1-\theta_j)^{n_j-y_j} \theta_j^{\alpha-1}(1-\theta_j)^{\beta-1} \right] \pause \\
+&\propto \prod_{j=1}^n \theta_j^{y_j}(1-\theta_j)^{n_j-y_j} \theta_j^{\alpha-1}(1-\theta_j)^{\beta-1}  \pause \\
 &\propto \theta_i^{\alpha+y_i-1}(1-\theta_i)^{\beta+n_i-y_i-1} \pause
 \end{array} \]
-Thus $\theta_i|\ldots Be(\alpha+y_i,\beta+n_i-y_i)$.
+Thus $\theta_i|\ldots\sim Be(\alpha+y_i,\beta+n_i-y_i)$.
 \end{frame}
 
 \begin{frame}
@@ -387,9 +385,9 @@ The full conditional for $\alpha$ \pause is
 \[ \begin{array}{rl}
 p(\alpha|\ldots) &\propto p(y|\theta)p(\theta|\alpha,\beta)p(\alpha,\beta) \pause \\
 &\propto \left[ \prod_{i=1}^n  p(\theta_i|\alpha,\beta) \right] p(\alpha,\beta) \pause \\
-&\propto \frac{\left(\prod_{i=1}^n \theta_i\right)^\alpha}{Beta(\alpha,\beta)^n}(\alpha+\beta)^{-5/2}
+&\propto \frac{\left(\prod_{i=1}^n \theta_i\right)^{\alpha-1}}{Beta(\alpha,\beta)^n}(\alpha+\beta)^{-5/2}
 \end{array} \]
-which has no known form. 
+which is not a known density. 
 
 \vspace{0.2in} \pause
 
@@ -397,9 +395,9 @@ The full conditional for $\beta$ is
 \[ \begin{array}{rl}
 p(\beta|\ldots) &\propto p(y|\theta)p(\theta|\alpha,\beta)p(\alpha,\beta) \pause \\
 &\propto \left[ \prod_{i=1}^n  p(\theta_i|\alpha,\beta) \right] p(\alpha,\beta) \pause \\
-&\propto \frac{\left(\prod_{i=1}^n [1-\theta_i]\right)^\beta}{Beta(\alpha,\beta)^n}(\alpha+\beta)^{-5/2}
+&\propto \frac{\left(\prod_{i=1}^n [1-\theta_i]\right)^{\beta-1}}{Beta(\alpha,\beta)^n}(\alpha+\beta)^{-5/2}
 \end{array} \]
-which also has no known form.
+which is not a known density.
 
 \end{frame}
 
@@ -408,23 +406,25 @@ which also has no known form.
 
 \begin{frame}[fragile]
 \frametitle{Full conditional functions}
+{\small 
 \[ \begin{array}{rl}
-\log p(\alpha|\ldots) &\propto \alpha \log\left( \sum_{i=1}^n \theta_i \right) n*\log(Beta(\alpha,\beta))-5/2 \log(\alpha+\beta) \\
-\log p(\beta|\ldots) &\propto \beta \log\left( \sum_{i=1}^n 1-\theta_i \right) n*\log(Beta(\alpha,\beta))-5/2 \log(\alpha+\beta) 
+\log p(\alpha|\ldots) &\propto (\alpha-1) \sum_{i=1}^n \log\left(  \phantom{1-}\theta_i \right) +n\log(Beta(\alpha,\beta))-5/2 \log(\alpha+\beta) \\
+\log p(\beta|\ldots) &\propto (\beta-1) \sum_{i=1}^n \log\left(  1-\theta_i \right) +n\log(Beta(\alpha,\beta))-5/2 \log(\alpha+\beta) 
 \end{array} \]
+}
 
 
 <<full_conditionals>>=
 log_fc_alpha = function(theta, alpha, beta) {
   if (alpha<0) return(-Inf)
   n = length(theta)
-  alpha*sum(log(theta))-n*lbeta(alpha,beta)-5/2*(alpha+beta)
+  (alpha-1)*sum(log(theta))-n*lbeta(alpha,beta)-5/2*(alpha+beta)
 }
 
 log_fc_beta = function(theta, alpha, beta) {
   if (beta<0) return(-Inf)
   n = length(theta)
-  beta*sum(log(1-theta))-n*lbeta(alpha,beta)-5/2*(alpha+beta)
+  (beta-1)*sum(log(1-theta))-n*lbeta(alpha,beta)-5/2*(alpha+beta)
 }
 @
 \end{frame}
@@ -478,35 +478,53 @@ dat=data.frame(y=d$made, n=d$attempt)
 
 # Find reasonable starting values by matching moments
 theta = (dat$y+0.5)/(dat$n+1)
-mean(theta) # ~= 0.5, so alpha=beta
-vr = var(theta) # match variance
+mean(theta) # ~= 0.5, so alpha~=beta
+
+# Force alpha=beta, and then use moment matching with the variance
+vr = var(theta) 
 opt = optim(1, function(x) abs(prod(x)/sum(x)^2/sum(x+.5)-vr), method = "L-BFGS-B", lower=0)
 inits = list(alpha=opt$par, beta=opt$par)
 
+# Run the MCMC
 r = mcmc(2000, dat=dat, inits=inits, tune=list(alpha=1,beta=1))
 @
 \end{frame}
  
  
 \begin{frame}[fragile]
-<<mcmc_summary>>=
-ggplot(r[r$parameter %in% c("alpha","beta"),], aes(x=iteration, y=value))+geom_line()+facet_wrap(~parameter)
+<<mcmc_summary, fig.width=10>>=
+r_subset = r[r$parameter %in% c("alpha","beta"),]
+ddply(r_subset, .(parameter), summarize, acceptance_rate = length(unique(value))/max(iteration))
+ggplot(r_subset, aes(x=iteration, y=value))+geom_line()+facet_wrap(~parameter)
 @
 \end{frame}
  
- 
-\begin{frame}[fragile]
-<<jags>>=
-model = "
-model {
-  for (i in 1:n) {
-    y[i] ~ dbinom(n[i],theta[i])
-    theta[i] ~ dbeta(alpha,beta)
-  }
-}
-"
-@
+\begin{frame}
+\frametitle{Block Gibbs sampler}
+\scriptsize
+It appears that the Gibbs sampler we have constructed \pause iteratively samples from
+\begin{enumerate}[<+->]
+\item $\theta_1\sim p(\theta_1|\theta_{-1},\alpha,\beta,y)$.
+\item $\vdots$
+\item $\theta_n\sim p(\theta_n|\theta_{-n},\alpha,\beta,y)$.
+\item $\alpha\sim p(\alpha|\theta,\beta,y)$.
+\item $\beta\sim p(\beta|\theta,\alpha,y)$.
+\end{enumerate}
+where $\theta=(\theta_1,\ldots,\theta_n)$.
+
+\vspace{0.2in} \pause
+
+But notice that 
+\[ p(\theta|\alpha,\beta,y) = \prod_{i=1}^n p(\theta_i|\alpha,\beta,y_i) \]
+since the $\theta_i$ are conditionally independent. \pause Thus, the we actually ran the following block Gibbs sampler:
+\begin{enumerate}[<+->]
+\item $\theta\sim p(\theta|\alpha,\beta,y)$.
+\item $\alpha\sim p(\alpha|\theta,\beta,y)$.
+\item $\beta\sim p(\beta|\theta,\alpha,y)$.
+\end{enumerate}
 \end{frame}
+ 
+
  
  
 \end{document}
