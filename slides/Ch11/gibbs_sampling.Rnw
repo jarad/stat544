@@ -1,5 +1,5 @@
-%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-\documentclass{beamer}
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
 
 
 \usecolortheme[RGB={0,0,144}]{structure}
@@ -141,32 +141,49 @@ x = gibbs_bivariate_normal(c(-3,3), n<-20, rho=rho<-0.9)
 \end{frame}
 
 <<bivariate_normal, eval=FALSE, echo=FALSE>>=
-# Create plot
-n.out = 101
-xx <- seq(-3, 3, length=n.out)
-grid <- expand.grid(x=xx, y=xx)
-Sigma = diag(rep(.1,2))+rho
-like <- matrix(apply(grid, 1, function(x) dmvnorm(x,sigma=Sigma)),n.out,n.out)
-
-contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
-        xlab=expression(theta[1]), ylab=expression(theta[2]))
-points(x[1,1],x[1,2],col="red", pch=19)
-
-for (i in 2:nrow(x)) {
-  plot.new()
-  contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
-        xlab=expression(theta[1]), ylab=expression(theta[2]))
+bivariate_normal_animation = function(x, rho, ask=interactive()) {
+  # Create contour plot
+  n.out = 101
+  xx <- seq(-3, 3, length=n.out)
+  grid <- expand.grid(x=xx, y=xx)
+  Sigma = diag(rep(.1,2))+rho
+  like <- matrix(apply(grid, 1, function(x) dmvnorm(x,sigma=Sigma)),n.out,n.out)
   
-  for (j in 2:i) {
-    points(x[j-1,1],x[j-1,2],col="red", pch=19)
-    segments(x[j-1,1], x[j-1,2], x[j,1], x[j-1,2],col="gray")
-    segments(x[j  ,1], x[j-1,2], x[j,1], x[j  ,2],col="gray")
+  for (i in 2:nrow(x)) {
+    jj = (2:i)[-(i-1)] # vector from 2:(i-1) and NULL if i=2
+    for (j in 1:6) {
+      plot.new()
+      
+      # All previous plotting
+      contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
+              xlab=expression(theta[1]), ylab=expression(theta[2]))  
+      segments(x[jj-1,1], x[jj-1,2], x[jj,1], x[jj-1,2], col="gray")
+      segments(x[jj  ,1], x[jj-1,2], x[jj,1], x[jj  ,2], col="gray")
+      points(x[(1:(i-1)),1], x[(1:(i-1)),2], col="red", pch=19)
+      
+      # New plotting
+      if (j>1 & j<4) abline(h=x[i-1,2], lty=2)
+      if (j>2) arrows(x[i-1,1], x[i-1,2], x[i,1], x[i-1,2], length=0.1)
+      if (j>3 & j<6) abline(v=x[i,1], lty=2)
+      if (j>4) arrows(x[i,1], x[i-1,2], x[i,1], x[i,2], length=0.1)
+      if (j>5) points(x[i,1], x[i,2], col="red", pch=19)
+      
+      if (ask) readline("hit <enter>:")
+    }
   }
+  
+  jj=2:nrow(x)
+  contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
+          xlab=expression(theta[1]), ylab=expression(theta[2]))  
+  segments(x[jj-1,1], x[jj-1,2], x[jj,1], x[jj-1,2], col="gray")
+  segments(x[jj  ,1], x[jj-1,2], x[jj,1], x[jj  ,2], col="gray")
+  points(x[,1], x[,2], col="red", pch=19)
 }
+bivariate_normal_animation(x, rho)
 @
 
 \begin{frame}[fragile]
-<<bivariate_normal_animation, fig.show='animate', echo=FALSE>>=
+<<bivariate_normal_animation, fig.show='animate', echo=FALSE, cache=TRUE>>=
 <<bivariate_normal>>
 @
 \end{frame}
@@ -212,8 +229,8 @@ gibbs_and_metropolis = function(x0, n_points, rho) {
     
     # Now do a random-walk Metropolis step
     x_prop = rnorm(1, x[i-1,2], 2.4*v) # optimal proposal variance
-    logr   = dnorm(1, rho*x_prop,   v, log=TRUE) - 
-             dnorm(1, rho*x[i-1,2], v, log=TRUE)
+    logr   = dnorm(x_prop,   rho*x[i,1], v, log=TRUE) - 
+             dnorm(x[i-1,2], rho*x[i,1], v, log=TRUE)
     x[i,2] = ifelse(log(runif(1))<logr, x_prop, x[i-1,2])
   }
   return(x)
@@ -223,28 +240,9 @@ x = gibbs_and_metropolis(c(-3,3), n, rho)
 @
 \end{frame}
 
-<<gibbs_and_metropolis, eval=FALSE, echo=FALSE>>=
-# Create plot
-contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
-        xlab=expression(theta[1]), ylab=expression(theta[2]))
-points(x[1,1],x[1,2],col="red", pch=19)
-
-for (i in 2:nrow(x)) {
-  plot.new()
-  contour(xx, xx, like, drawlabels=F, nlevels=10, xlim=c(-3,3), ylim=c(-3,3), 
-        xlab=expression(theta[1]), ylab=expression(theta[2]))
-  
-  for (j in 2:i) {
-    points(x[j-1,1],x[j-1,2],col="red", pch=19)
-    segments(x[j-1,1], x[j-1,2], x[j,1], x[j-1,2],col="gray")
-    segments(x[j  ,1], x[j-1,2], x[j,1], x[j  ,2],col="gray")
-  }
-}
-@
-
 \begin{frame}[fragile]
-<<gibbs_and_metropolis_animation, fig.show='animate', echo=FALSE>>=
-<<gibbs_and_metropolis>>
+<<gibbs_and_metropolis_animation, fig.show='animate', echo=FALSE, warning=FALSE>>=
+bivariate_normal_animation(x, rho)
 @
 \end{frame}
 
@@ -264,7 +262,7 @@ where $u$ is an \alert{auxiliary variable}.
 \alert{Slice sampling} performs the following Gibbs sampler: \pause 
 \begin{enumerate}
 \item $u^t|\theta^{t-1} \sim \mbox{Unif}\{u:0<u<p(\theta^{t-1}|y)\}$ \pause and
-\item $\theta^t|u^t \sim \mbox{Unif}\{\theta: u<p(\theta|y) \}$.
+\item $\theta^t|u^t \sim \mbox{Unif}\{\theta: u^t<p(\theta|y) \}$.
 \end{enumerate}
 \end{frame}
 
@@ -279,7 +277,7 @@ Consider the target $\theta|y \sim Exp(1)$,\pause  then
 
 \pause 
 
-<<uniform_region>>=
+<<uniform_region, fig.width=10>>=
 u = 0.5; x = -log(u)
 curve(dexp, 0, 1.5, ylab="u", xlab=expression(theta), main="Target disribution", ylim=c(0,1))
 curve(dexp, 0, x, add=TRUE, lwd=3, col="red")
@@ -316,21 +314,40 @@ res = slice(10, 0.1, dexp, A)
 
 \begin{frame}[fragile]
 \frametitle{}
-<<slice_sampling_plot, fig.show='animate', echo=FALSE>>=
-attach(res)
-par(pch=19)
-curve(dexp,0,1.5,ylim=c(0,1))
-points(theta[1],u[1])
-
-for (i in 1:10) {
-  plot.new()
-  curve(dexp,0,3,ylim=c(0,1),ylab="u", xlab=expression(theta), main="Target disribution")
-  for (j in 1:i) {
-    points(  theta[j], u[j  ], col="red")
-    segments(theta[j], u[j  ], theta[j  ], u[j+1], col="gray")
-    segments(theta[j], u[j+1], theta[j+1], u[j+1], col="gray")
+<<slice_sampling_plot, fig.show='animate', warning=FALSE, echo=FALSE>>=
+slice_sampling_animation = function(theta, u, ask=interactive()) {
+  x = cbind(theta,u)
+  for (i in 2:nrow(x)) {
+    jj = (2:i)[-(i-1)] # vector from 2:(i-1) and NULL if i=2
+    for (j in 1:6) {
+      plot.new()
+      
+      # All previous plotting
+      curve(dexp, 0, 3, xlab=expression(theta), ylab="u", main="Slice sampling an Exp(1) distribution")
+      segments(x[jj-1,1], x[jj,2], x[jj-1,1], x[jj-1,2], col="gray")
+      segments(x[jj-1,1], x[jj,2], x[jj,1], x[jj  ,2], col="gray")
+      points(x[(1:(i-1)),1], x[(1:(i-1)),2], col="red", pch=19)
+      
+      # New plotting
+      if (j>1 & j<4) abline(v=x[i-1,1], lty=2)
+      if (j>2) arrows(x[i-1,1], x[i-1,2], x[i-1,1], x[i,2], length=0.1)
+      if (j>3 & j<6) abline(h=x[i,2], lty=2)
+      if (j>4) arrows(x[i-1,1], x[i,2], x[i,1], x[i,2], length=0.1)
+      if (j>5) points(x[i,1], x[i,2], col="red", pch=19)
+      
+      if (ask) readline("hit <enter>:")
+    }
   }
+  
+  # Final plot
+  jj=2:nrow(x)
+  curve(dexp, 0, 3, xlab=expression(theta), ylab="u", 
+        main="Slice sampling an Exp(1) distribution")
+  segments(x[jj-1,1], x[jj,2], x[jj-1,1], x[jj-1,2], col="gray")
+  segments(x[jj-1,1], x[jj,2], x[jj,1], x[jj  ,2], col="gray")
+  points(x[,1], x[,2], col="red", pch=19)
 }
+with(res, slice_sampling_animation(theta,u))
 @
 \end{frame}
 
@@ -510,7 +527,7 @@ It appears that the Gibbs sampler we have constructed \pause iteratively samples
 \item $\alpha\sim p(\alpha|\theta,\beta,y)$.
 \item $\beta\sim p(\beta|\theta,\alpha,y)$.
 \end{enumerate}
-where $\theta=(\theta_1,\ldots,\theta_n)$.
+where $\theta=(\theta_1,\ldots,\theta_n)$ and $\theta_{-i}$ is $\theta$ without element $i$.
 
 \vspace{0.2in} \pause
 
