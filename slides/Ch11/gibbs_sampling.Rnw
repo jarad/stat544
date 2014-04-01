@@ -1,5 +1,6 @@
-%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-\documentclass{beamer}
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
 
 \usecolortheme[RGB={0,0,144}]{structure}
 \usetheme{AnnArbor}\usecolortheme{beaver}
@@ -370,8 +371,9 @@ For shorthand, we often use $\theta_i|\ldots$ where $\ldots$ indicates \emph{eve
 To find a full conditional, start by writing it proportional to the posterior, \pause 
 
 \[ \begin{array}{rl}
-p(\theta_i|\ldots) &\propto p(y|\theta)p(\theta|\alpha,\beta)p(\alpha,\beta) \pause \\
-p(\theta_i|\ldots) &\propto \left[ \prod_{i=1}^n p(y_i|\theta_i) \right] \left[ \prod_{i=1}^n  p(\theta_i|\alpha,\beta) \right] \pause \\
+p(\theta_i|\ldots)
+&\propto p(y|\theta)p(\theta|\alpha,\beta)p(\alpha,\beta) \pause \\
+&\propto \left[ \prod_{i=1}^n p(y_i|\theta_i) \right] \left[ \prod_{i=1}^n  p(\theta_i|\alpha,\beta) \right] \pause \\
 &\propto \left[\prod_{j=1}^n \theta_j^{y_j}(1-\theta_j)^{n_j-y_j} \theta_j^{\alpha-1}(1-\theta_j)^{\beta-1} \right] \pause \\
 &\propto \theta_i^{\alpha+y_i-1}(1-\theta_i)^{\beta+n_i-y_i-1} \pause
 \end{array} \]
@@ -402,5 +404,77 @@ which also has no known form.
 
 
 
+
+\begin{frame}[fragile]
+<<mcmc>>=
+# use x=theta for alpha and x=1-theta for beta
+log_fc = function(x, alpha, beta) {
+  if (alpha<0 | beta<0) return(-Inf)
+  n = length(x)
+  alpha*sum(log(x))-n*lbeta(alpha,beta)-5/2*(alpha+beta)
+}
+mcmc = function(n_sims, dat, inits, tune) {
+  n_groups = nrow(dat)
+  alpha = inits$alpha
+  beta  = inits$beta
+  
+  # Recording structure
+  theta_keep = matrix(NA, nrow=n_sims, ncol=n_groups)
+  alpha_keep = rep(alpha, n_sims)
+  beta_keep  = rep(beta , n_sims)
+  
+  for (i in 1:n_sims) {
+    # Sample thetas
+    theta = with(dat, rbeta(length(y), alpha+y, beta+n-y))
+    
+    # Sample alpha
+    alpha_prop = rnorm(1, alpha, tune$alpha)
+    logr = log_fc(theta, alpha_prop, beta)-log_fc(theta, alpha, beta)
+    alpha = ifelse(log(runif(1))<logr, alpha_prop, alpha)
+    
+    # Sample beta
+    beta_prop = rnorm(1, beta, tune$beta)
+    logr = log_fc(1-theta, alpha, beta_prop)-log_fc(1-theta, alpha, beta)
+    beta = ifelse(log(runif(1))<logr, beta_prop, beta)
+    
+    # Record parameter values
+    theta_keep[i,] = theta
+    alpha_keep[i]  = alpha
+    beta_keep[ i]  = beta
+  }
+  
+  return(data.frame(iteration=1:n_sims, 
+                    parameter=rep(c("alpha","beta",paste("theta[",1:n_groups,"]",sep="")),each=n_sims),
+                    value=c(alpha_keep,beta_keep,as.numeric(theta_keep))))
+}
+@
+\end{frame}
+
+ 
+ 
+ 
+\begin{frame}[fragile]
+<<run_mcmc>>=
+d = read.csv("dawkins.csv")
+dat=data.frame(y=d$made, n=d$attempt)
+
+# Find reasonable starting values by matching moments
+theta = (dat$y+1)/(dat$n+2)
+mean(theta) # ~= 0.5, so alpha=beta
+vr = var(theta) # match variance
+opt = optim(1, function(x) abs(prod(x)/sum(x)^2/sum(x+.5)-vr), method = "L-BFGS-B", lower=0)
+inits = list(alpha=opt$par, beta=opt$par)
+
+r = mcmc(100, dat=dat, inits=inits, tune=list(alpha=1,beta=1))
+@
+\end{frame}
+ 
+ 
+\begin{frame}[fragile]
+<<mcmc_summary>>=
+ggplot(r[r$parameter %in% c("alpha","beta"),], aes(x=iteration, y=value))+geom_line()+facet_wrap(~parameter)
+@
+\end{frame}
+ 
  
 \end{document}
