@@ -38,6 +38,7 @@ library(reshape2)
 library(plyr)
 library(ggplot2)
 library(mvtnorm)
+library(rjags)
 set.seed(2)
 @
 
@@ -406,13 +407,31 @@ which also has no known form.
 
 
 \begin{frame}[fragile]
-<<mcmc>>=
-# use x=theta for alpha and x=1-theta for beta
-log_fc = function(x, alpha, beta) {
-  if (alpha<0 | beta<0) return(-Inf)
-  n = length(x)
-  alpha*sum(log(x))-n*lbeta(alpha,beta)-5/2*(alpha+beta)
+\frametitle{Full conditional functions}
+\[ \begin{array}{rl}
+\log p(\alpha|\ldots) &\propto \alpha \log\left( \sum_{i=1}^n \theta_i \right) n*\log(Beta(\alpha,\beta))-5/2 \log(\alpha+\beta) \\
+\log p(\beta|\ldots) &\propto \beta \log\left( \sum_{i=1}^n 1-\theta_i \right) n*\log(Beta(\alpha,\beta))-5/2 \log(\alpha+\beta) 
+\end{array} \]
+
+
+<<full_conditionals>>=
+log_fc_alpha = function(theta, alpha, beta) {
+  if (alpha<0) return(-Inf)
+  n = length(theta)
+  alpha*sum(log(theta))-n*lbeta(alpha,beta)-5/2*(alpha+beta)
 }
+
+log_fc_beta = function(theta, alpha, beta) {
+  if (beta<0) return(-Inf)
+  n = length(theta)
+  beta*sum(log(1-theta))-n*lbeta(alpha,beta)-5/2*(alpha+beta)
+}
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<mcmc>>=
 mcmc = function(n_sims, dat, inits, tune) {
   n_groups = nrow(dat)
   alpha = inits$alpha
@@ -429,12 +448,12 @@ mcmc = function(n_sims, dat, inits, tune) {
     
     # Sample alpha
     alpha_prop = rnorm(1, alpha, tune$alpha)
-    logr = log_fc(theta, alpha_prop, beta)-log_fc(theta, alpha, beta)
+    logr = log_fc_alpha(theta, alpha_prop, beta)-log_fc_alpha(theta, alpha, beta)
     alpha = ifelse(log(runif(1))<logr, alpha_prop, alpha)
     
     # Sample beta
     beta_prop = rnorm(1, beta, tune$beta)
-    logr = log_fc(1-theta, alpha, beta_prop)-log_fc(1-theta, alpha, beta)
+    logr = log_fc_beta(theta, alpha, beta_prop)-log_fc_beta(theta, alpha, beta)
     beta = ifelse(log(runif(1))<logr, beta_prop, beta)
     
     # Record parameter values
@@ -449,7 +468,6 @@ mcmc = function(n_sims, dat, inits, tune) {
 }
 @
 \end{frame}
-
  
  
  
@@ -459,13 +477,13 @@ d = read.csv("dawkins.csv")
 dat=data.frame(y=d$made, n=d$attempt)
 
 # Find reasonable starting values by matching moments
-theta = (dat$y+1)/(dat$n+2)
+theta = (dat$y+0.5)/(dat$n+1)
 mean(theta) # ~= 0.5, so alpha=beta
 vr = var(theta) # match variance
 opt = optim(1, function(x) abs(prod(x)/sum(x)^2/sum(x+.5)-vr), method = "L-BFGS-B", lower=0)
 inits = list(alpha=opt$par, beta=opt$par)
 
-r = mcmc(100, dat=dat, inits=inits, tune=list(alpha=1,beta=1))
+r = mcmc(2000, dat=dat, inits=inits, tune=list(alpha=1,beta=1))
 @
 \end{frame}
  
@@ -473,6 +491,20 @@ r = mcmc(100, dat=dat, inits=inits, tune=list(alpha=1,beta=1))
 \begin{frame}[fragile]
 <<mcmc_summary>>=
 ggplot(r[r$parameter %in% c("alpha","beta"),], aes(x=iteration, y=value))+geom_line()+facet_wrap(~parameter)
+@
+\end{frame}
+ 
+ 
+\begin{frame}[fragile]
+<<jags>>=
+model = "
+model {
+  for (i in 1:n) {
+    y[i] ~ dbinom(n[i],theta[i])
+    theta[i] ~ dbeta(alpha,beta)
+  }
+}
+"
 @
 \end{frame}
  
