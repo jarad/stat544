@@ -1,0 +1,13 @@
+\documentclass{article}
+
+\usepackage{animate}
+
+\begin{document}
+
+<<test,fig.show='animate', echo=FALSE, fig.width=5, fig.height=5>>=
+plot(1,1)
+plot(2,2)
+@
+
+
+\end{document}
