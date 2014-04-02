@@ -1,0 +1,173 @@
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow,tikz,animate}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+
+\title[Gibbs sampling]{Markov chain Monte Carlo}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\I}{\mathrm{I}}
+
+\newcommand*{\approxdist}{\mathrel{\vcenter{\offinterlineskip
+\vskip-.25ex\hbox{\hskip.55ex$\cdot$}\vskip-.25ex\hbox{$\sim$}
+\vskip-.5ex\hbox{\hskip.55ex$\cdot$}}}}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+library(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+##############################################
+# Markov chain Monte Carlo                   #
+##############################################
+library(reshape2)
+library(plyr)
+library(ggplot2)
+set.seed(2)
+@
+
+\frame{\maketitle}
+
+\section{Markov chain Monte Carlo}
+\begin{frame}
+\frametitle{Markov chain construction}
+
+The techniques we have discussed thus far, e.g.
+\begin{itemize}
+\item Metropolis-Hastings
+  \begin{itemize}
+  \item independent Metropolis-Hastings
+  \item random-walk Metropolis
+  \item Hamiltonian Monte Carlo
+  \end{itemize}
+\item Gibbs sampling
+  \begin{itemize}
+  \item Slice sampling
+  \end{itemize}
+\end{itemize}
+form a set of techniques referred to as \alert{Markov chain Monte Carlo} (MCMC). 
+
+\vspace{0.2in} \pause
+
+Today we look at some practical questions involving the use of MCMC:
+\begin{itemize}
+\item What initial values should I use?
+\item How long do I need to run my chain?
+\item What can I do with the samples I obtain?
+\end{itemize}
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Markov chain Monte Carlo}
+
+A generic ergodic MCMC algorithm with transition kernel $K(\theta,\theta')$ constructed to sample from $p(\theta|y)$ is the following: \pause
+\begin{enumerate}[<+->]
+\item Sample $\theta^{0}~p(\theta^0)$.
+\item For $t=1,\ldots,T$, perform the kernel $K(\theta,\theta')$ to obtain a sequence $\theta^1,\ldots,\theta^K$. 
+\end{enumerate}
+
+\vspace{0.2in} \pause
+
+The questions can then be rephrased as
+\begin{itemize}
+\item What should I use for $p(\theta^0)$?
+\item What should $T$ be?
+\item What can I do with $\theta^1,\ldots,\theta^T$?
+\end{itemize}
+\end{frame}
+
+
+\section{Initial values}
+\begin{frame}
+\frametitle{Initial values}
+
+For ergodic Markov chains with stationary distribution $p(\theta|y)$, theory states that 
+\[ \theta^t \stackrel{d}{\to} \theta \mbox{ where } \theta\sim p(\theta|y) \]
+for \alert{any $p(\theta^0)$}. 
+
+\vspace{0.2in} \pause
+
+If $p(\theta^0)$ is very far from $p(\theta|y)$, then this can take a long time. \pause For example, let 
+\[ \theta^t = 0.99 \theta^{t-1} + \epsilon_t \qquad \epsilon_t \stackrel{iid}{\sim} N(0,1-.99^2) \]
+which has stationary distribution \pause $p(\theta|y) \stackrel{d}{=}  N(0,1)$. \pause If 
+\begin{itemize}
+\item $p(\theta^0) \stackrel{d}{\approx} p(\theta|y)$ then $\theta^t \approxdist p(\theta|y)$ for small $t$\pause, but if 
+\item $p(\theta^0)$ is very far from $p(\theta|y)$ then $\theta^t \approxdist p(\theta|y)$ only for $t$ very large. 
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<random_walk, eval=FALSE>>=
+rwalk = function(n,theta0) {
+  theta = rep(theta0,n)
+  for (i in 2:n) 
+    theta[i] = 0.99*theta[i-1] + rnorm(1,0,sqrt(1-0.99^2))
+  return(theta)
+}
+
+set.seed(1)
+n = 1000
+good = rwalk(n, rnorm(1   )) # Draw from the stationary distribution
+bad  = rwalk(n, rnorm(1,100)) # Draw from terrible initial distribution
+
+par(mfrow=c(1,2))
+plot(good, type="l", ylim=c(-3,3)); abline(h=c(-2,2), col="red")
+plot(bad,  type="l"); abline(h=c(-2,2), col="red")
+polygon(c(-100,-100,400,400),c(-100,200,200,-100), density=2)
+text(400,90, "burnin", pos=2, bg="white")
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<random_walk_plot, echo=FALSE, fig.width=8, fig.show='animate', fig.keep='all'>>=
+<<random_walk>>
+@
+\end{frame}
+
+
+
+\subsection{Methods}
+\begin{frame}
+\frametitle{Methods for finding good initial values}
+
+From \url{http://users.stat.umn.edu/~geyer/mcmc/burn.html}:
+\begin{quote}
+Any point you don't mind having in a sample is a good starting point. 
+\end{quote}
+
+\vspace{0.2in} \pause
+
+Methods for finding good initial values:
+
+\begin{itemize}
+\item Burnin: throw away the first X iterations
+\item Start at the MLE, i.e. $\mbox{argmax}_\theta p(y|\theta)$
+\item Start at the MAP (maximum aposterior), i.e. $\mbox{argmax}_\theta p(y|\theta)$
+\end{itemize}
+
+\end{frame}
+ 
+ 
+\end{document}
+
