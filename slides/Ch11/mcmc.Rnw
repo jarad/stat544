@@ -41,6 +41,8 @@ opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='
 library(reshape2)
 library(plyr)
 library(ggplot2)
+library(rstan)
+library(coda)
 set.seed(2)
 @
 
@@ -119,10 +121,11 @@ which has stationary distribution \pause $p(\theta|y) \stackrel{d}{=}  N(0,1)$. 
 
 \begin{frame}[fragile]
 <<random_walk, eval=FALSE>>=
-rwalk = function(n,theta0) {
+rwalk = function(n,theta0,rho=0.99) {
   theta = rep(theta0,n)
+  v = sqrt(1-rho^2)
   for (i in 2:n) 
-    theta[i] = 0.99*theta[i-1] + rnorm(1,0,sqrt(1-0.99^2))
+    theta[i] = rho*theta[i-1] + rnorm(1,0,v)
   return(theta)
 }
 
@@ -147,6 +150,71 @@ text(400,90, "burnin", pos=2, bg="white")
 
 
 
+\begin{frame}[fragile]
+\frametitle{How many iterations do I need for burnin?}
+Imagine two different chains
+\pause 
+<<no_mixing, echo=FALSE, fig.width=10>>=
+d = list()
+d[[1]] = ddply(data.frame(rep=1:2, mu=c(-3,3)), .(rep), 
+          function(x) data.frame(x=1:1000, y=x$mu+rwalk(1000,0,0.7)))
+d[[1]]$text = 'Not mixing'
+
+d[[2]] = ddply(data.frame(rep=1:2,beta=c(-1,1)), .(rep), function(x) {
+  xx = 1:1000
+  data.frame(x=xx, y=xx*x$beta/167+rwalk(1000,0,0.7)-x$beta*3)
+})
+d[[2]]$text = 'Not stationary'
+
+d[[3]] = ddply(data.frame(rep=1:2,theta0=c(-3,3)), .(rep), function(x) {
+  xx = 1:1000
+  data.frame(x=xx, y=rwalk(1000,x$theta0,0.7))
+})
+d[[3]]$text = 'Mixing and stationary'
+dd = rbind.fill(d)
+dd$rep = factor(dd$rep)
+dd$text = factor(dd$text, levels=c('Not mixing','Not stationary','Mixing and stationary'))
+ggplot(dd, aes(x=x,y=y,color=rep))+geom_line()+ theme(legend.position="none")+facet_wrap(~text)
+@
+\end{frame}
+
+
+\subsection{Potential scale reduction factor}
+\begin{frame}
+\frametitle{Gelman-Rubin potential scale reduction factor}
+
+\begin{enumerate}[<+->]
+\item Start multiple chains initial values that are \alert<7->{well dispersed values relative to $p(\theta|y)$}.
+\item For each scalar estimand $\psi$ of interest,
+  \begin{itemize}
+  \item Calculate the between $B$ and within $W$ chain variances
+  \item Estimate the the marginal posterior variance of the estimand, i.e. $Var(\psi|y)$:
+  \[ \widehat{Var}^+(\psi|y) =  \frac{t-1}{t}W + \frac{1}{t}B \]
+  where $t$ is the number of iterations. 
+  \item Calculate the potential scale reduction factor
+  \[ \hat{R}_\psi = \sqrt{\frac{\widehat{Var}^+(\psi|y)}{W}} \]
+  \end{itemize}
+\item If the $\hat{R}_\psi$ are approximately 1, e.g. $<$1.1, then \alert{there is no evidence of non-convergence}.
+\end{enumerate}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{}
+<<calculate_psrf>>=
+tmp = dlply(dd, .(text,rep), function(x) mcmc(x$y))
+names(tmp)
+
+gelman.diag(mcmc.list(tmp[[1]], tmp[[2]]))
+gelman.diag(mcmc.list(tmp[[3]], tmp[[4]]))
+gelman.diag(mcmc.list(tmp[[5]], tmp[[6]]))
+
+@
+\end{frame}
+
+
+
+
 \subsection{Methods}
 \begin{frame}
 \frametitle{Methods for finding good initial values}
@@ -165,9 +233,169 @@ Methods for finding good initial values:
 \item Start at the MLE, i.e. $\mbox{argmax}_\theta p(y|\theta)$
 \item Start at the MAP (maximum aposterior), i.e. $\mbox{argmax}_\theta p(y|\theta)$
 \end{itemize}
+\end{frame}
+
+
+\section{How many iterations?}
+\begin{frame}[fragile]
+\frametitle{How many iterations should I run (post `convergence')?}
+
+Compute the effective sample size, i.e. how many independent samples would we need to get the equivalent precision of our estimates?
+
+<<effective_sample_size>>=
+set.seed(2)
+effectiveSize(r1 <- rwalk(1000,0,0.99))
+effectiveSize(r2 <- rwalk(1000,0,0.9))
+effectiveSize(r3 <- rwalk(1000,0,0))
+@
+
+Gelman et. al. suggests 10-100 per chain for a total of 100-2000 effective samples.
 
 \end{frame}
  
+ 
+\begin{frame}[fragile]
+<<autocorrelations, fig.width=10>>=
+par(mfrow=c(1,3))
+acf(r1,100)
+acf(r2,100)
+acf(r3,100)
+@
+\end{frame}
+
+\section{What can I do with the samples?}
+\frame{\frametitle{Monte Carlo integration}
+\small
+  Consider evaluating the integral
+  \[ E_{p(\theta|y)}[h(\theta)|y] = \int_{\mathcal{\Theta}} h(\theta) p(\theta|y) d\theta \]
+	\pause using the Markov chain Monte Carlo estimate
+	\[ \hat{h}_T = \frac{1}{T} \sum_{t=1}^T h\left(\theta^t\right) \]
+	\pause where $\theta^t$ is the $t^{th}$ iteration from the MCMC.  \pause Under regularity conditions, 
+	\begin{itemize}
+	\item SLLN: $\hat{h}_T$ converges almost surely to $E[h(\theta)|y]$. \pause 
+	\item CLT: if $h^2$ has finite expectation under $p(\theta|y)$, \pause then 
+	\[ \hat{h}_J \stackrel{d}{\to} N(E[h(\theta)|y], \sigma^2/J) \pause \]
+	where 
+	\[ \sigma^2 = Var[h(\theta^t)]\left(1+ 2\sum_{k=1}^\infty \rho_k \right) \]
+  where $\rho_k$ is the $k^{th}$ autocorrelation.
+	\end{itemize}
+}
+ 
+ 
+\begin{frame}[fragile]
+<<running_average, fig.width=10>>=
+par(mfrow=c(1,3))
+plot(cumsum(r1)/1:length(r1), type="l", ylim=c(-1,1))
+plot(cumsum(r2)/1:length(r2), type="l", ylim=c(-1,1))
+plot(cumsum(r3)/1:length(r3), type="l", ylim=c(-1,1))
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Treat the MCMC samples as samples from the posterior}
+<<summary_statistics, fig.width=10>>=
+mean(r3) # should be 0
+var(r3)  # should 1
+quantile(r3,c(.025,.975)) # should be -1.96,1.96
+@
+\end{frame}
+
+ 
+\begin{frame}[fragile]
+\frametitle{Treat the MCMC samples as samples from the posterior}
+<<summary_plots, fig.width=10>>=
+par(mfrow=c(1,2))
+hist(r3, prob=TRUE)
+curve(dnorm, col="red", add=TRUE, lwd=2)
+qqnorm(r3)
+qqline(r3, col="red")
+@
+\end{frame}
+
+
+\section{One really long chain}
+\begin{frame}
+\frametitle{A wasteful approach}
+
+The Gelman approach in practice is the following
+\begin{itemize}[<+->]
+\item Run an initial chain or, in some other way, approximate the posterior.
+\item (Randomly) choose initial values for multiple chains well dispersed relative to this approximation to the posterior.
+\item Run the chain until all estimands of interest have potential scale reduction factors less than 1.1. 
+\item Continuing running until you have a total of around 4,000 effective draws. 
+\item Discard the first half of all the chains.
+\end{itemize}
+
+\vspace{0.2in} \pause
+
+Assuming this approach correctly diagnosis convergence or lack thereof, it seems computationally wasteful since
+\begin{itemize}
+\item You had to run an initial chain, but then threw it away.
+\item You threw away half of your later iterations.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{One really long chain}
+
+From \url{http://users.stat.umn.edu/~geyer/mcmc/one.html}
+\begin{quote}
+If you can't get a good answer with one long run, then you can't get a good answer with many short runs either. 
+\end{quote}
+
+\vspace{0.2in} \pause
+
+\begin{itemize}
+\item Start a chain at a reasonable starting value
+\item Run it for many iterations (and keep running it)
+\end{itemize}
+
+\vspace{0.2in} \pause
+
+If you really want a convergence diagnostic, you can try Geweke's which tests for equality of means in the first and last parts of the chain.
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<geweke, fig.width=10>>=
+# Z-score for test of equality of means
+par(mfrow=c(1,3))
+geweke.plot(mcmc(r1), auto=F)
+geweke.plot(mcmc(r2), auto=F)
+geweke.plot(mcmc(r3), auto=F)
+@
+\end{frame}
+ 
+ 
+\section{Thinning}
+\begin{frame}
+\frametitle{Thinning}
+
+You will hear of people \alert{thinning} their Markov chain by only recording every $n^{th}$ observation.
+
+\vspace{0.2in} \pause
+
+This has the benefit of reducing the autocorrelation in the retained samples.
+
+\vspace{0.2in} \pause
+
+But should only be used if memory or hard drive space is a limiting factor.
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<thinning>>=
+sq = seq(10,1000,by=10)
+effectiveSize(r1)
+effectiveSize(r1[sq])
+effectiveSize(r2)
+effectiveSize(r2[sq])
+effectiveSize(r3)
+effectiveSize(r3[sq])
+@
+\end{frame}
  
 \end{document}
 
