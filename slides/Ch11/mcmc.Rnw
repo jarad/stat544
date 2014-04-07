@@ -322,13 +322,13 @@ qqline(r2, col="red")
 \frametitle{A wasteful approach}
 
 The Gelman approach in practice is the following
-\begin{itemize}[<+->]
+\begin{enumerate}[<+->]
 \item Run an initial chain or, in some other way, approximate the posterior.
 \item (Randomly) choose initial values for multiple chains well dispersed relative to this approximation to the posterior.
 \item Run the chain until all estimands of interest have potential scale reduction factors less than 1.1. 
 \item Continuing running until you have a total of around 4,000 effective draws. 
 \item Discard the first half of all the chains.
-\end{itemize}
+\end{enumerate}
 
 \vspace{0.2in} \pause
 
@@ -350,10 +350,10 @@ If you can't get a good answer with one long run, then you can't get a good answ
 
 \vspace{0.2in} \pause
 
-\begin{itemize}
-\item Start a chain at a reasonable starting value
-\item Run it for many iterations (and keep running it)
-\end{itemize}
+\begin{enumerate}
+\item Start a chain at a reasonable starting value.
+\item Run it for many iterations (and keep running it).
+\end{enumerate}
 
 \vspace{0.2in} \pause
 
@@ -389,14 +389,14 @@ But should only be used if memory or hard drive space is a limiting factor.
 
 
 \begin{frame}[fragile]
+\frametitle{Thinning}
 <<thinning>>=
+samps = data.frame(iteration=1:length(r1), 
+                   rho = rep(c(.99,.9,0), each=length(r1)),
+                   x=c(r1,r2,r3))
 sq = seq(10,1000,by=10)
-effectiveSize(r1)
-effectiveSize(r1[sq])
-effectiveSize(r2)
-effectiveSize(r2[sq])
-effectiveSize(r3)
-effectiveSize(r3[sq])
+ddply(samps, .(rho), summarize, 
+      full=effectiveSize(x), thinned=effectiveSize(x[sq]))
 @
 \end{frame}
  
