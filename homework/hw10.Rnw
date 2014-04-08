@@ -16,7 +16,6 @@
 
 
 \begin{document}
-<<<<<<< HEAD
 \lhead{Homework 10}
 \chead{PSTAT 544 - Bayesian statistics}
 \rhead{Page \thepage\ of \pageref{LastPage}}
@@ -40,29 +39,6 @@ Derive the following full conditionals
 \end{itemize}
 
 Construct an MCMC sampler by using Gibbs steps whenever the full conditionals have a known distribution and Metropolis-Hastings steps whenever the full conditionals do not have a known distribution. Run the sampler on the airline fatality data. Provide posterior histograms for all models parameters. 
-=======
-\lhead{Homework 9}
-\chead{PSTAT 544 - Bayesian statistics}
-\rhead{Page \thepage\ of \pageref{LastPage}}
-
-This homework is due on Blackboard Learn by 8:00am on 3 April 2014. There will be a total of 10 points available. 
-
-\begin{enumerate}
-\item Reconsider the model $Y_i\stackrel{ind}{\sim} Po(\lambda x_i)$ with $\lambda\propto 1/\sqrt{\lambda}$ used in the airline fatality data. 
-
-\begin{enumerate}
-\item Write your own code to run an independence Metropolis-Hastings chain for the posterior $p(\lambda|y)$.
-  \begin{enumerate}
-  \item Please make clear what your proposal is.
-  \item Provide the code.
-  \item Compare to the true posterior.
-  \end{enumerate}
-\item Repeat 1a for a random-walk Metropolis chain.
-\end{enumerate}
-
-\item Repeat 1, i.e. both independence Metropolis-Hastings and random-walk Metropolis, with $\lambda\sim Ca^+(0,1)$, a half-Cauchy distribution with density 
-\[ p(\lambda) = \frac{2}{\pi(1+\lambda^2)}\mathrm{I}(\lambda>0). \]
->>>>>>> f05ffc233267d2d8f87eae6a2c95ec770832a456
 
 \end{enumerate}
 
