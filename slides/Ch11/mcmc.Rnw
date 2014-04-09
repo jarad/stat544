@@ -278,7 +278,7 @@ acf(r3,100)
 	\item CLT: if $h^2$ has finite expectation under $p(\theta|y)$, \pause then 
 	\[ \hat{h}_T \stackrel{d}{\to} N(E[h(\theta)|y], \sigma^2/T) \pause \]
 	where 
-	\[ \sigma^2 = Var[h(\theta^t)]\left(1+ 2\sum_{k=1}^\infty \rho_k \right) \]
+	\[ \sigma^2 = Var[h(\theta)|y]\left(1+ 2\sum_{k=1}^\infty \rho_k \right) \]
   where $\rho_k$ is the $k^{th}$ autocorrelation.
 	\end{itemize}
 }
@@ -464,14 +464,14 @@ curve(dnorm, col="red", add=TRUE)
 Since computing time/power is not very limited these days, my suggestion is
 
 \begin{enumerate}
-\item Run one long chain and continue running it
+\item Run one long chain and continue running it \pause 
 \item Run multiple chains according to suggestions in BDA
   \begin{enumerate}
   \item Start multiple chains with initial values relative to the posterior learned by the long chain
   \item Monitor the potential scale reduction factor until $<$ 1.1 for all quantities of interest
   \item Monitor traceplots and cumulative mean plots
   \item Discard burn-in (first half is probably overkill)
-  \item Run until effective sample size is around 1000
+  \item Run until effective sample size is around 1000 \pause 
   \end{enumerate}
 \item Use all samples for posterior inference
 \end{enumerate}
