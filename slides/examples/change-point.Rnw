@@ -1,0 +1,116 @@
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow,tikz,animate}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+
+\title[Change-point]{Change-point analysis}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\I}{\mathrm{I}}
+
+\newcommand*{\approxdist}{\mathrel{\vcenter{\offinterlineskip
+\vskip-.25ex\hbox{\hskip.55ex$\cdot$}\vskip-.25ex\hbox{$\sim$}
+\vskip-.5ex\hbox{\hskip.55ex$\cdot$}}}}
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+library(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+##############################################
+# Change-point analysis                      #
+##############################################
+library(reshape2)
+library(plyr)
+library(ggplot2)
+library(rjags)
+library(rstan)
+set.seed(2)
+@
+
+\frame{\maketitle}
+
+\begin{frame}[fragile]
+
+Did the users text habits change over time?
+{\tiny \url{http://camdavidsonpilon.github.io/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers/}}
+
+<<data, fig.width=8>>=
+d = read.csv("txtdata.csv", header=F)
+names(d) = "texts"
+d$day = 1:nrow(d)
+qplot(day, texts, data=d)
+@
+
+\end{frame}
+ 
+ 
+\begin{frame}
+\frametitle{Modeling}
+Let $Y_t$ be the number of texts on day $t$. \pause Assume
+\[ Y_t \stackrel{ind}{\sim} Po(\lambda_t) \]
+\pause with 
+\[ \lambda_t = \left\{ \begin{array}{ll} 
+\mu_0 & \sim t<\tau \\
+\mu_1 & \sim t \ge \tau
+\end{array} \right. \]
+\pause where $\mu_0$, $\mu_1$, and $\tau$ are all unknown \pause and 
+
+\begin{itemize}
+\item $\mu_0$ represents the ``standard'' texting rate
+\item $\mu_1$ represents a new texting rate
+\item $\tau$ represents the day the texting rate changed
+\end{itemize}
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Non-Bayesian analysis}
+
+How would you find an MLE? 
+
+\vspace{0.2in} \pause 
+
+By definition, the mle is
+
+\[ \mbox{argmax}_{\mu_0,\mu_1,\tau} L(\mu_0,\mu_1,\tau)  \]
+where 
+\[ L(\mu_0,\mu_1,\tau) = \prod_{t=1}^T Po(y_t|\lambda_t)^{\mathrm{I(t<\tau)}} Po(y_t|\lambda_t)^{\mathrm{I(t\ge\tau)}} \]
+
+\vspace{0.2in} \pause
+
+One appraoch is to iterate over $\tau=\{1,\ldots,T\}$ and optimize the likelihood for each and then find the optimal over these choices.
+\end{frame}
+ 
+ 
+ 
+\begin{frame}
+<<mle>>=
+mle = ddply(data.frame(tau=1:nrow(d)), .(tau), function(x) {
+  
+})
+@
+ \end{frame}
+ 
+\end{document}
+
