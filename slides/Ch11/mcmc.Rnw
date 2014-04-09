@@ -18,7 +18,7 @@
 \setkeys{Gin}{width=0.6\textwidth}
 
 
-\title[Gibbs sampling]{Markov chain Monte Carlo}
+\title[MCMC]{Markov chain Monte Carlo}
 \author[Jarad Niemi]{Dr. Jarad Niemi}
 \institute[Iowa State]{Iowa State University}
 \date{\today}
