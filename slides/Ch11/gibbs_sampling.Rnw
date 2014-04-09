@@ -497,9 +497,10 @@ theta = (dat$y+0.5)/(dat$n+1)
 mean(theta) # ~= 0.5, so alpha~=beta
 
 # Force alpha=beta, and then use moment matching with the variance
+# which is vr = 1/4(2*alpha+1) implying 
+# alpha = (4/v-1)/2
 vr = var(theta) 
-opt = optim(1, function(x) abs(prod(x)/sum(x)^2/sum(x+.5)-vr), method = "L-BFGS-B", lower=0)
-inits = list(alpha=opt$par, beta=opt$par)
+inits = list(alpha=(4/vr-1)/2, beta=(4/vr-1)/2)
 
 # Run the MCMC
 r = mcmc(2000, dat=dat, inits=inits, tune=list(alpha=1,beta=1))
