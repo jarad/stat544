@@ -106,8 +106,12 @@ One appraoch is to iterate over $\tau=\{1,\ldots,T\}$ and optimize the likelihoo
  
 \begin{frame}
 <<mle>>=
-mle = ddply(data.frame(tau=1:nrow(d)), .(tau), function(x) {
-  
+mle = ddply(data.frame(tau=2:(nrow(d)-1)), .(tau), function(x) {
+  d$change = d$day >= x$tau
+  tmp = ddply(d, .(change), summarize, mean=mean(texts))
+  vr = sum((d$texts-tmp$mean[d$change])^2)/nrow(d)
+  data.frame(mu0 = tmp$mean[1], mu1 = tmp$mean[2], vr = vr, 
+             log_like = sum(dnorm(d$texts, tmp$mean[d$change], sqrt(vr), log=TRUE)))
 })
 @
  \end{frame}
