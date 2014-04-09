@@ -59,7 +59,6 @@ names(d) = "texts"
 d$day = 1:nrow(d)
 qplot(day, texts, data=d)
 @
-
 \end{frame}
  
  
@@ -85,7 +84,7 @@ Let $Y_t$ be the number of texts on day $t$. \pause Assume
 
 
 \begin{frame}
-\frametitle{Non-Bayesian analysis}
+\frametitle{Maximum likelihood estimation}
 
 How would you find an MLE? 
 
@@ -104,17 +103,52 @@ One appraoch is to iterate over $\tau=\{1,\ldots,T\}$ and optimize the likelihoo
  
  
  
-\begin{frame}
-<<mle>>=
+\begin{frame}[fragile]
+<<mle, fig.width=10>>=
 mle = ddply(data.frame(tau=2:(nrow(d)-1)), .(tau), function(x) {
-  d$change = d$day >= x$tau
+  d$change = (d$day >= x$tau)
   tmp = ddply(d, .(change), summarize, mean=mean(texts))
-  vr = sum((d$texts-tmp$mean[d$change])^2)/nrow(d)
-  data.frame(mu0 = tmp$mean[1], mu1 = tmp$mean[2], vr = vr, 
-             log_like = sum(dnorm(d$texts, tmp$mean[d$change], sqrt(vr), log=TRUE)))
+  data.frame(mu0 = tmp$mean[1], mu1 = tmp$mean[2], 
+             log_like = sum(dpois(d$texts, tmp$mean[1+d$change], log=TRUE)))
 })
+qplot(tau, log_like, data=mle)
 @
- \end{frame}
+\end{frame}
+ 
+ 
+
+\begin{frame}
+\frametitle{Confidence interval}
+
+How would you find a confidence interval/set? 
+
+\vspace{0.2in} \pause 
+
+The difficulty comes in dealing with the likelihood:
+\[ L(\mu_0,\mu_1,\tau) = \prod_{t=1}^T Po(y_t|\lambda_t)^{\mathrm{I(t<\tau)}} Po(y_t|\lambda_t)^{\mathrm{I(t\ge\tau)}} \]
+since $\tau$ occurs in an indicator function in an exponent.
  
 \end{document}
 
+
+
+\section{JAGS}
+\begin{frame}[fragile]
+<<jags>>=
+model = "
+model {
+  for (t in 1:n) {
+    y[t] ~ dpois(lambda[t])
+    lambda[t] <- ifelse(t<tau, mu[1], mu[2])
+  }
+  mu[1] ~ dexp(1)
+  mu[2] ~ dexp(1)
+  tau ~ dcat(p)
+}
+"
+
+m = jags.model(textConnection(model), 
+               data=list(n=nrow(d), y=d$texts, p=rep(1/nrow(d), nrow(d))))
+r = coda.samples(m, c("mu","tau"), 10000, thin=10)
+@
+\end{frame}
