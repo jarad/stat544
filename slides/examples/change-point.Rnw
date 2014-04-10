@@ -43,12 +43,13 @@ library(plyr)
 library(ggplot2)
 library(rjags)
 library(rstan)
-set.seed(2)
+set.seed(20140410)
 @
 
 \frame{\maketitle}
 
 \begin{frame}[fragile]
+\frametitle{}
 
 Did the users text habits change over time?
 {\tiny \url{http://camdavidsonpilon.github.io/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers/}}
@@ -94,7 +95,7 @@ By definition, the mle is
 
 \[ \mbox{argmax}_{\mu_0,\mu_1,\tau} L(\mu_0,\mu_1,\tau)  \]
 where 
-\[ L(\mu_0,\mu_1,\tau) = \prod_{t=1}^T Po(y_t|\lambda_t)^{\mathrm{I(t<\tau)}} Po(y_t|\lambda_t)^{\mathrm{I(t\ge\tau)}} \]
+\[ L(\mu_0,\mu_1,\tau) = \prod_{t=1}^T Po(y_t|\mu_1)^{\mathrm{I(t<\tau)}} Po(y_t|\mu_2)^{\mathrm{I(t\ge\tau)}} \]
 
 \vspace{0.2in} \pause
 
@@ -105,10 +106,10 @@ One appraoch is to iterate over $\tau=\{1,\ldots,T\}$ and optimize the likelihoo
  
 \begin{frame}[fragile]
 <<mle, fig.width=10>>=
-mle = ddply(data.frame(tau=2:(nrow(d)-1)), .(tau), function(x) {
+mle = ddply(data.frame(tau=seq(1,nrow(d),by=0.1)), .(tau), function(x) {
   d$change = (d$day >= x$tau)
   tmp = ddply(d, .(change), summarize, mean=mean(texts))
-  data.frame(mu0 = tmp$mean[1], mu1 = tmp$mean[2], 
+  data.frame(mu1 = tmp$mean[1], mu2 = tmp$mean[2], 
              log_like = sum(dpois(d$texts, tmp$mean[1+d$change], log=TRUE)))
 })
 qplot(tau, log_like, data=mle)
@@ -125,30 +126,171 @@ How would you find a confidence interval/set?
 \vspace{0.2in} \pause 
 
 The difficulty comes in dealing with the likelihood:
-\[ L(\mu_0,\mu_1,\tau) = \prod_{t=1}^T Po(y_t|\lambda_t)^{\mathrm{I(t<\tau)}} Po(y_t|\lambda_t)^{\mathrm{I(t\ge\tau)}} \]
+\[ L(\mu_0,\mu_1,\tau) = \prod_{t=1}^T Po(y_t|\mu_1)^{\mathrm{I(t<\tau)}} Po(y_t|\mu_2)^{\mathrm{I(t\ge\tau)}} \]
 since $\tau$ occurs in an indicator function in an exponent.
- 
-\end{document}
+\end{frame}
+
 
 
 
 \section{JAGS}
 \begin{frame}[fragile]
-<<jags>>=
-model = "
+<<jags, tidy=FALSE, cache=TRUE>>=
+jags_model = "
 model {
   for (t in 1:n) {
     y[t] ~ dpois(lambda[t])
     lambda[t] <- ifelse(t<tau, mu[1], mu[2])
   }
-  mu[1] ~ dexp(1)
-  mu[2] ~ dexp(1)
-  tau ~ dcat(p)
+  mu[1] ~ dexp(mu_mean)
+  mu[2] ~ dexp(mu_mean)
+  tau   ~ dunif(1,n)
 }
 "
 
-m = jags.model(textConnection(model), 
-               data=list(n=nrow(d), y=d$texts, p=rep(1/nrow(d), nrow(d))))
-r = coda.samples(m, c("mu","tau"), 10000, thin=10)
+m = jags.model(textConnection(jags_model),
+               inits = list(tau=46, mu=rep(mean(d$texts),2)),
+               data=list(n=nrow(d), y=d$texts, mu_mean=1/mean(d$texts)),
+               n.adapt=0)
+r = coda.samples(m, c("lambda","mu","tau"), 40000, thin=10)
 @
 \end{frame}
+
+
+
+
+
+
+\begin{frame}[fragile]
+<<jags_plots, dependson="jags">>=
+plot(r[,c("mu[1]","mu[2]","tau")])
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+<<tau_summary, dependson="jags">>=
+tau_post = table(ceiling(unlist(r[,"tau"])))
+tau_post/sum(tau_post)
+
+summary(r[,c("mu[1]","mu[2]")])
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<lambda, fig.width=10, dependson="jags">>=
+s = summary(r[,paste("lambda[",1:nrow(d),"]", sep="")])
+q = data.frame(x = 1:nrow(d), lb=s$quantiles[,1], m = s$quantiles[,3], ub=s$quantiles[,5])
+ggplot()+geom_point(data=d, aes(x=day, y=texts))+geom_line(data=q, aes(x=x, y=m ), color="red", lty=2)+
+  geom_line(data=q, aes(x=x, y=lb), color="red")+geom_line(data=q, aes(x=x, y=ub), color="red")
+@
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
+<<initial_values, tidy=FALSE, cache=TRUE>>=
+m = jags.model(textConnection(jags_model),
+               data=list(n=nrow(d), y=d$texts, mu_mean=1/mean(d$texts)),
+               inits = function() list(tau=runif(1,1,nrow(d)), mu=rpois(2,mean(d$texts))), 
+               n.chains=4, n.adapt=0)
+r = coda.samples(m, c("lambda","mu","tau"), 10000, thin=10)
+gelman.diag(r[,c("mu[1]","mu[2]","tau")])
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+<<initial_values_plot, tidy=FALSE, dependson='initial_values'>>=
+plot(r[,c("mu[1]","mu[2]","tau")])
+@
+\end{frame}
+
+
+
+\section{Stan}
+\begin{frame}[fragile]
+
+<<stan_model, tidy=FALSE>>=
+stan_model = "
+data {
+  int<lower=1> n;
+  int<lower=0> y[n];
+  real<lower=0> mu_mean;
+}
+
+parameters {
+  real<lower=1, upper=n> tau;
+  real<lower=0> mu[2];
+}
+
+transformed parameters {
+  real<lower=0> lambda[n];
+  for (t in 1:n) {
+    lambda[t] <- if_else(t<tau, mu[1], mu[2]);
+  }
+}
+
+model {
+  for (t in 1:n) {
+    y[t] ~ poisson(lambda[t]);
+  }
+  mu[1] ~ exponential(mu_mean);
+  mu[2] ~ exponential(mu_mean);
+}
+"
+@
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
+<<stan_compiling, cache=TRUE>>=
+m = stan_model(model_code=stan_model)
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+<<stan_sampling, dependson="stan_compiling", cache=TRUE>>=
+r = sampling(m, data=list(y=d$texts, n=nrow(d), mu_mean=1/mean(d$texts)))
+@
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
+<<stan_summary>>=
+print(r, c("tau","mu[1]","mu[2]"))
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+<<stan_traceplot>>=
+traceplot(r, c("tau","mu[1]","mu[2]"))
+@
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
+<<stan_plot>>=
+plot(r)
+@
+\end{frame}
+
+
+
+
+
+\end{document}
