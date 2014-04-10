@@ -69,14 +69,14 @@ Let $Y_t$ be the number of texts on day $t$. \pause Assume
 \[ Y_t \stackrel{ind}{\sim} Po(\lambda_t) \]
 \pause with 
 \[ \lambda_t = \left\{ \begin{array}{ll} 
-\mu_0 & \sim t<\tau \\
-\mu_1 & \sim t \ge \tau
+\mu_1 & \mbox{if } t<\tau \\
+\mu_2 & \mbox{if } t \ge \tau
 \end{array} \right. \]
-\pause where $\mu_0$, $\mu_1$, and $\tau$ are all unknown \pause and 
+\pause where $\mu_1$, $\mu_2$, and $\tau$ are all unknown \pause and 
 
 \begin{itemize}
-\item $\mu_0$ represents the ``standard'' texting rate
-\item $\mu_1$ represents a new texting rate
+\item $\mu_1$ represents the ``standard'' texting rate
+\item $\mu_2$ represents a new texting rate
 \item $\tau$ represents the day the texting rate changed
 \end{itemize}
 \end{frame}
@@ -93,9 +93,9 @@ How would you find an MLE?
 
 By definition, the mle is
 
-\[ \mbox{argmax}_{\mu_0,\mu_1,\tau} L(\mu_0,\mu_1,\tau)  \]
+\[ \mbox{argmax}_{\mu_1,\mu_2,\tau} L(\mu_1,\mu_2,\tau)  \]
 where 
-\[ L(\mu_0,\mu_1,\tau) = \prod_{t=1}^T Po(y_t|\mu_1)^{\mathrm{I(t<\tau)}} Po(y_t|\mu_2)^{\mathrm{I(t\ge\tau)}} \]
+\[ L(\mu_1,\mu_2,\tau) = \prod_{t=1}^T Po(y_t|\mu_1)^{\mathrm{I(t<\tau)}} Po(y_t|\mu_2)^{\mathrm{I(t\ge\tau)}} \]
 
 \vspace{0.2in} \pause
 
@@ -106,7 +106,7 @@ One appraoch is to iterate over $\tau=\{1,\ldots,T\}$ and optimize the likelihoo
  
 \begin{frame}[fragile]
 <<mle, fig.width=10>>=
-mle = ddply(data.frame(tau=seq(1,nrow(d),by=0.1)), .(tau), function(x) {
+mle = ddply(data.frame(tau=seq(1,nrow(d),by=1)), .(tau), function(x) {
   d$change = (d$day >= x$tau)
   tmp = ddply(d, .(change), summarize, mean=mean(texts))
   data.frame(mu1 = tmp$mean[1], mu2 = tmp$mean[2], 
@@ -121,19 +121,55 @@ qplot(tau, log_like, data=mle)
 \begin{frame}
 \frametitle{Confidence interval}
 
-How would you find a confidence interval/set? 
+How can you quantify uncertainty in the parameter estimates? \pause How about obtaining confidence intervals?
 
 \vspace{0.2in} \pause 
 
 The difficulty comes in dealing with the likelihood:
-\[ L(\mu_0,\mu_1,\tau) = \prod_{t=1}^T Po(y_t|\mu_1)^{\mathrm{I(t<\tau)}} Po(y_t|\mu_2)^{\mathrm{I(t\ge\tau)}} \]
+\[ L(\mu_1,\mu_2,\tau) = \prod_{t=1}^T Po(y_t|\mu_1)^{\mathrm{I(t<\tau)}} Po(y_t|\mu_2)^{\mathrm{I(t\ge\tau)}} \]
 since $\tau$ occurs in an indicator function in an exponent.
 \end{frame}
 
 
 
+\section{Bayesian analysis}
+\begin{frame}
+\frametitle{Bayesian analysis}
+
+To conduct a Bayesian analysis with the statistical model 
+\[ Y_t \stackrel{ind}{\sim} Po(\lambda_t) \]
+\pause with 
+\[ \lambda_t = \left\{ \begin{array}{ll} 
+\mu_1 & \mbox{if } t<\tau \\
+\mu_2 & \mbox{if } t \ge \tau
+\end{array} \right. \]
+we need a joint prior for $\mu_1$, $\mu_2$, and $\tau$. 
+
+\vspace{0.2in} \pause
+
+The suggested prior is 
+\[ \begin{array}{ll}
+\mu_1 &\sim Exp(\overline{y}) \\
+\mu_2 &\sim Exp(\overline{y}) \\
+\tau &\sim Unif(1,n)
+\end{array} \]
+where $Exp(\eta)$ has mean $\eta$ and $\mu_1$, $\mu_2$, and $\tau$ are assumed to be independent. \pause This uses the data twice since the prior for the $\mu$s depends the data, but is relatively inocuous. 
+\end{frame}
+
 
 \section{JAGS}
+\begin{frame}[fragile]
+\frametitle{JAGS help}
+
+<<jags_help>>=
+head(jags.model,2)
+head(coda.samples,1)
+@
+
+\end{frame}
+
+
+
 \begin{frame}[fragile]
 <<jags, tidy=FALSE, cache=TRUE>>=
 jags_model = "
@@ -144,15 +180,15 @@ model {
   }
   mu[1] ~ dexp(mu_mean)
   mu[2] ~ dexp(mu_mean)
-  tau   ~ dunif(1,n)
+  tau   ~ dcat(p)
 }
 "
 
 m = jags.model(textConnection(jags_model),
                inits = list(tau=46, mu=rep(mean(d$texts),2)),
-               data=list(n=nrow(d), y=d$texts, mu_mean=1/mean(d$texts)),
+               data=list(n=nrow(d), y=d$texts, mu_mean=1/mean(d$texts), p = rep(1,nrow(d))),
                n.adapt=0)
-r = coda.samples(m, c("lambda","mu","tau"), 40000, thin=10)
+r = coda.samples(m, c("lambda","mu","tau"), 80000, thin=20)
 @
 \end{frame}
 
@@ -171,7 +207,7 @@ plot(r[,c("mu[1]","mu[2]","tau")])
 
 \begin{frame}[fragile]
 <<tau_summary, dependson="jags">>=
-tau_post = table(ceiling(unlist(r[,"tau"])))
+tau_post = table(unlist(r[,"tau"]))
 tau_post/sum(tau_post)
 
 summary(r[,c("mu[1]","mu[2]")])
@@ -189,14 +225,31 @@ ggplot()+geom_point(data=d, aes(x=day, y=texts))+geom_line(data=q, aes(x=x, y=m 
 \end{frame}
 
 
+\subsection{Multichain}
+\begin{frame}
+\frametitle{Multichain start in JAGS}
+
+From JAGS manual:
+\begin{quote}
+If initial values are not supplied by the user, then each parameter chooses its own initial
+value based on the values of its parents. The initial value is chosen to be a ``typical value"
+from the prior distribution. The exact meaning of ``typical value" depends on the distribution
+of the stochastic node, but is usually the mean, median, or mode.
+\end{quote}
+
+\vspace{0.2in} \pause
+
+So, in order to run chains starting from initial values that are well dispersed relative to the posterior, you need to specify initial values yourself.
+\end{frame}
+
 
 
 \begin{frame}[fragile]
 <<initial_values, tidy=FALSE, cache=TRUE>>=
 m = jags.model(textConnection(jags_model),
-               data=list(n=nrow(d), y=d$texts, mu_mean=1/mean(d$texts)),
-               inits = function() list(tau=runif(1,1,nrow(d)), mu=rpois(2,mean(d$texts))), 
-               n.chains=4, n.adapt=0)
+               data=list(n=nrow(d), y=d$texts, mu_mean=1/mean(d$texts),p=rep(1,nrow(d))),
+               inits = function() list(tau=sample(nrow(d),1), mu=rexp(2,1/mean(d$texts))), 
+               n.chains=4, n.adapt=10000) # half of the iterations for burnin
 r = coda.samples(m, c("lambda","mu","tau"), 10000, thin=10)
 gelman.diag(r[,c("mu[1]","mu[2]","tau")])
 @
@@ -213,6 +266,40 @@ plot(r[,c("mu[1]","mu[2]","tau")])
 
 
 \section{Stan}
+
+\begin{frame}
+\frametitle{Stan}
+
+From \url{http://mc-stan.org/}:
+\begin{quote}
+Stan is a probabilistic programming language implementing statistical inference with
+
+\begin{itemize}
+\item Markov chain Monte Carlo sampling (NUTS, HMC)
+\item Optimization-based point estimation (BFGS)
+\end{itemize}
+
+Stan is coded in C++ and runs on all major platforms (Windows, Mac, Linux).
+
+Stan is freedom-respecting, open-source software.
+\end{quote}
+
+To install RStan, follow the instructions on \url{https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started}.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Stan help}
+
+<<stan_help>>=
+head(stan_model,3)
+head(getMethod("sampling","stanmodel"),7)
+@
+
+\end{frame}
+
+
 \begin{frame}[fragile]
 
 <<stan_model, tidy=FALSE>>=
@@ -250,6 +337,7 @@ model {
 
 
 \begin{frame}[fragile]
+\frametitle{Compile Stan model}
 <<stan_compiling, cache=TRUE>>=
 m = stan_model(model_code=stan_model)
 @
