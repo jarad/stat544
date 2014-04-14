@@ -41,6 +41,7 @@ library(reshape2)
 library(plyr)
 library(ggplot2)
 library(rstan)
+library(lme4)
 set.seed(20140415)
 @
 
@@ -294,8 +295,7 @@ summary(d)
 \end{frame}
 
 \begin{frame}[fragile]
-<<non-Bayesian, message=FALSE>>=
-library(lme4)
+<<non-Bayesian, message=FALSE, cache=TRUE>>=
 m1 = lmer(SeedlingWeight ~ Genotype + (1|Tray), d)
 summary(m1)
 @
@@ -303,9 +303,53 @@ Why no pvalues? {\tiny \url{https://stat.ethz.ch/pipermail/r-help/2006-May/09476
 \end{frame}
 
 
+
+\begin{frame}
+From \url{https://stat.ethz.ch/pipermail/r-help/2006-May/094765.html} (19 May 2006):
+{\small 
+\begin{quote}
+Users are often surprised and alarmed that the summary of a linear
+mixed model fit by lmer provides estimates of the fixed-effects
+parameters, standard errors for these parameters and a t-ratio but no
+p-values.  
+
+...
+
+Most of the research on tests for the fixed-effects specification in a
+mixed model begin with the assumption that these statistics will have
+an F distribution with a known numerator degrees of freedom and the
+only purpose of the research is to decide how to obtain an approximate
+denominator degrees of freedom.  I don't agree.
+
+...
+
+For the time being, I would recommend using a Markov Chain Monte Carlo
+sample (function mcmcsamp) to evaluate the properties of individual
+coefficients (use HPDinterval or just summary from the "coda"
+package).  
+\end{quote}}
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<confint_merMod_help>>=
+help("confint.merMod", help_type="text")
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<confidence_intervals, dependson="non-Bayesian", cache=TRUE>>=
+confint(m1, method="profile")
+confint(m1, method="Wald")
+confint(m1, method="boot")
+@
+\end{frame}
+
+
 \subsection{Stan code}
 \begin{frame}[fragile]
-<<stan_model, tidy=FALSE>>=
+<<stan_model, tidy=FALSE, cache=TRUE>>=
 stan_model = "
 data {
   int<lower=1> n;
@@ -342,7 +386,7 @@ generated quantities {
 
 \subsection{Results}
 \begin{frame}[fragile]
-<<analysis, cache=TRUE>>=
+<<analysis, dependson="stan_model", cache=TRUE>>=
 m = stan_model(model_code=stan_model)
 
 dat = list(y        = d$SeedlingWeight, 
@@ -352,7 +396,7 @@ dat = list(y        = d$SeedlingWeight,
            n_genotypes = nlevels(d$Genotype),
            n_trays     = max(d$Tray))
 
-r = sampling(m, dat, c("gamma","tau","sigma_e","sigma_tau")
+r = sampling(m, dat, c("gamma","tau","sigma_e","sigma_tau","diff"))
 @
 \end{frame}
 
@@ -364,6 +408,11 @@ r
 
 
 
+\begin{frame}[fragile]
+<<table, dependson="analysis">>=
+plot(r)
+@
+\end{frame}
 
 
 
