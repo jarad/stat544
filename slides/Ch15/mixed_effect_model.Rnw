@@ -6,7 +6,7 @@
 \usetheme{AnnArbor}\usecolortheme{beaver}
 %\usetheme{CambridgeUS}\usecolortheme{crane}
 
-\usepackage{verbatim,xmpmulti,color,multicol,multirow,tikz,animate}
+\usepackage{verbatim,xmpmulti,color,multicol,multirow,tikz}
 \setlength{\unitlength}{\textwidth}  % measure in textwidths
 \usepackage[normalem]{ulem}
 
@@ -17,7 +17,7 @@
 \setkeys{Gin}{width=0.6\textwidth}
 
 
-\title{{Hierarchical linear models}
+\title{Hierarchical linear models}
 \author[Jarad Niemi]{Dr. Jarad Niemi}
 \institute[Iowa State]{Iowa State University}
 \date{\today}
@@ -40,7 +40,6 @@ opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='
 library(reshape2)
 library(plyr)
 library(ggplot2)
-library(rjags)
 library(rstan)
 set.seed(20140415)
 @
@@ -263,7 +262,7 @@ harvested from each tray and, after drying, weighed.
 	
 	Of primary interest is the difference in seedling weights for the two species. \pause 
   
-  Data: \url{http://www.public.iastate.edu/~dnett/S511/SeedlingDryWeight2.txt}
+  Data: {\tiny \url{http://www.public.iastate.edu/~dnett/S511/SeedlingDryWeight2.txt}}
 }
 
 \subsection{Mixed-effects model}
@@ -286,108 +285,87 @@ harvested from each tray and, after drying, weighed.
 	$\gamma_1-\gamma_2$ is the quantity of interet.
 }
 
-\subsection{JAGS code}
 \begin{frame}[fragile]
-<<analysis, tidy=FALSE>>=
+<<data>>=
 d = read.table("SeedlingDryWeight2.txt", header=TRUE)
 
-model = "
+summary(d)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<non-Bayesian, message=FALSE>>=
+library(lme4)
+m1 = lmer(SeedlingWeight ~ Genotype + (1|Tray), d)
+summary(m1)
+@
+Why no pvalues? {\tiny \url{https://stat.ethz.ch/pipermail/r-help/2006-May/094765.html}}
+\end{frame}
+
+
+\subsection{Stan code}
+\begin{frame}[fragile]
+<<stan_model, tidy=FALSE>>=
+stan_model = "
+data {
+  int<lower=1> n;
+  int<lower=1> n_genotypes;
+  int<lower=1> n_trays;
+
+  real y[n];
+  int genotype[n];
+  int tray[n];
+}
+parameters {
+  real gamma[n_genotypes]; // Implicit prior over whole real line
+  real tau[n_trays];
+  real<lower=0> sigma_e;
+  real<lower=0> sigma_tau;
+}
+
 model {
   for (i in 1:n) {
-    y[i] ~ dnorm(gamma[genotype[i]]+tau[tray[i]], eta.e)
+    y[i] ~ normal(gamma[genotype[i]]+tau[tray[i]], sigma_e);
   }
-
-  # Fixed effects
-  for (g in 1:ng) { gamma[g] ~ dnorm(0,eta.gamma) }
  
   # Random effects
-  for (t in 1:nt) { tau[t]   ~ dnorm(0,eta.tau  ) }
-  
-  # Other priors
-  eta.e   <- 1/sigma.e^2
-  eta.tau <- 1/sigma.tau^2
+  for (t in 1:n_trays) { tau[t]   ~ normal(0, sigma_tau); }
+}
 
-  sigma.e   ~ dunif(0,1000)
-  sigma.tau ~ dunif(0,1000)
-
-  # Quantity of interest
-  diff <- gamma[1] - gamma[2]
+generated quantities {
+  real diff;
+  diff <- gamma[2] - gamma[1];
 }
 "
 @
 \end{frame}
 
 \subsection{Results}
-\frame[containsverbatim]{\frametitle{Results}
-{\tiny 
-\begin{verbatim}
-dat = list(y = d$SeedlingWeight, 
+\begin{frame}[fragile]
+<<analysis, cache=TRUE>>=
+m = stan_model(model_code=stan_model)
+
+dat = list(y        = d$SeedlingWeight, 
            genotype = as.numeric(d$Genotype),
-           tray = d$Tray, n = nrow(d)
-           ng = 2,
-           nt = max(d$Tray),
-           eta.gamma = 1e-6)
+           tray     = d$Tray, 
+           n           = nrow(d),
+           n_genotypes = nlevels(d$Genotype),
+           n_trays     = max(d$Tray))
 
-m = jags.model(textConnection(model), dat, n.chains=3, n.adapt=10000)
+r = sampling(m, dat, c("gamma","tau","sigma_e","sigma_tau")
+@
+\end{frame}
 
-res = coda.samples(m, c("sigma.e","sigma.tau","gamma","tau","diff"), 10000, nthin=10)
-
-gelman.diag(res, mult=F)
-# Upper CIs all less than 1.03
-
-
-round(summary(res)$quantiles,2)
-
-
+\begin{frame}[fragile]
+<<table, dependson="analysis">>=
+r
+@
+\end{frame}
 
 
-           2.5%   25%   50%   75% 97.5%
-diff      -3.86  1.49  3.47  5.41  9.59
-gamma[1]  10.04 13.77 15.23 16.59 19.56
-gamma[2]   7.14 10.46 11.80 13.10 15.97
-sigma.e    1.58  1.79  1.92  2.06  2.39
-sigma.tau  2.26  3.20  3.97  5.08  8.99
-tau[1]    -9.49 -6.33 -4.89 -3.40  0.26
-tau[2]    -1.68  1.28  2.67  4.18  7.99
-tau[3]    -5.59 -2.58 -1.16  0.33  4.14
-tau[4]    -0.67  2.27  3.64  5.16  8.99
-tau[5]    -3.19 -0.20  1.13  2.55  5.93
-tau[6]    -6.07 -3.06 -1.74 -0.33  2.97
-tau[7]    -1.20  1.69  3.05  4.47  7.82
-tau[8]    -7.05 -4.03 -2.69 -1.29  2.04
-\end{verbatim}
-}
-}
 
 
-\frame[containsverbatim]{\frametitle{Compare to non-Bayesian estimates}
-{\tiny 
-\begin{verbatim}
-> library(lme4)
-> m1 = lmer(y ~ genotype + (1|tray), dat)
-> summary(m1)
-Linear mixed model fit by REML 
-Formula: y ~ genotype + (1 | tray) 
-   Data: dat 
-   AIC   BIC logLik deviance REMLdev
- 255.1 263.2 -123.6      253   247.1
-Random effects:
- Groups   Name        Variance Std.Dev.
- tray     (Intercept) 11.6612  3.4149  
- Residual              3.5428  1.8822  
-Number of obs: 56, groups: tray, 8
 
-Fixed effects:
-            Estimate Std. Error t value
-(Intercept)   18.839      3.902   4.828
-genotype      -3.550      2.468  -1.438
-\end{verbatim}
-
-
-\url{https://stat.ethz.ch/pipermail/r-help/2006-May/094765.html}
-}
-
-}
 
 \subsection{Summary}
 \frame{\frametitle{Summary}
