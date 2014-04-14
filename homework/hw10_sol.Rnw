@@ -1,0 +1,169 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,syntonly,lastpage,hyperref,enumitem,graphicx,verbatim}
+
+\hypersetup{colorlinks=true,urlcolor=black}
+
+\topmargin      -1.5cm   % read Lamport p.163
+\oddsidemargin  -0.04cm  % read Lamport p.163
+\evensidemargin -0.04cm  % same as oddsidemargin but for left-hand pages
+\textwidth      16.59cm
+\textheight     23.94cm
+\parskip         7.2pt   % sets spacing between paragraphs
+\parindent         0pt   % sets leading space for paragraphs
+\pagestyle{empty}        % Uncomment if don't want page numbers
+\pagestyle{fancyplain}
+
+
+
+\begin{document}
+\lhead{Homework 10}
+\chead{PSTAT 544 - Bayesian statistics}
+\rhead{Page \thepage\ of \pageref{LastPage}}
+
+\begin{enumerate}
+\item Reconsider the model
+\begin{align*}
+Y_i &\stackrel{ind}{\sim} Po(\lambda_i x_i) \\
+\lambda_i & \stackrel{iid}{\sim} Ga(\alpha,\beta) \\
+\alpha &\sim Exp(1) \\
+\beta & \sim Exp(1)
+\end{align*}
+
+Derive the following full conditionals
+\begin{itemize}
+\item $\lambda_i|\ldots$
+\item $\alpha|\ldots$
+\item $\beta|\ldots$
+\end{itemize}
+
+Construct an MCMC sampler by using Gibbs steps whenever the full conditionals have a known distribution and Metropolis-Hastings steps whenever the full conditionals do not have a known distribution. Run the sampler on the airline fatality data. Provide posterior histograms for all models parameters. 
+
+\paragraph{Solution}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+library(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+##############################################
+# Markov chain Monte Carlo                   #
+##############################################
+library(reshape2)
+library(plyr)
+library(ggplot2)
+library(rjags)
+set.seed(20140410)
+@
+
+The full conditionals are 
+\begin{align*}
+p(\lambda|\ldots) &\propto p(y|\lambda)p(\lambda|\alpha,\beta)p(\alpha)p(\beta) \\
+&\propto \prod_{i=1}^n e^{-x_i\lambda_i} \lambda_i^{y_i} \lambda_i^{\alpha-1} e^{-\beta\lambda_i} \\
+&= \prod_{i=1}^n \lambda_i^{\alpha+y_i-1} e^{-\lambda_i[\beta+x_i]} \\ \\
+p(\beta|\ldots) &\propto p(y|\lambda)p(\lambda|\alpha,\beta)p(\alpha)p(\beta) \\
+&\propto \left[\prod_{i=1}^n \beta^\alpha e^{-\beta\lambda_i} \right] e^{-\beta} \\
+&= \beta^{n\alpha+1-1}e^{-\beta[1+n\overline{\lambda}]} \\ \\
+p(\alpha|\ldots) &\propto p(y|\lambda)p(\lambda|\alpha,\beta)p(\alpha)p(\beta) \\
+&\propto \left[\prod_{i=1}^n \frac{\beta^\alpha}{\Gamma(\alpha)} \lambda_i^{\alpha-1} \right] e^{-\alpha} \\
+&= \beta^{n\alpha} \Gamma(\alpha)^{-n} \left( \prod_{i=1}^n \lambda_i\right)^{\alpha-1} e^{-\alpha}
+\end{align*}
+Thus, the full conditional for $\lambda$ are conditionally independent for each $\lambda_i$ with $\lambda_i|\ldots \sim Ga(\alpha+y_i, \beta+x_i)$. The full conditional for $\beta$ is $\beta|\ldots \sim Ga(1+n\alpha, 1+n\overline{\lambda})$. The full conditional for $\alpha$ is not a known distribution.
+
+<<data>>=
+d = data.frame(year=1976:1985, 
+              fatal_accidents = c(24,25,31,31,22,21,26,20,16,22),
+              passenger_deaths = c(734,516,754,877,814,362,764,809,223,1066),
+              death_rate = c(0.19,0.12,0.15,0.16,0.14,0.06,0.13,0.13,0.03,0.15))
+d$miles_flown = d$passenger_deaths/d$death_rate # 100 million miles
+d
+@
+
+<<log_full_conditional_alpha>>=
+log_fc_alpha = function(alpha, beta, lambda) {
+  if (alpha<0) return(-Inf)
+  n = length(lambda)
+  n*alpha*log(beta) -n*lgamma(alpha)+ (alpha-1)*sum(log(lambda))-alpha
+}
+@
+
+
+<<mcmc>>=
+mcmc = function(n_sims, dat, inits, tune) {
+  n     = nrow(dat)
+  alpha = inits$alpha
+  beta  = inits$beta
+  
+  # Recording structure
+  lambda_keep = matrix(NA, nrow=n_sims, ncol=n)
+  alpha_keep  = rep(alpha, n_sims)
+  beta_keep   = rep(beta , n_sims)
+  
+  for (i in 1:n_sims) {
+    # Sample lambdas
+    lambda = with(dat, rgamma(n, alpha+y, beta+x))
+    
+    # Sample alpha
+    alpha_prop = rcauchy(1, alpha, tune$alpha)
+    logr = log_fc_alpha(alpha_prop, beta, lambda)-
+           log_fc_alpha(alpha,      beta, lambda)
+    alpha = ifelse(log(runif(1))<logr, alpha_prop, alpha)
+    
+    # Sample beta
+    beta = rgamma(1, 1+n*alpha, 1+sum(lambda))
+    
+    # Record parameter values
+    lambda_keep[i,] = lambda
+    alpha_keep[i]   = alpha
+    beta_keep[ i]   = beta
+  }
+  
+  return(data.frame(iteration=1:n_sims, 
+                    parameter=rep(c("alpha","beta",paste("lambda[",1:n,"]",sep="")),each=n_sims),
+                    value=c(alpha_keep,beta_keep,as.numeric(lambda_keep))))
+}
+@
+
+<<run>>=
+# Find reasonable starting values
+dat    = data.frame(y=d$fatal_accidents, x=d$miles_flown)
+lambda = dat$y/dat$x
+mn     = mean(lambda); vr = var(lambda)
+inits  = list(beta=mn/vr, alpha=mn^2/vr)
+tune   = list(alpha=0.2)
+
+r = mcmc(1000, dat, inits, tune)
+qplot(iteration, value, data=r[r$iteration>200,])+facet_wrap(~parameter, scales="free")
+@
+
+
+which matches well with the results from JAGS
+<<jags, tidy=FALSE>>=
+model = "
+model {
+  for (i in 1:n) {
+    y[i] ~ dpois(lambda[i]*x[i])
+    lambda[i] ~ dgamma(alpha,beta)
+  }
+  alpha ~ dexp(1)
+  beta ~ dexp(1)
+}"
+
+
+m = jags.model(textConnection(model), data=list(y=dat$y, x=dat$x, n=nrow(dat)), n.chains=3)
+tmp = coda.samples(m, c("lambda","alpha","beta"), n.iter=1000)
+names(tmp) = 1:length(tmp)
+j = ldply(tmp, function(x) as.data.frame(x), .id="chain")
+mj = melt(j, variable.name="parameter")
+@
+
+<<jags_plots>>=
+mj$mcmc ="jags"
+r$mcmc = "mine"
+ggplot(rbind(r[,-1],mj[,-1]), aes(x=value, col=mcmc))+geom_density()+facet_wrap(~parameter, scales="free")
+@
+
+
+
+\end{enumerate}
+
+
+
+\end{document}
