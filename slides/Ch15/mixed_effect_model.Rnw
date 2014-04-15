@@ -32,16 +32,17 @@
 %\section{Temp??} \begin{comment}
 
 <<chunk_options, echo=FALSE, message=FALSE>>=
-library(knitr) # only needed so the following command does not fail when sourcing R code
+require(knitr) # only needed so the following command does not fail when sourcing R code
 opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
 ##############################################
 # Hierarchical linear models                 #
 ##############################################
-library(reshape2)
-library(plyr)
-library(ggplot2)
-library(rstan)
-library(lme4)
+require(reshape2)
+require(plyr)
+require(ggplot2)
+require(rjags)
+require(rstan)
+require(lme4)
 set.seed(20140415)
 @
 
@@ -153,6 +154,8 @@ emergence of the first seedling, emerged seedlings were
 harvested from each tray and, after drying, weighed. 
 	\end{quote}
 	Assume the missing data (emergence) mechanism is ignorable. 
+  
+  Data: {\tiny \url{http://www.public.iastate.edu/~dnett/S511/SeedlingDryWeight2.txt}}
 }
 
 \frame{\frametitle{A picture}
@@ -226,7 +229,7 @@ harvested from each tray and, after drying, weighed.
 	
 	\vspace{0.2in} \pause
 	
-	The particular example in this mini-lecture:
+	The particular example in this lecture:
 	\begin{itemize}
 	\item $y_{ijk} = \mu + \gamma_i + \tau_{ij} + e_{ijk}, \tau_{ij} \stackrel{iid}{\sim} N(0,\sigma^2_\tau), e_{ijk} \stackrel{iid}{\sim} N(0,\sigma^2_e)$ \pause
 	\item $y_i = \mu + \gamma_{g[i]} + \tau_{t[i]} + e_i, \tau_t \stackrel{iid}{\sim} N(0,\sigma^2_\tau), e_i \stackrel{iid}{\sim} N(0,\sigma^2_e) $  \pause
@@ -238,37 +241,11 @@ harvested from each tray and, after drying, weighed.
 }
 
 
-\section{Seedling weight example}
-\frame{\frametitle{Seedling weight example}
-\setkeys{Gin}{width=0.6\textwidth}
-  Example taken from Dan Nettleton:
-	{\tiny
-	\begin{quote}
-	Researchers were interested in comparing the dry
-weight of maize seedlings from two different genotypes (A and B).
-For each genotype, nine seeds were planted in each of
-four trays. The eight trays in total were randomly
-positioned in a growth chamber. Three weeks after the
-emergence of the first seedling, emerged seedlings were
-harvested from each tray and, after drying, weighed. 
-	\end{quote}}
 
-	\vspace{-0.2in}
-
-	\begin{center}
-	\includegraphics[page=4]{19AitkenExample}
-	\end{center}
-
-	\vspace{-0.2in} \pause
-	
-	Of primary interest is the difference in seedling weights for the two species. \pause 
-  
-  Data: {\tiny \url{http://www.public.iastate.edu/~dnett/S511/SeedlingDryWeight2.txt}}
-}
 
 \subsection{Mixed-effects model}
-\frame{\frametitle{Model construction for BUGS/JAGS}
-	An alternative construction of the model convenient for programming in BUGS/JAGS \pause uses the notation
+\frame{\frametitle{Model construction for BUGS/JAGS/Stan}
+	An alternative construction of the model convenient for programming in BUGS/JAGS/Stan \pause uses the notation
 	\begin{itemize}
 	\item $y_i$ is the weight for seedling $i$ with $i=1,\ldots,n$ \pause 
 	\item $g[i]\in \{1,2\}$ is the genotype for seedling $i$  \pause
@@ -294,18 +271,26 @@ summary(d)
 @
 \end{frame}
 
+
+
+
+\subsection{lmer}
 \begin{frame}[fragile]
 <<non-Bayesian, message=FALSE, cache=TRUE>>=
+require(lme4)
 m1 = lmer(SeedlingWeight ~ Genotype + (1|Tray), d)
 summary(m1)
 @
-Why no pvalues? {\tiny \url{https://stat.ethz.ch/pipermail/r-help/2006-May/094765.html}}
+
+\pause 
+
+Why no pvalues? 
 \end{frame}
 
 
 
 \begin{frame}
-From \url{https://stat.ethz.ch/pipermail/r-help/2006-May/094765.html} (19 May 2006):
+From {\tiny \url{https://stat.ethz.ch/pipermail/r-help/2006-May/094765.html}} (19 May 2006):
 {\small 
 \begin{quote}
 Users are often surprised and alarmed that the summary of a linear
@@ -331,11 +316,6 @@ package).
 \end{frame}
 
 
-\begin{frame}[fragile]
-<<confint_merMod_help>>=
-help("confint.merMod", help_type="text")
-@
-\end{frame}
 
 
 \begin{frame}[fragile]
@@ -347,7 +327,68 @@ confint(m1, method="boot")
 \end{frame}
 
 
-\subsection{Stan code}
+\subsection{JAGS}
+\begin{frame}[fragile]
+
+<<jags_model, tidy=FALSE, cache=TRUE>>=
+jags_model = "
+model {
+  for (i in 1:n) {
+    y[i] ~ dnorm(gamma[genotype[i]]+tau[tray[i]], 1/sigma_e^2)
+  }
+  
+  # Fixed effects
+  for (g in 1:n_genotypes) { 
+    gamma[g]   ~ dnorm(0, 1e-6) # Approximation to uniform
+  } 
+
+  # Random effects
+  for (t in 1:n_trays) { 
+    tau[t]   ~ dnorm(0, 1/sigma_tau^2)
+  }
+
+  sigma_e   ~ dunif(0,100)
+  sigma_tau ~ dunif(0,100)
+
+  # Quantity of interest
+  diff <- gamma[2] - gamma[1]
+}
+"
+@
+
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+
+<<jags_mcmc, tidy=FALSE, cache=TRUE, dependson="jags_model">>=
+dat = list(y        = d$SeedlingWeight, 
+           genotype = as.numeric(d$Genotype),
+           tray     = d$Tray, 
+           n           = nrow(d),
+           n_genotypes = nlevels(d$Genotype),
+           n_trays     = max(d$Tray))
+
+m_jags = jags.model(textConnection(jags_model), dat, n.chains=4)
+r_jags = coda.samples(m_jags, c("gamma","tau","sigma_e","sigma_tau","diff"), n.iter=10000, thin=10)
+@
+
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+
+<<jags_summary, tidy=FALSE, cache=TRUE, dependson="jags_mcmc">>=
+summary(r_jags)
+@
+
+\end{frame}
+
+
+
+\subsection{Stan}
 \begin{frame}[fragile]
 <<stan_model, tidy=FALSE, cache=TRUE>>=
 stan_model = "
@@ -363,8 +404,8 @@ data {
 parameters {
   real gamma[n_genotypes]; // Implicit prior over whole real line
   real tau[n_trays];
-  real<lower=0> sigma_e;
-  real<lower=0> sigma_tau;
+  real<lower=0> sigma_e;   // Implicit prior over positive reals
+  real<lower=0> sigma_tau; // Implicit prior over positive reals
 }
 
 model {
@@ -384,36 +425,43 @@ generated quantities {
 @
 \end{frame}
 
+
+
 \subsection{Results}
 \begin{frame}[fragile]
-<<analysis, dependson="stan_model", cache=TRUE>>=
-m = stan_model(model_code=stan_model)
-
-dat = list(y        = d$SeedlingWeight, 
-           genotype = as.numeric(d$Genotype),
-           tray     = d$Tray, 
-           n           = nrow(d),
-           n_genotypes = nlevels(d$Genotype),
-           n_trays     = max(d$Tray))
-
-r = sampling(m, dat, c("gamma","tau","sigma_e","sigma_tau","diff"))
+<<analysis, dependson="stan_model", cache=TRUE, message=FALSE>>=
+m_stan = stan_model(model_code=stan_model)
+r_stan = sampling(m_stan, dat, c("gamma","tau","sigma_e","sigma_tau","diff"))
 @
 \end{frame}
 
+
+
+
 \begin{frame}[fragile]
 <<table, dependson="analysis">>=
-r
+r_stan
 @
 \end{frame}
 
 
 
 \begin{frame}[fragile]
-<<table, dependson="analysis">>=
-plot(r)
+<<intervals, dependson="analysis">>=
+plot(r_stan)
 @
 \end{frame}
 
+
+
+\begin{frame}[fragile]
+
+<<comparison>>=
+plot(density(unlist(r_jags[,"diff"])))
+lines(density(extract(r_stan,"diff")$diff), col="red")
+@
+
+\end{frame}
 
 
 \subsection{Summary}
