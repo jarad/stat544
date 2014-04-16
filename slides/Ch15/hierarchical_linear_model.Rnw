@@ -1,5 +1,5 @@
-%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-\documentclass{beamer}
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
 
 
 \usecolortheme[RGB={0,0,144}]{structure}
@@ -228,27 +228,6 @@ harvested from each tray and, after drying, weighed.
 	\vspace{0.2in} \pause
 	
 	$\gamma_2-\gamma_1$ is the quantity of interet.
-}
-
-\subsection{Summary}
-\frame{\frametitle{Summary}
-	General mixed-effect models
-	\begin{itemize}
-	\item $y = X\beta + Zu + e, u\sim N(0,G), e\sim N(0,R)$ \pause
-	\item $y = \tilde{X} \tilde{\beta} + e, \tilde{\beta}\sim N(\tilde{\beta}_0, \mySigma_{\tilde{\beta}}), e\sim N(0,R)$ 
-	\end{itemize}
-	
-	\vspace{0.2in} \pause
-	
-	The particular example in this lecture:
-	\begin{itemize}
-	\item $y_{ijk} = \mu + \gamma_i + \tau_{ij} + e_{ijk}, \tau_{ij} \stackrel{iid}{\sim} N(0,\sigma^2_\tau), e_{ijk} \stackrel{iid}{\sim} N(0,\sigma^2_e)$ \pause
-	\item $y_i = \mu + \gamma_{g[i]} + \tau_{t[i]} + e_i, \tau_t \stackrel{iid}{\sim} N(0,\sigma^2_\tau), e_i \stackrel{iid}{\sim} N(0,\sigma^2_e) $  \pause
-	\item $y = X\beta + Zu + e, u\sim N(0,\sigma^2_\tau\I), e\sim N(0,\sigma_e^2\I) $ \pause
-	\item $y = \tilde{X} \tilde{\beta} + e, \tilde{X} = [X\,\, Z], \tilde{\beta} = (\beta' \,\, u')'$ \pause
-	
-	$\tilde{\beta}\sim N([\beta_0 \,\, 0]', \mbox{bdiag} \{ \mySigma_{\beta}, \sigma^2_\tau \I \}), e\sim N(0,\sigma_e^2\I)$ 
-	\end{itemize}
 }
 
 
@@ -486,6 +465,29 @@ lines(density(extract(r_stan,"diff")$diff), col="red")
 
 
 \subsection{Summary}
+\frame{\frametitle{Variety of ways to specify hierarchical linear models}
+  General mixed-effect models
+	\begin{itemize}
+	\item $y = X\beta + Zu + e, u\sim N(0,G), e\sim N(0,R)$ \pause
+	\item $y = \tilde{X} \tilde{\beta} + e, \tilde{\beta}\sim N(\tilde{\beta}_0, \mySigma_{\tilde{\beta}}), e\sim N(0,R)$ 
+	\end{itemize}
+	
+	\vspace{0.2in} \pause
+	
+	The particular example in this lecture:
+	\begin{itemize}
+	\item $y_{ijk} = \mu + \gamma_i + \tau_{ij} + e_{ijk}, \tau_{ij} \stackrel{iid}{\sim} N(0,\sigma^2_\tau), e_{ijk} \stackrel{iid}{\sim} N(0,\sigma^2_e)$ \pause
+	\item $y_i = \mu + \gamma_{g[i]} + \tau_{t[i]} + e_i, \tau_t \stackrel{iid}{\sim} N(0,\sigma^2_\tau), e_i \stackrel{iid}{\sim} N(0,\sigma^2_e) $  \pause
+	\item $y = X\beta + Zu + e, u\sim N(0,\sigma^2_\tau\I), e\sim N(0,\sigma_e^2\I) $ \pause
+	\item $y = \tilde{X} \tilde{\beta} + e, \tilde{X} = [X\,\, Z], \tilde{\beta} = (\beta' \,\, u')'$ \pause
+	
+	$\tilde{\beta}\sim N([\beta_0 \,\, 0]', \mbox{bdiag} \{ \mySigma_{\beta}, \sigma^2_\tau \I \}), e\sim N(0,\sigma_e^2\I)$ 
+	\end{itemize}
+}
+
+
+
+
 \frame{\frametitle{Summary}
 	Demonstrated
 	\begin{itemize}
