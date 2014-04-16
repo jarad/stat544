@@ -1,0 +1,148 @@
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow,tikz}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+
+\title{Hierarchical linear models}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\mG}{\mathrm{\Gamma}}
+\newcommand{\I}{\mathrm{I}}
+\newcommand{\mySigma}{\mathrm{\Sigma}}
+
+
+\begin{document}
+
+%\section{Temp??} \begin{comment}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+require(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+##############################################
+# Hierarchical linear models                 #
+##############################################
+require(reshape2)
+require(dplyr)
+require(plyr)
+require(ggplot2)
+require(rjags)
+require(rstan)
+require(lme4)
+set.seed(20140415)
+@
+
+\frame{\maketitle}
+
+<<data>>=
+d = read.csv("bird_yeartotal.csv")
+f = filter(d,forest==9090)
+
+ggplot(f, aes(year, ave, col=abbrev))+geom_point()+geom_line()+scale_y_log10()
+@
+
+<<summary>>=
+sm = ddply(f, .(abbrev), summarize, mean=mean(ave), sd=sd(ave))
+ggplot(sm, aes(mean, sd, col=abbrev))+geom_point()+scale_y_log10()+scale_x_log10()
+@
+
+
+<<independent_regressions>>=
+reg = ddply(f, .(abbrev), function(x) {
+  m = lm(ave~year, x)
+  c = coef(m)
+  data.frame(intercept=c[1], slope=c[2], sigma=summary(m)$sigma)
+})
+
+ggplot(reg, aes(intercept, slope, col=abbrev))+geom_point()
+summary(lm <- lm(slope~intercept,reg))
+reg[which.max(residuals(lm)),]
+@
+
+<<stan>>=
+inverse_wishart_model = "
+data {
+  int<lower=1> p;
+  int<lower=1> n_species;
+  int<lower=1> n_years;
+  matrix[n_years,p] X;
+  vector[n_years] ave[n_species];
+}
+
+transformed data {
+  matrix[p,p] Ip;
+  for (i in 1:p) {
+    for (j in 1:p) {
+      Ip[i,j] <- 0.0;
+    }
+    Ip[i,i] <- 1.0;
+  }
+}
+
+parameters {
+  vector[p] beta0;
+  vector[p] beta[n_species];
+  real<lower=0> sigma;
+  cov_matrix[p] Sigma_beta;
+}
+
+model {
+  Sigma_beta ~ inv_wishart(p+1, Ip);
+
+  for (i in 1:n_species) {
+    beta[i] ~ multi_normal(beta0, Sigma_beta);
+    ave[i] ~ normal(X * beta[i], sigma);
+  }
+}
+
+generated quantities {
+  real<lower=-1, upper=1> rho;
+  rho <- Sigma_beta[1,2]/sqrt(Sigma_beta[1,1]*Sigma_beta[2,2]);
+}
+"
+@
+
+<<iw_compile>>=
+m_iw = stan_model(model_code = inverse_wishart_model)
+@
+
+<<iw_run, cache=TRUE>>=
+r = sampling(m_iw,
+             list(p=2, n_species=nlevels(f$abbrev),n_years=length(unique(f$year)),
+                  X=cbind(1, sort(unique(f$year))), ave=daply(f, .(abbrev), function(x) x$ave)),
+             c("rho"))
+@
+
+
+
+<<jags>>=
+iw_jags = "
+model {
+  
+
+  for (i in 1:n_species) {
+    y[i] ~ dnorm(beta[i,1]+beta[i,2]*year[i], 1/sigma^2)
+    beta[i,1:2] ~ dmnorm(beta0, Omega_beta) 
+  }
+}
+"
+@
+
+
+
+\end{document}
