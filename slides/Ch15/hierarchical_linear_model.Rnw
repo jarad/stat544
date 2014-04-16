@@ -1,5 +1,5 @@
-\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-%\documentclass{beamer}
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+\documentclass{beamer}
 
 
 \usecolortheme[RGB={0,0,144}]{structure}
@@ -153,7 +153,12 @@ positioned in a growth chamber. Three weeks after the
 emergence of the first seedling, emerged seedlings were
 harvested from each tray and, after drying, weighed. 
 	\end{quote}
+  
+  \vspace{0.2in} \pause
+  
 	Assume the missing data (emergence) mechanism is ignorable. 
+  
+  \vspace{0.2in} \pause
   
   Data: {\tiny \url{http://www.public.iastate.edu/~dnett/S511/SeedlingDryWeight2.txt}}
 }
@@ -173,13 +178,14 @@ harvested from each tray and, after drying, weighed.
 	Let $y_{ijk}$ be the weight \pause of the 
 	\begin{itemize}
 	\item $i^{th}$ genotype with $i=1,2$, \pause
-	\item $j^{th}$ tray $j=1,2,3,4$, \pause and 
+	\item $j^{th}$ tray $j=1,2,3,4$ of the $i^{th}$ genotype, \pause and 
 	\item $k^{th}$ seedling with $k=1,\ldots,n_{ij}$.
 	\end{itemize}
 	Then, we assume 
 	\[ y_{ijk} = \mu + \gamma_i + \tau_{ij} + e_{ijk} \]
 	\pause where 
 	\begin{itemize}
+  \item $\gamma_1=-\gamma_2$ for identifiability (sum-to-zero constraint)
 	\item $\tau_{ij} \stackrel{iid}{\sim} N(0,\sigma^2_\tau)$ \pause and, independently,
 	\item $e_{ijk} \stackrel{iid}{\sim} N(0,\sigma^2_e)$. 
 	\end{itemize}
@@ -204,8 +210,9 @@ harvested from each tray and, after drying, weighed.
 	\pause with $u\sim N(0,\sigma^2_\tau\I)$ and, independently, $e\sim N(0,\sigma^2_e\I)$. 
 }
 
-\frame{\frametitle{Model construction for BUGS/JAGS}
-	An alternative construction of the model convenient for programming in BUGS/JAGS \pause uses the notation
+
+\frame{\frametitle{Model construction for BUGS/JAGS/Stan}
+  An alternative construction of the model convenient for programming in BUGS/JAGS/Stan \pause uses the notation
 	\begin{itemize}
 	\item $y_i$ is the weight for seedling $i$ with $i=1,\ldots,n$ \pause 
 	\item $g[i]\in \{1,2\}$ is the genotype for seedling $i$  \pause
@@ -215,8 +222,12 @@ harvested from each tray and, after drying, weighed.
 	\vspace{0.2in} \pause 
 	
 	Then the model is 
-	\[ y_i = \mu + \gamma_{g[i]} + \tau_{t[i]} + e_i \] 
+	\[ y_i = \gamma_{g[i]} + \tau_{t[i]} + e_i \] 
 	\pause with $e_i \stackrel{iid}{\sim} N(0,\sigma^2_e)$ and, independently, $\tau_t \stackrel{iid}{\sim} N(0,\sigma^2_\tau)$ with $t=1,\ldots,8$.
+	
+	\vspace{0.2in} \pause
+	
+	$\gamma_2-\gamma_1$ is the quantity of interet.
 }
 
 \subsection{Summary}
@@ -243,39 +254,25 @@ harvested from each tray and, after drying, weighed.
 
 
 
-\subsection{Mixed-effects model}
-\frame{\frametitle{Model construction for BUGS/JAGS/Stan}
-	An alternative construction of the model convenient for programming in BUGS/JAGS/Stan \pause uses the notation
-	\begin{itemize}
-	\item $y_i$ is the weight for seedling $i$ with $i=1,\ldots,n$ \pause 
-	\item $g[i]\in \{1,2\}$ is the genotype for seedling $i$  \pause
-	\item $t[i]\in\{1,2,\ldots,8\}$ is the tray id for seedling $i$
-	\end{itemize}
-	
-	\vspace{0.2in} \pause 
-	
-	Then the model is 
-	\[ y_i = \gamma_{g[i]} + \tau_{t[i]} + e_i \] 
-	\pause with $e_i \stackrel{iid}{\sim} N(0,\sigma^2_e)$ and, independently, $\tau_t \stackrel{iid}{\sim} N(0,\sigma^2_\tau)$ with $t=1,\ldots,8$.
-	
-	\vspace{0.2in} \pause
-	
-	$\gamma_1-\gamma_2$ is the quantity of interet.
-}
+
 
 \begin{frame}[fragile]
+\frametitle{Seedling weight data}
 <<data>>=
 d = read.table("SeedlingDryWeight2.txt", header=TRUE)
 
 summary(d)
+with(d, table(Genotype, Tray))
 @
 \end{frame}
 
 
 
 
+
 \subsection{lmer}
 \begin{frame}[fragile]
+\frametitle{Non-Bayesian analysis}
 <<non-Bayesian, message=FALSE, cache=TRUE>>=
 require(lme4)
 m1 = lmer(SeedlingWeight ~ Genotype + (1|Tray), d)
@@ -298,7 +295,7 @@ mixed model fit by lmer provides estimates of the fixed-effects
 parameters, standard errors for these parameters and a t-ratio but no
 p-values.  
 
-...
+... \pause
 
 Most of the research on tests for the fixed-effects specification in a
 mixed model begin with the assumption that these statistics will have
@@ -306,7 +303,7 @@ an F distribution with a known numerator degrees of freedom and the
 only purpose of the research is to decide how to obtain an approximate
 denominator degrees of freedom.  I don't agree.
 
-...
+... \pause 
 
 For the time being, I would recommend using a Markov Chain Monte Carlo
 sample (function mcmcsamp) to evaluate the properties of individual
@@ -325,6 +322,29 @@ confint(m1, method="Wald")
 confint(m1, method="boot")
 @
 \end{frame}
+
+
+
+\section{Bayesian analysis}
+\frame{\frametitle{Bayesian model}
+  An alternative construction of the model convenient for programming in BUGS/JAGS/Stan \pause uses the notation
+  \begin{itemize}
+	\item $y_i$ is the weight for seedling $i$ with $i=1,\ldots,n$ \pause 
+	\item $g[i]\in \{1,2\}$ is the genotype for seedling $i$  \pause
+	\item $t[i]\in\{1,2,\ldots,8\}$ is the {\bf unique} tray id for seedling $i$
+	\end{itemize}
+	
+	\vspace{0.2in} \pause 
+	
+	Then the model is 
+	\[ y_i = \gamma_{g[i]} + \tau_{t[i]} + e_i \] 
+	\pause with $e_i \stackrel{iid}{\sim} N(0,\sigma^2_e)$ and, independently, $\tau_t \stackrel{iid}{\sim} N(0,\sigma^2_\tau)$ with $t=1,\ldots,8$.
+	
+	\vspace{0.2in} \pause
+	
+	Prior: $p(\sigma_e,\sigma_u) \propto \I(0<\sigma_e<100) \I(0<\sigma_u<100)$.
+}
+
 
 
 \subsection{JAGS}
@@ -457,7 +477,8 @@ plot(r_stan)
 \begin{frame}[fragile]
 
 <<comparison>>=
-plot(density(unlist(r_jags[,"diff"])))
+plot(density(unlist(r_jags[,"diff"])), main="Posterior for the genotype difference in mean seedling weight",
+     xlab="Difference",ylab="Posterior density estimate")
 lines(density(extract(r_stan,"diff")$diff), col="red")
 @
 
