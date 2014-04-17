@@ -51,7 +51,11 @@ set.seed(20140415)
 
 <<data>>=
 d = read.csv("bird_yeartotal.csv")
-f = filter(d,forest==9090)
+f = filter(d, forest==9090)
+
+sm_f = ddply(f, .(abbrev), summarize, min_count=min(count))
+f = filter(f, abbrev %in% sm_f$abbrev[sm_f$min_count>0])
+f$abbrev = factor(f$abbrev)
 
 ggplot(f, aes(year, ave, col=abbrev))+geom_point()+geom_line()+scale_y_log10()
 @
@@ -117,11 +121,11 @@ generated quantities {
 "
 @
 
-<<iw_compile>>=
+<<iw_compile, eval=FALSE>>=
 m_iw = stan_model(model_code = inverse_wishart_model)
 @
 
-<<iw_run, cache=TRUE>>=
+<<iw_run, cache=TRUE, eval=FALSE>>=
 r = sampling(m_iw,
              list(p=2, n_species=nlevels(f$abbrev),n_years=length(unique(f$year)),
                   X=cbind(1, sort(unique(f$year))), ave=daply(f, .(abbrev), function(x) x$ave)),
@@ -133,16 +137,80 @@ r = sampling(m_iw,
 <<jags>>=
 iw_jags = "
 model {
-  
-
   for (i in 1:n_species) {
-    y[i] ~ dnorm(beta[i,1]+beta[i,2]*year[i], 1/sigma^2)
+    y[i] ~ dnorm(beta[species[i],1]+beta[species[i],2]*year[i], 1/sigma^2)
     beta[i,1:2] ~ dmnorm(beta0, Omega_beta) 
   }
+
+  sigma ~ dunif(0,100)
+
+  beta0[1] ~ dnorm(0,1e-6)
+  beta0[2] ~ dnorm(0,1e-6)
+
+  Omega_beta ~ dwish(eye,3)
+
+  Sigma_beta <- inverse(Omega_beta)
+
+  sigma1 <- sqrt(Sigma_beta[1,1])
+  sigma2 <- sqrt(Sigma_beta[2,2])
+  rho <- Sigma_beta[1,2]/sigma1/sigma2
 }
 "
+
+dat = list(n_species=nlevels(f$abbrev),
+           y = f$ave,
+           species = as.numeric(f$abbrev),
+           year = f$year-1995,
+           eye = diag(nrow=2))
+
+m = jags.model(textConnection(iw_jags), dat)
+
+r= coda.samples(m, c("beta","rho","sigma","sigma1","sigma2"),10000)
+
+
+plot(r[,c("rho","sigma","sigma1","sigma2")], ask=TRUE)
+
+summary(r)
 @
 
+
+<<jags>>=
+ss_jags = "
+model {
+  for (i in 1:n_species) {
+    y[i] ~ dnorm(beta[species[i],1]+beta[species[i],2]*year[i], 1/sigma^2)
+    beta[i,1:2] ~ dmnorm(beta0, Omega_beta) 
+  }
+
+  sigma ~ dunif(0,100)
+
+  beta0[1] ~ dnorm(0,1e-6)
+  beta0[2] ~ dnorm(0,1e-6)
+
+  Omega_beta <- inverse(Sigma_beta)
+
+  Sigma_beta[1,1] <- sigma1*sigma1;
+  Sigma_beta[2,2] <- sigma2*sigma2;
+  Sigma_beta[1,2] <- rho*sigma1*sigma2;
+  Sigma_beta[2,1] <- rho*sigma1*sigma2;
+
+  sigma1 ~ dunif(0,100)
+  sigma2 ~ dunif(0,100)
+  rho ~ dunif(-1,1)
+}
+"
+
+dat$eye = NULL
+
+m_ss = jags.model(textConnection(ss_jags), dat)
+
+r_ss = coda.samples(m_ss, c("beta","rho","sigma","sigma1","sigma2"),100000,thin=10)
+
+
+plot(r_ss[,c("rho","sigma","sigma1","sigma2")], ask=TRUE)
+
+s = summary(r_ss)
+@
 
 
 \end{document}
