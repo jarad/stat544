@@ -100,7 +100,7 @@ summary(factor(d$parity))
 
 
 \begin{frame}[fragile]
-<<jags_model>>=
+<<stan_model>>=
 model = "
 data {
   int<lower=1> n;
