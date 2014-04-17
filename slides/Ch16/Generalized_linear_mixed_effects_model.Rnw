@@ -75,12 +75,8 @@ model{
   for (p in 1:np) { rho[p] ~ dnorm(0, 1e-6) }
 
   # Random effects
-  for (d in 1:nd) { alpha[d]  ~ dnorm(0, eta.alpha) }
-  for (s in 1:ns) { beta[s]   ~ dnorm(0, eta.beta ) }
-
-  # Priors
-  eta.alpha <- 1/sigma.alpha^2
-  eta.beta  <- 1/sigma.beta^2
+  for (d in 1:nd) { alpha[d]  ~ dnorm(0, 1/sigma.alpha^2) }
+  for (s in 1:ns) { beta[s]   ~ dnorm(0, 1/sigma.beta^2) }
 
   sigma.alpha ~ dunif(0,1000)
   sigma.beta  ~ dunif(0,1000)
@@ -88,7 +84,8 @@ model{
 @
 \end{frame}
 
-
+\begin{frame}[fragile]
+<<run_mcmc>>=
 dat = list(y = d$nba, 
            parity = d$parity,
            dam = as.numeric(d$sowid),
@@ -98,29 +95,32 @@ dat$np = max(dat$parity)
 dat$nd = max(dat$dam)
 dat$ns = max(dat$sire)
 
-m = jags.model(textConnection(model), dat, n.chains=3, n.adapt=2000)
-res = coda.samples(m, c("rho","alpha","beta","sigma.alpha", "sigma.beta"), n.iter=10000, thin=10)
+m = jags.model(textConnection(model), dat)
+res = coda.samples(m, c("rho","alpha","beta","sigma.alpha", "sigma.beta"), n.iter=100000, thin=100)
 @
 \end{frame}
 
 \begin{frame}[fragile]
-<<eval=FALSE>>=
-top = function(n, nmax) {
-  n = n/2
-  return(c(seq(1,n), seq(nmax-n+1,nmax)))
-}
-
+<<parity>>=
+sm = summary(res)
 
 # Parity fixed effects
 qm = exp(sm$quantiles)
 wr = grep("rho", rownames(qm))
-pdf("parity.pdf", height=5)
 par(mar=c(5,4,0,0)+.1)
 plot(wr, 1:dat$np, xlim=range(qm[wr,]), ylim=c(0,dat$np+1), ylab="Parity", 
      xlab="Expected number born alive")
 segments(qm[wr,1], 1:dat$np, qm[wr,5], 1:dat$np)
 points(qm[wr,3],1:dat$np, pch=19, cex=.5)
-dev.off()
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<dam>>=
+top = function(n, nmax) {
+  n = n/2
+  return(c(seq(1,n), seq(nmax-n+1,nmax)))
+}
 
 # Dam random effects
 qm = sm$quantiles
@@ -129,14 +129,16 @@ wr = grep("alpha", rownames(qm))
 ordr = order(qm[wr,3])
 wr = wr[ordr][top(n.dam,dat$nd)]
 
-pdf("dam.pdf", height=5)
 par(mar=c(5,4,0,0)+.1)
 plot(wr, 1:n.dam, xlim=c(-.2,.2), ylim=c(0,n.dam+1), ylab="Sow (extremes)", 
      xlab="Effect (log-scale)")
 segments(qm[wr,1], 1:n.dam, qm[wr,5], 1:n.dam)
 points(qm[wr,3],1:n.dam, pch=19, cex=.5)
-dev.off()
+@
+\end{frame}
 
+\begin{frame}[fragile]
+<<sire>>=
 # Sire random effects
 qm = sm$quantiles
 n.dam = 100 # n.dam = 1:dat$nd
@@ -144,15 +146,15 @@ wr = grep("beta", rownames(qm))
 ordr = order(qm[wr,3])
 wr = wr[ordr[top(n.dam, dat$ns)]]
 
-pdf("sire.pdf", height=5)
 par(mar=c(5,4,0,0)+.1)
 plot(wr, 1:n.dam, xlim=c(-.2,.2), ylim=c(0,n.dam+1), ylab="Grandsire (extremes)", 
      xlab="Effect (log-scale)")
 segments(qm[wr,1], 1:n.dam, qm[wr,5], 1:n.dam)
 points(qm[wr,3],1:n.dam, pch=19, cex=.5)
-dev.off()
+@
+\end{frame}
 
-
+<<eval=FALSE>>=
 # Standard deviations
 pdf("sigmas.pdf", height=4)
 par(mfrow=c(1,2))
