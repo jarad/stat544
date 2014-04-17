@@ -1,0 +1,521 @@
+%\documentclass{beamer}
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+
+
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\title{Generalized linear mixed effects model}
+\subtitle{Sow culling time}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\mG}{\mathrm{\Gamma}}
+\newcommand{\I}{\mathrm{I}}
+\newcommand{\mySigma}{\mathrm{\Sigma}}
+
+\begin{document}
+
+\frame{\maketitle}
+
+% This analysis is incorrect. It assumes the sire is the sire for the litter, but the sire is actually the sire of the sow that produced the litter. So, the sire effect shown here is actually the grandsire effect rather than the father effect. 
+
+\section{Sow culling time}
+\frame{\frametitle{Sow culling time}
+	From Caitlyn Abell:
+	\begin{quote}
+	I have attached the data file with 2,868 records from one farm. The
+contemporary group (cg) is farm, year and season. There are
+columns for number born alive (nba), number born dead (nbd), and
+parity.  One thing you could look at would be improvement over time or differences of performance between the
+parities [litters]. I think determining the optimal culling time for a sow given her past
+history would be interesting. 
+	\end{quote}
+	
+	\vspace{0.2in} \pause
+	
+	Primary question of interest: when should a sow be removed from breeding?
+}
+
+
+\begin{frame}[fragile]
+<<data>>=
+d = read.table("farm62.txt", header=T)
+d$cg = d$farm = d$yearmo = d$nbd = d$dam = NULL
+head(d)
+summary(d)
+dim(d)
+nlevels(d$sowid)
+nlevels(d$sire)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<jags_model>>=
+model = "
+model{
+  for (i in 1:n) {
+    y[i] ~ dpois(exp(rho[parity[i]]+alpha[dam[i]]+beta[sire[i]]))
+  }
+
+  # Fixed effects
+  for (p in 1:np) { rho[p] ~ dnorm(0, 1e-6) }
+
+  # Random effects
+  for (d in 1:nd) { alpha[d]  ~ dnorm(0, 1/sigma.alpha^2) }
+  for (s in 1:ns) { beta[s]   ~ dnorm(0, 1/sigma.beta^2) }
+
+  sigma.alpha ~ dunif(0,1000)
+  sigma.beta  ~ dunif(0,1000)
+}"
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<run_mcmc>>=
+dat = list(y = d$nba, 
+           parity = d$parity,
+           dam = as.numeric(d$sowid),
+           sire = as.numeric(d$sire))
+dat$n  = length(dat$y)
+dat$np = max(dat$parity)
+dat$nd = max(dat$dam)
+dat$ns = max(dat$sire)
+
+m = jags.model(textConnection(model), dat)
+res = coda.samples(m, c("rho","alpha","beta","sigma.alpha", "sigma.beta"), n.iter=100000, thin=100)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<parity>>=
+sm = summary(res)
+
+# Parity fixed effects
+qm = exp(sm$quantiles)
+wr = grep("rho", rownames(qm))
+par(mar=c(5,4,0,0)+.1)
+plot(wr, 1:dat$np, xlim=range(qm[wr,]), ylim=c(0,dat$np+1), ylab="Parity", 
+     xlab="Expected number born alive")
+segments(qm[wr,1], 1:dat$np, qm[wr,5], 1:dat$np)
+points(qm[wr,3],1:dat$np, pch=19, cex=.5)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<dam>>=
+top = function(n, nmax) {
+  n = n/2
+  return(c(seq(1,n), seq(nmax-n+1,nmax)))
+}
+
+# Dam random effects
+qm = sm$quantiles
+n.dam = 100 # n.dam = 1:dat$nd
+wr = grep("alpha", rownames(qm))
+ordr = order(qm[wr,3])
+wr = wr[ordr][top(n.dam,dat$nd)]
+
+par(mar=c(5,4,0,0)+.1)
+plot(wr, 1:n.dam, xlim=c(-.2,.2), ylim=c(0,n.dam+1), ylab="Sow (extremes)", 
+     xlab="Effect (log-scale)")
+segments(qm[wr,1], 1:n.dam, qm[wr,5], 1:n.dam)
+points(qm[wr,3],1:n.dam, pch=19, cex=.5)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<sire>>=
+# Sire random effects
+qm = sm$quantiles
+n.dam = 100 # n.dam = 1:dat$nd
+wr = grep("beta", rownames(qm))
+ordr = order(qm[wr,3])
+wr = wr[ordr[top(n.dam, dat$ns)]]
+
+par(mar=c(5,4,0,0)+.1)
+plot(wr, 1:n.dam, xlim=c(-.2,.2), ylim=c(0,n.dam+1), ylab="Grandsire (extremes)", 
+     xlab="Effect (log-scale)")
+segments(qm[wr,1], 1:n.dam, qm[wr,5], 1:n.dam)
+points(qm[wr,3],1:n.dam, pch=19, cex=.5)
+@
+\end{frame}
+
+<<eval=FALSE>>=
+# Standard deviations
+pdf("sigmas.pdf", height=4)
+par(mfrow=c(1,2))
+hist(unlist(res[,"sigma.alpha"]), 100, freq=F, 
+     main="Dam effect standard deviation", xlab=expression(sigma[alpha]))
+hist(unlist(res[,"sigma.beta" ]), 100, freq=F, 
+     main="Sire effect standard deviation", xlab=expression(sigma[beta]))
+dev.off()
+
+pdf("sigmas2.pdf", height=7)
+plot(res[,c("sigma.alpha","sigma.beta")])
+dev.off()
+
+
+
+# Compare to MLE
+library(lme4)
+m2 = glmer(y~as.factor(parity)+(1|dam)+(1|sire), dat, family=poisson)
+summary(m2)
+
+
+
+
+
+
+# Choose a sow to represent a question of interest
+library(plyr)
+sow.max.parity = ddply(d, "sowid", summarize, max=max(parity))
+sow.max.parity = sow.max.parity[order(sow.max.parity$max),]
+set.seed(1)
+ran.sow = sample(sow.max.parity$sowid[sow.max.parity$max==4],1) 
+
+alpha.ran.sow = unlist(res[,paste("alpha[",as.numeric(ran.sow),"]",sep="")])
+sigma.alpha   = unlist(res[,"sigma.alpha"])
+rho1          = unlist(res[,"rho[1]"])
+rho5          = unlist(res[,"rho[5]"])
+n.reps = length(rho5)
+
+ynew = rpois(n.reps, exp(rho1+rnorm(n.reps,0,sigma.alpha)))
+yran = rpois(n.reps, exp(rho5+alpha.ran.sow))
+diff = ynew-yran
+
+pdf("diff.pdf", height=5)
+hist(diff, seq(min(diff)-1, max(diff))+.5, 
+     main="Difference (new-current) in the number of progeny",
+     xlab="Difference (new-current)", freq=F)
+abline(v=0, col="red", lwd=5)
+curve(dnorm(x, mean(diff), sd(diff)), add=T, col="blue", lwd=2)
+legend("topright", c("zero","normal"), col=c("red","blue"), lwd=2)
+dev.off()
+
+mean(diff>0)
+mean(diff>=0)
+
+# utility function
+utility = function(y) y-0.1*(y-10)*(y>10)
+udiff = utility(ynew)-.2-utility(yran)
+
+pdf("udiff.pdf", height=4)
+par(mar=c(5,4,4,0)+.1)
+hist(udiff, freq=F, main="Difference in utilities (new-current)", 
+     xlab="Difference in utilities")
+dev.off()
+
+mean(udiff)
+sd(udiff)/sqrt(length(rho1))
+@
+\end{frame}
+
+\frame[containsverbatim]{\frametitle{Data}
+\tiny
+	\begin{verbatim}
+> head(d)
+            sowid nba parity       sire
+1 985120010234800   3      1  C61LW4846
+2 985120011536089  11      1  C60LX1975
+3 985120011536089   6      2  C60LX1975
+4 985120011537054   8      1 C63LW10719
+5 985120011537054  11      2 C63LW10719
+6 985120011537120  12      1  C60LX3542
+> summary(d)
+             sowid           nba            parity           sire     
+ 985152000271505:   7   Min.   : 0.00   Min.   :1.000   103086 : 238  
+ 985120011545841:   6   1st Qu.: 9.00   1st Qu.:1.000   376475 : 105  
+ 985120025398712:   6   Median :11.00   Median :1.000   514976 :  91  
+ 985152000271655:   6   Mean   :10.28   Mean   :1.714   572703 :  87  
+ 985152002194887:   6   3rd Qu.:12.00   3rd Qu.:2.000   019800 :  84  
+ 985152002429483:   6   Max.   :19.00   Max.   :7.000   376770 :  79  
+ (Other)        :2831                                   (Other):2184  
+> dim(d)
+[1] 2868    4
+> nlevels(d$sowid)
+[1] 1621
+> nlevels(d$sire)
+[1] 182
+	\end{verbatim}
+}
+
+\frame{\frametitle{Model}
+	Let 
+	\begin{itemize}
+	\item $y_i$ be the number born alive for the $i^{th}$ litter \pause
+	\item $p[i]$ is the parity for the $i^{th}$ litter \pause
+	\item $d[i]$ is the sow for the $i^{th}$ litter \pause
+	\item $s[i]$ is the grandsire for the $i^{th}$ litter \pause
+	\end{itemize}	
+	Assume
+	\[ \begin{array}{ll@{\qquad}l}
+	y_i &\stackrel{ind}{\sim} Po( e^{\mu_i} ) & i=1,\ldots,n \pause \\
+	\mu_i &= \rho_{p[i]} + \alpha_{d[i]} + \beta_{s[i]} \pause \\
+	\rho_p &\stackrel{iid}{\sim} N(0, 10^6) & p=1,\ldots,7 \pause \\
+	\alpha_d &\stackrel{iid}{\sim} N(0, \sigma^2_\alpha) & d=1,\ldots,n_{sows} \pause \\
+	\beta_s &\stackrel{iid}{\sim} N(0, \sigma^2_\beta) & s=1,\ldots,n_{grandsires} \pause \\
+	\sigma_\alpha &\sim Unif(0,1000) \pause \\
+	\sigma_\beta &\sim Unif(0,1000) \\
+	\end{array} \]
+}
+
+\frame[containsverbatim]{\frametitle{JAGS}
+\tiny
+	\begin{verbatim}
+model = "
+model{
+  for (i in 1:n) {
+    y[i] ~ dpois(exp(rho[parity[i]]+alpha[sow[i]]+beta[grandsire[i]]))
+  }
+
+  # Fixed effects
+  for (p in 1:np) { rho[p] ~ dnorm(0, 1e-6) }
+
+  # Random effects
+  for (d in 1:nd) { alpha[d]  ~ dnorm(0, eta.alpha) }
+  for (s in 1:ns) { beta[s]   ~ dnorm(0, eta.beta ) }
+
+  # Priors
+  eta.alpha <- 1/sigma.alpha^2
+  eta.beta  <- 1/sigma.beta^2
+
+  sigma.alpha ~ dunif(0,1000)
+  sigma.beta  ~ dunif(0,1000)
+}"
+
+
+
+dat = list(y = d$nba, 
+           parity = d$parity,
+           sow = as.numeric(d$sowid),
+           grandsire = as.numeric(d$sire))
+dat$n  = length(dat$y)
+dat$np = max(dat$parity)
+dat$nd = max(dat$sow)
+dat$ns = max(dat$grandsire)
+	\end{verbatim}
+}
+
+\frame[containsverbatim]{\frametitle{JAGS}
+\tiny
+	\begin{verbatim}
+m = jags.model(textConnection(model), dat, n.chains=3, n.adapt=2000)
+res = coda.samples(m, c("rho","alpha","beta"), n.iter=10000, n.thin=10)
+save.image("farm.RData")
+
+gelman.diag(res, mult=F)
+# All Upper CIs less than 1.10 (or so I think)
+	\end{verbatim}
+}
+
+
+
+\frame{\frametitle{Parity}
+\setkeys{Gin}{width=0.8\textwidth}
+	\begin{center}
+	\includegraphics{parity}
+	\end{center}
+}
+
+\frame{\frametitle{Grandsire effect}
+\setkeys{Gin}{width=0.8\textwidth}
+	\begin{center}
+	\includegraphics{sire}
+	\end{center}
+}
+
+\frame{\frametitle{Sow effect}
+\setkeys{Gin}{width=0.8\textwidth}
+	\begin{center}
+	\includegraphics{dam}
+	\end{center}
+}
+
+\frame{\frametitle{Standard deviations}
+\setkeys{Gin}{width=\textwidth}
+	\begin{center}
+	\includegraphics{sigmas}
+	\end{center}
+}
+
+\frame[containsverbatim]{\frametitle{Standard deviations}
+\setkeys{Gin}{width=0.4\textwidth}
+	\begin{center}
+	\includegraphics{sigmas2}
+	\end{center}
+\tiny
+	\begin{verbatim}
+> gelman.diag(res[,c("sigma.alpha","sigma.beta")])
+Potential scale reduction factors:
+
+            Point est. Upper C.I.
+sigma.alpha       1.67       2.72
+sigma.beta        1.10       1.31
+	\end{verbatim}
+}
+
+
+\subsection{Comparison to MLEs}
+\frame[containsverbatim]{\frametitle{}
+\tiny
+	\begin{verbatim}
+> m2 = glmer(y~as.factor(parity)+(1|dam)+(1|sire), dat, family=poisson)
+> summary(m2)
+Generalized linear mixed model fit by the Laplace approximation 
+Formula: y ~ as.factor(parity) + (1 | dam) + (1 | sire) 
+   Data: dat 
+  AIC  BIC logLik deviance
+ 3401 3454  -1691     3383
+Random effects:
+ Groups Name        Variance  Std.Dev.
+ dam    (Intercept) 0.0023624 0.048604
+ sire   (Intercept) 0.0012009 0.034654
+Number of obs: 2868, groups: dam, 1621; sire, 182
+
+Fixed effects:
+                    Estimate Std. Error z value Pr(>|z|)    
+(Intercept)         2.294292   0.008927  257.01  < 2e-16 ***
+as.factor(parity)2  0.063195   0.014027    4.51 6.63e-06 ***
+as.factor(parity)3  0.100663   0.019045    5.29 1.25e-07 ***
+as.factor(parity)4  0.046234   0.027348    1.69   0.0909 .  
+as.factor(parity)5 -0.041454   0.045972   -0.90   0.3672    
+as.factor(parity)6  0.067197   0.108614    0.62   0.5361    
+as.factor(parity)7 -0.707121   0.450732   -1.57   0.1167    
+---
+Signif. codes:  0 ?***? 0.001 ?**? 0.01 ?*? 0.05 ?.? 0.1 ? ? 1 
+
+Correlation of Fixed Effects:
+            (Intr) as.()2 as.()3 as.()4 as.()5 as.()6
+as.fctr(p)2 -0.506                                   
+as.fctr(p)3 -0.377  0.256                            
+as.fctr(p)4 -0.272  0.179  0.152                     
+as.fctr(p)5 -0.159  0.108  0.092  0.074              
+as.fctr(p)6 -0.061  0.047  0.042  0.031  0.026       
+as.fctr(p)7 -0.017  0.010  0.008  0.007  0.006  0.009
+	\end{verbatim}
+}
+
+
+\subsection{Culling time}
+\frame{\frametitle{Culling time}
+	Primary question of interest: when should a sow be removed from breeding?	
+	
+	\vspace{0.2in} \pause
+	
+	Who will have more progeny: \pause
+	\begin{itemize}
+	\item a current sow $d$ \pause
+	\item a new sow
+	\end{itemize}
+	
+	\vspace{0.2in}  \pause
+	
+	{\small
+	Current sow (for $p^{th}$ progeny and average grandsire):
+	\[ p(\tilde{y}_{d\phantom{ew}}|y) = \int p(\tilde{y}_{d\phantom{ew}}|\rho_p, \alpha_{d\phantom{ew}}, \beta_s=0) \phantom{p(\alpha_{new}|\sigma^2_\alpha)}p(\rho_p, \alpha_d|y) d\rho_p d\alpha_{d\phantom{ew}} \phantom{d\sigma^2_\alpha} \]
+	\pause New sow (for $1^{st}$ progeny and average grandsire):
+	\[ p(\tilde{y}_{new}|y) = \int p(\tilde{y}_{new}|\rho_1, \alpha_{new}, \beta_s=0) p(\alpha_{new}|\sigma^2_\alpha) p(\rho_1, \sigma^2_\alpha |y) d\rho_p d\alpha_{new} d\sigma^2_\alpha \]
+	\pause Let $\delta = \tilde{y}_{new}  - \tilde{y}_{d}$.
+	}
+}
+
+\frame{\frametitle{Simulated answer}
+	For MCMC iterations $j=1,\ldots,J$, \pause 
+	\begin{enumerate}[1.]
+	\item Simulate $\tilde{y}_d^{(j)} \sim Po\left( e^{\rho_p^{(j)}+\alpha_d^{(j)}} \right)$. \pause 
+	\item Simulate $\alpha_{new}^{(j)} \sim N\left(0,\sigma^{2^{(j)}}_\alpha\right)$. \pause 
+	\item Simulate $\tilde{y}_{new}^{(j)} \sim Po\left( e^{\rho_1^{(j)}+\alpha_{new}^{(j)}} \right)$.  \pause
+	\item Calculate $\delta^{(j)} = \tilde{y}_{new}^{(j)} - \tilde{y}_d^{(j)}$.
+	\end{enumerate}
+	
+	\vspace{0.2in} \pause
+	
+	So $\delta^{(j)}$ is a realization from the predictive distribution for the difference in the number of progeny between a new sow and current sow $d$.
+}
+
+\frame{\frametitle{Difference in the number of progeny}
+	\begin{center}
+	\includegraphics{diff}
+	\end{center}
+	\pause
+	The $P(\delta>0|y) \approx 0.50$ and $P(\delta>=0|y)\approx 0.58$.  \pause
+	
+	$E[\delta|y] = .465 \pm 0.026$ (Monte Carlo uncertainty)
+}
+
+\subsection{Cost function}
+\frame{\frametitle{Cost functions}
+	Suppose the only cost difference is in the number of progeny, \pause then $U(\tilde{y}_i) = c_1 \tilde{y}_i$ \pause and want 
+	\[ \max_{i\in \{d, new\}} E[U(\tilde{y}_i)|y] \]
+	\pause or, equivalently, if
+	\[ E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] > 0 \] 
+	\pause pick $new$. \pause 
+	But, since expectation is a linear operator,
+	\[ \begin{array}{ll} 
+	E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] &= E[U(\tilde{y}_{new})-U(\tilde{y}_d)|y] \pause \\
+	&= E[c_1 \tilde{y}_{new} - c_1 \tilde{y}_d|y] \pause \\
+	&= c_1 E[\tilde{y}_{new} - \tilde{y}_d|y] \pause \\
+	&= c_1 E[\delta|y] \\
+	\end{array} \]
+	
+	\pause So $c_1$ just scales our posterior expectation for the difference. 
+}
+
+\frame{\frametitle{Cost functions}
+	Suppose the cost also involves moving a new sow in, \pause then $U(\tilde{y}_i) = c_1 \tilde{y}_i - c_2\I(i=new)$ \pause and want 
+	\[ E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] = c_1 E[\delta|y] -c_2 > 0 \] 
+	to pick $new$. 
+	
+	\vspace{0.2in} \pause 
+
+	Alternatively, perhaps an older sow (or this particular sow) needs more medications, \pause then $U(\tilde{y}_i) = c_1 \tilde{y}_i - c_2\I(i=d)$ \pause and want 
+	\[ E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] = c_1 E[\delta|y] +c_2 > 0 \] 
+	to pick $new$.  
+	
+	\vspace{0.2in} \pause
+	
+	The decision will depend on $c_1$ and $c_2$. 
+}
+
+\frame{\frametitle{Cost functions}
+	So far, all cost functions have been linear in $\tilde{y}$\pause, but suppose $U(\tilde{y}_i)$ is a complicated function of $\tilde{y}_i$. \pause Then to pick $new$, we want
+	\[ E[U(\tilde{y}_{new})-U(\tilde{y}_d)|y] > 0 \]
+	\pause This may be analytically intractable, but we can easily simulate from it. \pause Suppose 
+	\[ U(\tilde{y}_i) = \tilde{y}_i + 0.1(\tilde{y}_i-10) \I(\tilde{y}_i>10) - 0.2\I(i=new), \]
+	\pause then
+	
+	\vspace{-0.2in} 
+	
+	\begin{center}
+	\includegraphics{udiff}
+	\end{center}
+}
+
+\subsection{Summary}
+\frame{\frametitle{Summary}
+	Lecture demonstrated
+	\begin{itemize}[<+->]
+	\item mixed effect Poisson regression model,
+	\item implementation in JAGS,
+	\item posterior summaries, and
+	\item using the analysis to make a decision regarding sow culling time.
+	\end{itemize}
+}
+
+
+
+\end{document}
