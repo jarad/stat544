@@ -1,5 +1,5 @@
-%\documentclass{beamer}
-\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+\documentclass{beamer}
+%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
 
 
 
@@ -17,6 +17,7 @@
 %\setbeamertemplate{block body theorem}{bg=orange}
 \setkeys{Gin}{width=0.6\textwidth}
 
+
 \title{Generalized linear mixed effects model}
 \subtitle{Sow culling time}
 \author[Jarad Niemi]{Dr. Jarad Niemi}
@@ -28,6 +29,19 @@
 \newcommand{\mySigma}{\mathrm{\Sigma}}
 
 \begin{document}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+require(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+##############################################
+# GLMMs                                      #
+##############################################
+require(reshape2)
+require(plyr)
+require(ggplot2)
+require(rstan)
+set.seed(20140417)
+@
 
 \frame{\maketitle}
 
@@ -57,6 +71,12 @@ d = read.table("farm62.txt", header=T)
 d$cg = d$farm = d$yearmo = d$nbd = d$dam = NULL
 head(d)
 summary(d)
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<data2>>=
 dim(d)
 nlevels(d$sowid)
 nlevels(d$sire)
@@ -167,7 +187,6 @@ plot(wr, 1:dat$np, xlim=range(erho[wr,]), ylim=c(0,dat$np+1), ylab="Parity",
      xlab="Expected number born alive", type="n")
 segments(erho[wr,1], 1:dat$np, erho[wr,3], 1:dat$np)
 points(erho[wr,2],1:dat$np, pch=19, cex=.5)
-
 @
 \end{frame}
 
@@ -204,16 +223,16 @@ lines(beta[,2], 1:n.sire)
 \end{frame}
 
 
-
+\begin{comment}
 \begin{frame}[fragile]
-<<standard_deviations, dependson="run_mcmc", echo=FALSE>>=
+<<standard_deviations, dependson="run_mcmc", echo=FALSE, cache=TRUE>>=
 sigmas = extract(r, c("sigma_alpha","sigma_beta"))
 par(mfrow=c(1,2))
 hist(sigmas$sigma_alpha, prob=TRUE, xlim=c(0,0.1), main="Standard deviation of Dam effects")
 hist(sigmas$sigma_beta,  prob=TRUE, xlim=c(0,0.1), main="Standard deviation of Sire effects")
-
 @
 \end{frame}
+\end{comment}
 
 
 
@@ -224,68 +243,75 @@ hist(sigmas$sigma_beta,  prob=TRUE, xlim=c(0,0.1), main="Standard deviation of S
 	
 	\vspace{0.2in} \pause
 	
-	Who will have more progeny: \pause
+	Who is expected to have more progeny: \pause
 	\begin{itemize}
 	\item a current sow $d$ \pause
 	\item a new sow
 	\end{itemize}
 	
-	\vspace{0.2in}  \pause
+ \pause
 	
 	{\small
 	Current sow (for $p^{th}$ progeny and average grandsire):
-	\[ p(\tilde{y}_{d\phantom{ew}}|y) = \int p(\tilde{y}_{d\phantom{ew}}|\rho_p, \alpha_{d\phantom{ew}}, \beta_s=0) \phantom{p(\alpha_{new}|\sigma^2_\alpha)}p(\rho_p, \alpha_d|y) d\rho_p d\alpha_{d\phantom{ew}} \phantom{d\sigma^2_\alpha} \]
+  \[ \begin{array}{rl}
+  E[\tilde{y}_d|y] &= E\large[E[\tilde{y}_d|\rho,\alpha,\beta]|y \large] \pause \\
+  &= E\left[ \left. e^{\rho_p+\alpha_d+0}\right|y\right] \pause \\
+  &\approx \frac{1}{T} \sum_{t=1}^T e^{\rho_p^t+\alpha_d^t}
+  \end{array} \]
 	\pause New sow (for $1^{st}$ progeny and average grandsire):
-	\[ p(\tilde{y}_{new}|y) = \int p(\tilde{y}_{new}|\rho_1, \alpha_{new}, \beta_s=0) p(\alpha_{new}|\sigma^2_\alpha) p(\rho_1, \sigma^2_\alpha |y) d\rho_p d\alpha_{new} d\sigma^2_\alpha \]
-	\pause Let $\delta = \tilde{y}_{new}  - \tilde{y}_{d}$.
+  \[ \begin{array}{rl}
+  E[\tilde{y}_{new}|y] &= \approx \frac{1}{T} \sum_{t=1}^T e^{\rho_1^t+\alpha_{new}^t}
+  \end{array} \]
+  where $\alpha_{new}^t \sim N(0,\sigma_{\alpha}^2)$.
 	}
 }
 
 \frame{\frametitle{Simulated answer}
 	For MCMC iterations $j=1,\ldots,J$, \pause 
-	\begin{enumerate}[1.]
-	\item Simulate $\tilde{y}_d^{(j)} \sim Po\left( e^{\rho_p^{(j)}+\alpha_d^{(j)}} \right)$. \pause 
-	\item Simulate $\alpha_{new}^{(j)} \sim N\left(0,\sigma^{2^{(j)}}_\alpha\right)$. \pause 
-	\item Simulate $\tilde{y}_{new}^{(j)} \sim Po\left( e^{\rho_1^{(j)}+\alpha_{new}^{(j)}} \right)$.  \pause
-	\item Calculate $\delta^{(j)} = \tilde{y}_{new}^{(j)} - \tilde{y}_d^{(j)}$.
+	\begin{enumerate}
+  \item Simulate $\mu^t_{d} = e^{\rho_p^t+\alpha_d^t}$. \pause 
+  \item Simulate $\mu^t_{new} = e^{\rho_p^t+\alpha_{new}^t}$ where $\alpha_{new}^t \sim N\left(0,\sigma^{2^t}_\alpha\right)$. \pause 
+	\item Calculate $\delta^t = \mu_{new}^t - \mu_d^t$.
 	\end{enumerate}
 	
 	\vspace{0.2in} \pause
 	
-	So $\delta^{(j)}$ is a realization from the predictive distribution for the difference in the number of progeny between a new sow and current sow $d$.
+	So $\delta^t$ is a realization expected difference in the number of progeny between a new sow and current sow $d$.
 }
 
 
 
 \begin{frame}[fragile]
-<<zero_nba, dependson="run_mcmc", eval=FALSE>>=
+<<zero_nba, dependson="run_mcmc">>=
+sow_summary = ddply(d, .(sowid), summarize, 
+                    max_parity = max(parity),
+                    sum_nba    = sum(nba),
+                    mean_nba   = sum_nba/max_parity)
+
 # Should we replace a sow after 0 born alive in first parity
 wh = which(sow_summary$max_parity==1 & sow_summary$sum_nba==0)
 
 # Expected nba in parity 2 for sow with 0 born alive in first parity
 alphas = extract(r, "alpha")$alpha
 rhos = extract(r, "rho")$rho
-exp_nba_old = exp(rhos[,2]+alphas[,wh[1]])
+exp_nba_old1 = exp(rhos[,2]+alphas[,wh[1]])
 
 # Expected nba in parity 1 for random sow
 exp_nba_new = exp(rhos[,1]+rnorm(nrow(rhos), 0, sigmas$sigma_alpha))
-
-# Difference in expected nba
-hist(exp_nba_old-exp_nba_new, 100, main="Expected difference (Old-New)")
 @
 \end{frame}
 
 
 \begin{frame}[fragile]
 <<zero_nba_run, dependson="run_mcmc", echo=FALSE>>=
-<<zero_nba>>
+hist(exp_nba_old1-exp_nba_new, 100, main="Expected difference (Old-New)")
 @
 \end{frame}
 
 
 
 \begin{frame}[fragile]
-<<parity_four, dependson="run_mcmc", eval=FALSE>>=
+<<parity_four, dependson="run_mcmc">>=
 # Replace sow with 23 born alive after 4 parities?
 wh = which(sow_summary$max_parity==4 & sow_summary$sum_nba==23)
 
@@ -299,13 +325,7 @@ hist(exp_nba_old2-exp_nba_new, 100, main="Expected difference (Old-New)")
 
 
 \begin{frame}[fragile]
-<<parity_four_run, dependson="run_mcmc", echo=FALSE>>=
-<<parity_four>>
-@
-\end{frame}
-
-
-\frame{\frametitle{Difference in the number of progeny}
+\frametitle{Difference in the number of progeny}
 <<difference_expected progeny>>=
 # 0 born alive in parity 1
 mean(exp_nba_old1-exp_nba_new>0)
@@ -313,7 +333,7 @@ mean(exp_nba_old1-exp_nba_new>0)
 # 23 born alive through parity 4
 mean(exp_nba_old2-exp_nba_new>0)
 @
-}
+\end{frame}
 
 \subsection{Cost function}
 \frame{\frametitle{Cost functions}
@@ -332,6 +352,7 @@ mean(exp_nba_old2-exp_nba_new>0)
 	
 	\pause So $c_1$ just scales our posterior expectation for the difference. 
 }
+
 
 \frame{\frametitle{Cost functions}
 	Suppose the cost also involves moving a new sow in, \pause then $U(\tilde{y}_i) = c_1 \tilde{y}_i - c_2\I(i=new)$ \pause and want 
@@ -357,6 +378,24 @@ mean(exp_nba_old2-exp_nba_new>0)
 	\pause then
 }
 
+\begin{frame}
+\frametitle{New data realizations}
+
+To estimate these cost functions, we will need predictive simulations $\tilde{y}$ for the old sow and the new sow. 
+
+\vspace{0.2in} \pause
+
+We can obtain these simulations via 
+
+\begin{itemize}
+\item Old sow (progeny $p$ and average grand-sire):
+\[ \tilde{y}_d^t \sim Po(e^{\rho_p^t+\alpha_d^t}) \]
+\item New sow (average grand-sire):
+\[ \tilde{y}_{new}^t \sim Po(e^{\rho_1^t+\alpha_{new}^t}) \]
+\end{itemize}
+where $e^{\rho_p^t+\alpha_d^t}$ and $e^{\rho_1^t+\alpha_{new}^t}$ are simulations previously drawn.
+\end{frame}
+
 \subsection{Summary}
 \frame{\frametitle{Summary}
 	Lecture demonstrated
@@ -367,7 +406,6 @@ mean(exp_nba_old2-exp_nba_new>0)
 	\item using the analysis to make a decision regarding sow culling time.
 	\end{itemize}
 }
-
 
 
 \end{document}
