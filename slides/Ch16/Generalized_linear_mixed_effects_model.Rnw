@@ -64,197 +64,21 @@ nlevels(d$sire)
 \end{frame}
 
 \begin{frame}[fragile]
-<<jags_model>>=
-model = "
-model{
-  for (i in 1:n) {
-    y[i] ~ dpois(exp(rho[parity[i]]+alpha[dam[i]]+beta[sire[i]]))
-  }
-
-  # Fixed effects
-  for (p in 1:np) { rho[p] ~ dnorm(0, 1e-6) }
-
-  # Random effects
-  for (d in 1:nd) { alpha[d]  ~ dnorm(0, 1/sigma.alpha^2) }
-  for (s in 1:ns) { beta[s]   ~ dnorm(0, 1/sigma.beta^2) }
-
-  sigma.alpha ~ dunif(0,1000)
-  sigma.beta  ~ dunif(0,1000)
-}"
+<<exploratory>>=
+ggplot(d, aes(x=nba))+geom_histogram(binwidth=1)+facet_wrap(~parity)
 @
 \end{frame}
+
 
 \begin{frame}[fragile]
-<<run_mcmc>>=
-dat = list(y = d$nba, 
-           parity = d$parity,
-           dam = as.numeric(d$sowid),
-           sire = as.numeric(d$sire))
-dat$n  = length(dat$y)
-dat$np = max(dat$parity)
-dat$nd = max(dat$dam)
-dat$ns = max(dat$sire)
-
-m = jags.model(textConnection(model), dat)
-res = coda.samples(m, c("rho","alpha","beta","sigma.alpha", "sigma.beta"), n.iter=100000, thin=100)
+<<exploratory2>>=
+summary(factor(d$parity))
 @
 \end{frame}
 
-\begin{frame}[fragile]
-<<parity>>=
-sm = summary(res)
-
-# Parity fixed effects
-qm = exp(sm$quantiles)
-wr = grep("rho", rownames(qm))
-par(mar=c(5,4,0,0)+.1)
-plot(wr, 1:dat$np, xlim=range(qm[wr,]), ylim=c(0,dat$np+1), ylab="Parity", 
-     xlab="Expected number born alive")
-segments(qm[wr,1], 1:dat$np, qm[wr,5], 1:dat$np)
-points(qm[wr,3],1:dat$np, pch=19, cex=.5)
-@
-\end{frame}
-
-\begin{frame}[fragile]
-<<dam>>=
-top = function(n, nmax) {
-  n = n/2
-  return(c(seq(1,n), seq(nmax-n+1,nmax)))
-}
-
-# Dam random effects
-qm = sm$quantiles
-n.dam = 100 # n.dam = 1:dat$nd
-wr = grep("alpha", rownames(qm))
-ordr = order(qm[wr,3])
-wr = wr[ordr][top(n.dam,dat$nd)]
-
-par(mar=c(5,4,0,0)+.1)
-plot(wr, 1:n.dam, xlim=c(-.2,.2), ylim=c(0,n.dam+1), ylab="Sow (extremes)", 
-     xlab="Effect (log-scale)")
-segments(qm[wr,1], 1:n.dam, qm[wr,5], 1:n.dam)
-points(qm[wr,3],1:n.dam, pch=19, cex=.5)
-@
-\end{frame}
-
-\begin{frame}[fragile]
-<<sire>>=
-# Sire random effects
-qm = sm$quantiles
-n.dam = 100 # n.dam = 1:dat$nd
-wr = grep("beta", rownames(qm))
-ordr = order(qm[wr,3])
-wr = wr[ordr[top(n.dam, dat$ns)]]
-
-par(mar=c(5,4,0,0)+.1)
-plot(wr, 1:n.dam, xlim=c(-.2,.2), ylim=c(0,n.dam+1), ylab="Grandsire (extremes)", 
-     xlab="Effect (log-scale)")
-segments(qm[wr,1], 1:n.dam, qm[wr,5], 1:n.dam)
-points(qm[wr,3],1:n.dam, pch=19, cex=.5)
-@
-\end{frame}
-
-<<eval=FALSE>>=
-# Standard deviations
-pdf("sigmas.pdf", height=4)
-par(mfrow=c(1,2))
-hist(unlist(res[,"sigma.alpha"]), 100, freq=F, 
-     main="Dam effect standard deviation", xlab=expression(sigma[alpha]))
-hist(unlist(res[,"sigma.beta" ]), 100, freq=F, 
-     main="Sire effect standard deviation", xlab=expression(sigma[beta]))
-dev.off()
-
-pdf("sigmas2.pdf", height=7)
-plot(res[,c("sigma.alpha","sigma.beta")])
-dev.off()
-
-
-
-# Compare to MLE
-library(lme4)
-m2 = glmer(y~as.factor(parity)+(1|dam)+(1|sire), dat, family=poisson)
-summary(m2)
-
-
-
-
-
-
-# Choose a sow to represent a question of interest
-library(plyr)
-sow.max.parity = ddply(d, "sowid", summarize, max=max(parity))
-sow.max.parity = sow.max.parity[order(sow.max.parity$max),]
-set.seed(1)
-ran.sow = sample(sow.max.parity$sowid[sow.max.parity$max==4],1) 
-
-alpha.ran.sow = unlist(res[,paste("alpha[",as.numeric(ran.sow),"]",sep="")])
-sigma.alpha   = unlist(res[,"sigma.alpha"])
-rho1          = unlist(res[,"rho[1]"])
-rho5          = unlist(res[,"rho[5]"])
-n.reps = length(rho5)
-
-ynew = rpois(n.reps, exp(rho1+rnorm(n.reps,0,sigma.alpha)))
-yran = rpois(n.reps, exp(rho5+alpha.ran.sow))
-diff = ynew-yran
-
-pdf("diff.pdf", height=5)
-hist(diff, seq(min(diff)-1, max(diff))+.5, 
-     main="Difference (new-current) in the number of progeny",
-     xlab="Difference (new-current)", freq=F)
-abline(v=0, col="red", lwd=5)
-curve(dnorm(x, mean(diff), sd(diff)), add=T, col="blue", lwd=2)
-legend("topright", c("zero","normal"), col=c("red","blue"), lwd=2)
-dev.off()
-
-mean(diff>0)
-mean(diff>=0)
-
-# utility function
-utility = function(y) y-0.1*(y-10)*(y>10)
-udiff = utility(ynew)-.2-utility(yran)
-
-pdf("udiff.pdf", height=4)
-par(mar=c(5,4,4,0)+.1)
-hist(udiff, freq=F, main="Difference in utilities (new-current)", 
-     xlab="Difference in utilities")
-dev.off()
-
-mean(udiff)
-sd(udiff)/sqrt(length(rho1))
-@
-\end{frame}
-
-\frame[containsverbatim]{\frametitle{Data}
-\tiny
-	\begin{verbatim}
-> head(d)
-            sowid nba parity       sire
-1 985120010234800   3      1  C61LW4846
-2 985120011536089  11      1  C60LX1975
-3 985120011536089   6      2  C60LX1975
-4 985120011537054   8      1 C63LW10719
-5 985120011537054  11      2 C63LW10719
-6 985120011537120  12      1  C60LX3542
-> summary(d)
-             sowid           nba            parity           sire     
- 985152000271505:   7   Min.   : 0.00   Min.   :1.000   103086 : 238  
- 985120011545841:   6   1st Qu.: 9.00   1st Qu.:1.000   376475 : 105  
- 985120025398712:   6   Median :11.00   Median :1.000   514976 :  91  
- 985152000271655:   6   Mean   :10.28   Mean   :1.714   572703 :  87  
- 985152002194887:   6   3rd Qu.:12.00   3rd Qu.:2.000   019800 :  84  
- 985152002429483:   6   Max.   :19.00   Max.   :7.000   376770 :  79  
- (Other)        :2831                                   (Other):2184  
-> dim(d)
-[1] 2868    4
-> nlevels(d$sowid)
-[1] 1621
-> nlevels(d$sire)
-[1] 182
-	\end{verbatim}
-}
 
 \frame{\frametitle{Model}
-	Let 
+  Let 
 	\begin{itemize}
 	\item $y_i$ be the number born alive for the $i^{th}$ litter \pause
 	\item $p[i]$ is the parity for the $i^{th}$ litter \pause
@@ -273,146 +97,130 @@ sd(udiff)/sqrt(length(rho1))
 	\end{array} \]
 }
 
-\frame[containsverbatim]{\frametitle{JAGS}
-\tiny
-	\begin{verbatim}
+
+
+\begin{frame}[fragile]
+<<jags_model>>=
 model = "
-model{
+data {
+  int<lower=1> n;
+  int<lower=1> np;
+  int<lower=1> nd;
+  int<lower=1> ns;
+  int<lower=0> y[n];
+  int<lower=1, upper=np> parity[n];
+  int<lower=1, upper=nd> dam[n];
+  int<lower=1, upper=ns> sire[n];
+}
+
+parameters {
+  real rho[np];     // implicit prior over whole real line
+  real alpha[nd];
+  real beta[ns];
+  real<lower=0> sigma_alpha;
+  real<lower=0> sigma_beta;
+}
+
+model {
   for (i in 1:n) {
-    y[i] ~ dpois(exp(rho[parity[i]]+alpha[sow[i]]+beta[grandsire[i]]))
+    y[i] ~ poisson(exp(rho[parity[i]]+alpha[dam[i]]+beta[sire[i]]));
   }
 
-  # Fixed effects
-  for (p in 1:np) { rho[p] ~ dnorm(0, 1e-6) }
-
   # Random effects
-  for (d in 1:nd) { alpha[d]  ~ dnorm(0, eta.alpha) }
-  for (s in 1:ns) { beta[s]   ~ dnorm(0, eta.beta ) }
+  for (d in 1:nd) { alpha[d]  ~ normal(0, sigma_alpha); }
+  for (s in 1:ns) { beta[s]   ~ normal(0, sigma_beta); }
 
-  # Priors
-  eta.alpha <- 1/sigma.alpha^2
-  eta.beta  <- 1/sigma.beta^2
-
-  sigma.alpha ~ dunif(0,1000)
-  sigma.beta  ~ dunif(0,1000)
+  sigma_alpha ~ uniform(0,1000);
+  sigma_beta  ~ uniform(0,1000);
 }"
 
+@
+\end{frame}
 
+<<compile_model, cache=TRUE>>=
+m = stan_model(model_code=model)
+@
 
+\begin{frame}[fragile]
+<<run_mcmc, dependson="compile_model", cache=TRUE>>=
 dat = list(y = d$nba, 
            parity = d$parity,
-           sow = as.numeric(d$sowid),
-           grandsire = as.numeric(d$sire))
+           dam = as.numeric(d$sowid),
+           sire = as.numeric(d$sire))
 dat$n  = length(dat$y)
 dat$np = max(dat$parity)
-dat$nd = max(dat$sow)
-dat$ns = max(dat$grandsire)
-	\end{verbatim}
-}
+dat$nd = max(dat$dam)
+dat$ns = max(dat$sire)
 
-\frame[containsverbatim]{\frametitle{JAGS}
-\tiny
-	\begin{verbatim}
-m = jags.model(textConnection(model), dat, n.chains=3, n.adapt=2000)
-res = coda.samples(m, c("rho","alpha","beta"), n.iter=10000, n.thin=10)
-save.image("farm.RData")
+r = sampling(m, dat, c("rho","alpha","beta","sigma_alpha","sigma_beta"))
 
-gelman.diag(res, mult=F)
-# All Upper CIs less than 1.10 (or so I think)
-	\end{verbatim}
-}
+s = summary(r)$summary
+@
+\end{frame}
 
+\begin{frame}[fragile]
+<<parity, dependson="run_mcmc", echo=FALSE>>=
+wr = grep("rho",rownames(s))
+erho = exp(s[wr,c(4,6,8)])
 
+plot(wr, 1:dat$np, xlim=range(erho[wr,]), ylim=c(0,dat$np+1), ylab="Parity", 
+     xlab="Expected number born alive", type="n")
+segments(erho[wr,1], 1:dat$np, erho[wr,3], 1:dat$np)
+points(erho[wr,2],1:dat$np, pch=19, cex=.5)
 
-\frame{\frametitle{Parity}
-\setkeys{Gin}{width=0.8\textwidth}
-	\begin{center}
-	\includegraphics{parity}
-	\end{center}
-}
-
-\frame{\frametitle{Grandsire effect}
-\setkeys{Gin}{width=0.8\textwidth}
-	\begin{center}
-	\includegraphics{sire}
-	\end{center}
-}
-
-\frame{\frametitle{Sow effect}
-\setkeys{Gin}{width=0.8\textwidth}
-	\begin{center}
-	\includegraphics{dam}
-	\end{center}
-}
-
-\frame{\frametitle{Standard deviations}
-\setkeys{Gin}{width=\textwidth}
-	\begin{center}
-	\includegraphics{sigmas}
-	\end{center}
-}
-
-\frame[containsverbatim]{\frametitle{Standard deviations}
-\setkeys{Gin}{width=0.4\textwidth}
-	\begin{center}
-	\includegraphics{sigmas2}
-	\end{center}
-\tiny
-	\begin{verbatim}
-> gelman.diag(res[,c("sigma.alpha","sigma.beta")])
-Potential scale reduction factors:
-
-            Point est. Upper C.I.
-sigma.alpha       1.67       2.72
-sigma.beta        1.10       1.31
-	\end{verbatim}
-}
+@
+\end{frame}
 
 
-\subsection{Comparison to MLEs}
-\frame[containsverbatim]{\frametitle{}
-\tiny
-	\begin{verbatim}
-> m2 = glmer(y~as.factor(parity)+(1|dam)+(1|sire), dat, family=poisson)
-> summary(m2)
-Generalized linear mixed model fit by the Laplace approximation 
-Formula: y ~ as.factor(parity) + (1 | dam) + (1 | sire) 
-   Data: dat 
-  AIC  BIC logLik deviance
- 3401 3454  -1691     3383
-Random effects:
- Groups Name        Variance  Std.Dev.
- dam    (Intercept) 0.0023624 0.048604
- sire   (Intercept) 0.0012009 0.034654
-Number of obs: 2868, groups: dam, 1621; sire, 182
+\begin{frame}[fragile]
+<<dam, dependson="run_mcmc", echo=FALSE>>=
+wd = grep("alpha",rownames(s))
+alpha = s[wd,c(4,6,8)]
+n.dam = nrow(alpha)
+ordr = order(alpha[,2])
+alpha = alpha[ordr,]
 
-Fixed effects:
-                    Estimate Std. Error z value Pr(>|z|)    
-(Intercept)         2.294292   0.008927  257.01  < 2e-16 ***
-as.factor(parity)2  0.063195   0.014027    4.51 6.63e-06 ***
-as.factor(parity)3  0.100663   0.019045    5.29 1.25e-07 ***
-as.factor(parity)4  0.046234   0.027348    1.69   0.0909 .  
-as.factor(parity)5 -0.041454   0.045972   -0.90   0.3672    
-as.factor(parity)6  0.067197   0.108614    0.62   0.5361    
-as.factor(parity)7 -0.707121   0.450732   -1.57   0.1167    
----
-Signif. codes:  0 ?***? 0.001 ?**? 0.01 ?*? 0.05 ?.? 0.1 ? ? 1 
+plot(alpha[,2], 1:n.dam, xlim=range(alpha), ylim=c(0,n.dam+1), ylab="Dam (ordered by posterior median)", 
+     xlab="Effect (log-scale)",type="n")
+segments(alpha[,1], 1:n.dam, alpha[,3], 1:n.dam, col="gray")
+lines(alpha[,2], 1:n.dam)
+@
+\end{frame}
 
-Correlation of Fixed Effects:
-            (Intr) as.()2 as.()3 as.()4 as.()5 as.()6
-as.fctr(p)2 -0.506                                   
-as.fctr(p)3 -0.377  0.256                            
-as.fctr(p)4 -0.272  0.179  0.152                     
-as.fctr(p)5 -0.159  0.108  0.092  0.074              
-as.fctr(p)6 -0.061  0.047  0.042  0.031  0.026       
-as.fctr(p)7 -0.017  0.010  0.008  0.007  0.006  0.009
-	\end{verbatim}
-}
+
+\begin{frame}[fragile]
+<<sire, dependson="run_mcmc", echo=FALSE>>=
+ws = grep("beta",rownames(s))
+beta = s[ws,c(4,6,8)]
+n.sire = nrow(beta)
+ordr = order(beta[,2])
+beta = beta[ordr,]
+
+plot(beta[,2], 1:n.sire, xlim=range(beta), ylim=c(0,n.sire+1), ylab="Sire (ordered by posterior median)", 
+     xlab="Effect (log-scale)",type="n")
+segments(beta[,1], 1:n.sire, beta[,3], 1:n.sire, col="gray")
+lines(beta[,2], 1:n.sire)
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+<<standard_deviations, dependson="run_mcmc", echo=FALSE>>=
+sigmas = extract(r, c("sigma_alpha","sigma_beta"))
+par(mfrow=c(1,2))
+hist(sigmas$sigma_alpha, prob=TRUE, xlim=c(0,0.1), main="Standard deviation of Dam effects")
+hist(sigmas$sigma_beta,  prob=TRUE, xlim=c(0,0.1), main="Standard deviation of Sire effects")
+
+@
+\end{frame}
+
+
 
 
 \subsection{Culling time}
 \frame{\frametitle{Culling time}
-	Primary question of interest: when should a sow be removed from breeding?	
+  Primary question of interest: when should a sow be removed from breeding?	
 	
 	\vspace{0.2in} \pause
 	
@@ -447,14 +255,64 @@ as.fctr(p)7 -0.017  0.010  0.008  0.007  0.006  0.009
 	So $\delta^{(j)}$ is a realization from the predictive distribution for the difference in the number of progeny between a new sow and current sow $d$.
 }
 
+
+
+\begin{frame}[fragile]
+<<zero_nba, dependson="run_mcmc", eval=FALSE>>=
+# Should we replace a sow after 0 born alive in first parity
+wh = which(sow_summary$max_parity==1 & sow_summary$sum_nba==0)
+
+# Expected nba in parity 2 for sow with 0 born alive in first parity
+alphas = extract(r, "alpha")$alpha
+rhos = extract(r, "rho")$rho
+exp_nba_old = exp(rhos[,2]+alphas[,wh[1]])
+
+# Expected nba in parity 1 for random sow
+exp_nba_new = exp(rhos[,1]+rnorm(nrow(rhos), 0, sigmas$sigma_alpha))
+
+# Difference in expected nba
+hist(exp_nba_old-exp_nba_new, 100, main="Expected difference (Old-New)")
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<zero_nba_run, dependson="run_mcmc", echo=FALSE>>=
+<<zero_nba>>
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+<<parity_four, dependson="run_mcmc", eval=FALSE>>=
+# Replace sow with 23 born alive after 4 parities?
+wh = which(sow_summary$max_parity==4 & sow_summary$sum_nba==23)
+
+# Expected nba in parity 3 for sow with 0 born alive in first parity
+exp_nba_old2 = exp(rhos[,5]+alphas[,wh])
+
+# Difference in expected nba
+hist(exp_nba_old2-exp_nba_new, 100, main="Expected difference (Old-New)")
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<parity_four_run, dependson="run_mcmc", echo=FALSE>>=
+<<parity_four>>
+@
+\end{frame}
+
+
 \frame{\frametitle{Difference in the number of progeny}
-	\begin{center}
-	\includegraphics{diff}
-	\end{center}
-	\pause
-	The $P(\delta>0|y) \approx 0.50$ and $P(\delta>=0|y)\approx 0.58$.  \pause
-	
-	$E[\delta|y] = .465 \pm 0.026$ (Monte Carlo uncertainty)
+<<difference_expected progeny>>=
+# 0 born alive in parity 1
+mean(exp_nba_old1-exp_nba_new>0)
+
+# 23 born alive through parity 4
+mean(exp_nba_old2-exp_nba_new>0)
+@
 }
 
 \subsection{Cost function}
@@ -497,12 +355,6 @@ as.fctr(p)7 -0.017  0.010  0.008  0.007  0.006  0.009
 	\pause This may be analytically intractable, but we can easily simulate from it. \pause Suppose 
 	\[ U(\tilde{y}_i) = \tilde{y}_i + 0.1(\tilde{y}_i-10) \I(\tilde{y}_i>10) - 0.2\I(i=new), \]
 	\pause then
-	
-	\vspace{-0.2in} 
-	
-	\begin{center}
-	\includegraphics{udiff}
-	\end{center}
 }
 
 \subsection{Summary}
