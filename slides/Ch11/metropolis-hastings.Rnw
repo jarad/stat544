@@ -1,6 +1,5 @@
-\documentclass{beamer}
-%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
 
 \usecolortheme[RGB={0,0,144}]{structure}
 \usetheme{AnnArbor}\usecolortheme{beaver}
