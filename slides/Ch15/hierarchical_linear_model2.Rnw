@@ -54,8 +54,8 @@ set.seed(20140415)
 
   Let $y_{ij}$ be the observation for individual $i$ of group $j$ where $i=1,\ldots,n_j$ and $j=1,\ldots,J$. \pause Then a \alert{random intercept, random slope model} is 
   \[ \begin{array}{rl}
-  y_{ij} &\sim N(X_j\beta^{(j)} ,\sigma_y^2) \\
-  \beta^{(j)} &\sim N(\mu_\beta,\mySigma_\beta) 
+  y_{ij} &\sim N(X_j\beta_j ,\sigma_y^2) \\
+  \beta_j &\sim N(\mu_\beta,\mySigma_\beta) 
   \end{array} \]
   where $X_j\in \mathbb{R}^p$ are the common covariates for group $j$
   
@@ -97,8 +97,8 @@ Special cases:
 
 Consider the random intercept, random slope model
 \[ \begin{array}{rl}
-y_{ij} &\sim N(X_j\beta^{(j)} ,\sigma_y^2) \\
-\beta^{(j)} &\sim N(\mu_\beta,\mySigma_\beta) 
+y_{ij} &\sim N(X_j\beta_j ,\sigma_y^2) \\
+\beta_j &\sim N(\mu_\beta,\mySigma_\beta) 
 \end{array} \]
 with independent priors 
 \[ \begin{array}{rl}
@@ -112,10 +112,42 @@ p(\mySigma_\beta) &\propto |\mySigma|^{-(d+1)}\exp\left(-\frac{1}{2} \mbox{tr}\l
 
 \section{Gibbs sampling}
 \begin{frame}
+\frametitle{Block Gibbs sampler}
+
+Consider the following block Gibbs sampler:
+\begin{enumerate}
+\item $p(\beta|\ldots)$
+\item $p(\sigma_y^2|\ldots)$
+\item $p(\mu_\beta,\mySigma_\beta|\ldots)$
+\end{enumerate}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{Full conditional for $\beta$}
+
+\[ \begin{array}{rl}
+p(\beta|\ldots) \propto& p(y|\beta,\sigma_y^2)p(\beta|\mu_\beta,\mySigma_\beta)p(\sigma_y^2,\mu_\beta,\mySigma_\beta) \\
+\propto& \prod_{j=1}^J \left[ \prod_{i=1}^{n_j} N(y_{ij}|X_j\beta_j,\sigma_y^2) N(\beta_j|\mu_\beta,\mySigma_\beta) \right]
+\end{array} \]
+So 
+\begin{itemize}
+\item The $\beta_j$ are conditionally independent.
+\item Each $\beta_j$ is a regression with \emph{informative} prior $N(\mu_\beta,\mySigma_\beta)$.
+\end{itemize}
+thus 
+\[ \beta_j \stackrel{ind}{\sim}  \]
+
+\end{frame}
+
+
+\begin{frame}
 \frametitle{Full conditional for $\mySigma_\beta$}
 {\small
 \[ \begin{array}{rl}
-p(\mySigma_\beta|y,\sigma_y^2,\beta,\mu_\beta) 
+p(\mySigma_\beta|\ldots) 
 \propto& p(y|\beta,\sigma_y^2)p(\beta|\mu_\beta,\mySigma_\beta)p(\sigma_y^2,\mu_\beta,\mySigma_\beta) \\
 \propto& p(\beta|\mu_\beta,\mySigma_\beta)p(\mySigma_\beta) \\
 \propto& \left[ \prod_{j=1}^J |\mySigma|^{-1/2} e^{-\frac{1}{2}(\beta_j-\mu_\beta)\mySigma_\beta^{-1}(\beta_j-\mu_\beta)} \right] \\
@@ -123,7 +155,7 @@ p(\mySigma_\beta|y,\sigma_y^2,\beta,\mu_\beta)
 \propto& |\mySigma|^{-(d+1+J/2)} e^{-\frac{1}{2} \mbox{tr}\left(S'\mySigma_\beta^{-1}\right)} 
 \end{array} \]
 where 
-\[ S' = \left( \mathrm{I} + \sum_{j=1}^J (\beta^{(j)}-\mu_\beta)(\beta^{(j)}-\mu_\beta)^\top \right)^{-1} \]
+\[ S' = \left( \mathrm{I} + \sum_{j=1}^J (\beta_j-\mu_\beta)(\beta_j-\mu_\beta)^\top \right)^{-1} \]
 }
 
 so 
