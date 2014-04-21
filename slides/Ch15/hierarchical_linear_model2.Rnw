@@ -41,10 +41,11 @@ require(reshape2)
 require(dplyr)
 require(plyr)
 require(ggplot2)
-require(rjags)
-require(rstan)
-require(lme4)
-set.seed(20140415)
+require(MASS)
+#require(rjags)
+#require(rstan)
+#require(lme4)
+set.seed(20140422)
 @
 
 \frame{\maketitle}
@@ -52,12 +53,70 @@ set.seed(20140415)
 \begin{frame}
 \frametitle{Random intercept, random slope model} 
 
-  Let $y_{ij}$ be the observation for individual $i$ of group $j$ where $i=1,\ldots,n_j$ and $j=1,\ldots,J$. \pause Then a \alert{random intercept, random slope model} is 
+  Let $y_{ij}$ be the observation for individual $i$ of group $j$ with explanatory variable $x_{ij}$ where $i=1,\ldots,n_j$ and $j=1,\ldots,J$ . \pause Then a \alert{random intercept, random slope model} is 
   \[ \begin{array}{rl}
-  y_{ij} &\sim N(X_j\beta_j ,\sigma_y^2) \\
+  y_{ij} &\sim N(\beta_{0,j}+x_{ij}\beta_{1,j} ,\sigma_y^2) \\
+  \beta_j = \left( \begin{array}{c} 
+  \beta_{0,j} \\
+  \beta_{1,j}
+  \end{array} \right) &\sim N(\mu_\beta,\mySigma_\beta) 
+  \end{array} \]
+  
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+<<random_intercepts_and_slopes>>=
+J = 20
+Sigma_beta = matrix(c(1,.5,.5,1), 2, 2)
+beta = mvrnorm(J, rnorm(2), Sigma_beta)
+plot(beta)
+@
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<simulate_data>>=
+n = rpois(J, 5) + 1 # Make sure all are greater than zero
+group = rep(1:J, n)
+table(group)
+sigma_y = 1
+x = rnorm(sum(n))
+y = rnorm(sum(n), beta[group,1]+beta[group,2]*x, sigma_y)
+d = data.frame(y=y, group=factor(group), x=x)
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<plot_data>>=
+(p = ggplot(d, aes(x=x,y=y))+geom_point()+stat_smooth(method="lm", se=FALSE))
+p + facet_wrap(~group)
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+<<>>=
+m = lmer(y~(x|group), d)
+plot(ranef(m)$group)
+points(beta, pch=19)
+@
+\end{frame}
+
+
+\section{Bayesian analysis}
+
+\begin{frame}
+\frametitle{Random intercept, random slope model} 
+
+  Let $y_{ij}$ be the observation for individual $i$ of group $j$ with explanatory variable $x_{ij}$ where $i=1,\ldots,n_j$ and $j=1,\ldots,J$ . \pause Then a \alert{random intercept, random slope model} is 
+  \[ \begin{array}{rl}
+  y_{ij} &\sim N(\beta_{0,j}+x_{ij}\beta_{1,j} ,\sigma_y^2) \\
   \beta_j &\sim N(\mu_\beta,\mySigma_\beta) 
   \end{array} \]
-  where $X_j\in \mathbb{R}^p$ are the common covariates for group $j$
   
   \vspace{0.2in} \pause
   
@@ -69,6 +128,8 @@ set.seed(20140415)
   but what should we do for $\mySigma$?
   
 \end{frame}
+
+
 
 
 \begin{frame}
@@ -97,16 +158,15 @@ Special cases:
 
 Consider the random intercept, random slope model
 \[ \begin{array}{rl}
-y_{ij} &\sim N(X_j\beta_j ,\sigma_y^2) \\
+  y_{ij} &\sim N(\beta_{0,j}+x_{ij}\beta_{1,j} ,\sigma_y^2) \\
 \beta_j &\sim N(\mu_\beta,\mySigma_\beta) 
 \end{array} \]
 with independent priors 
 \[ \begin{array}{rl}
 p(\sigma_y^2) &\propto 1/\sigma_y^2 \\
 p(\mu_\beta) &\propto 1 \\
-p(\mySigma_\beta) &\propto |\mySigma|^{-(d+1)}\exp\left(-\frac{1}{2} \mbox{tr}\left(\mySigma^{-1}\right)\right) 
+\mySigma_\beta &\sim \mbox{IW}(d+1,\mathrm{I})
 \end{array} \]
-  
 \end{frame}
 
 
@@ -118,7 +178,8 @@ Consider the following block Gibbs sampler:
 \begin{enumerate}
 \item $p(\beta|\ldots)$
 \item $p(\sigma_y^2|\ldots)$
-\item $p(\mu_\beta,\mySigma_\beta|\ldots)$
+\item $p(\mu_\beta|\ldots)$
+\item $p(\mySigma_\beta|\ldots)$
 \end{enumerate}
 
 \end{frame}
@@ -130,7 +191,7 @@ Consider the following block Gibbs sampler:
 
 \[ \begin{array}{rl}
 p(\beta|\ldots) \propto& p(y|\beta,\sigma_y^2)p(\beta|\mu_\beta,\mySigma_\beta)p(\sigma_y^2,\mu_\beta,\mySigma_\beta) \\
-\propto& \prod_{j=1}^J \left[ \prod_{i=1}^{n_j} N(y_{ij}|X_j\beta_j,\sigma_y^2) N(\beta_j|\mu_\beta,\mySigma_\beta) \right]
+\propto& \prod_{j=1}^J N(y_{j}|X_j\beta_j,\sigma_y^2\mathrm{I}) N(\beta_j|\mu_\beta,\mySigma_\beta)
 \end{array} \]
 So 
 \begin{itemize}
@@ -138,7 +199,51 @@ So
 \item Each $\beta_j$ is a regression with \emph{informative} prior $N(\mu_\beta,\mySigma_\beta)$.
 \end{itemize}
 thus 
-\[ \beta_j \stackrel{ind}{\sim}  \]
+\[ \beta_j \stackrel{ind}{\sim} N(\hat{\beta}_j, \hat{\mySigma}_{\beta_j}) \]
+where 
+\[ \begin{array}{rl}
+\hat{\mySigma}_{\beta_j} &= \left[ \mySigma_{\beta}^{-1} + \sigma_y^{-2} X_j'X_j \right]^{-1} \\
+\hat{\beta}_{j} &= \hat{\mySigma}_{\beta_j}\left[ \mySigma_{\beta}^{-1}\mu_\beta + \sigma_y^{-2} X_j'y_j \right]
+\end{array} \]
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{R implementation}
+
+<<>>=
+sample_betas = function(data, prior, params) {
+  J = data$J
+  betaj           = array(NA, dim=c(J,2))
+  for (j in 1:J) {
+    wh = data$group == j
+    X = data$X[wh,]
+    Sigma_betaj_hat = solve(prior$Sigma_beta_inv + t(X)%*%X/params$sigma2_y)
+    betaj_hat = Sigma_betaj_hat %*% (prior$Sigma_beta_inv %*% prior$mu_beta + X%*%data$y[wh])
+    betaj[j,] = rnorm(1, betaj_hat, Sigma_betaj_hat)
+  }
+  return(betaj)
+}
+@
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Full conditional for $\sigma_y^2$} 
+
+\[ \begin{array}{rl}
+p(\sigma_y^2|\ldots) \propto& p(y|\beta,\sigma_y^2)p(\beta|\mu_\beta,\mySigma_\beta)p(\sigma_y^2,\mu_\beta,\mySigma_\beta) \\
+\propto& p(y|\beta,\sigma_y^2)p(\sigma_y^2) \\
+\propto & (\sigma^2)^{-n/2} e^{-nv/2\sigma_y^2} \frac{1}{\sigma^2} \\
+\propto & (\sigma^2)^{-(n/2+1)} e^{-nv/2\sigma_y^2}
+\end{array} \]
+where 
+\[ n = \sum_{j=1}^J n_j \qquad nv = \sum_{j=1}^J \sum_{i=1}^{n_j} (y_{ij} - X_j\beta_j)^2 \]
+
+Thus 
+\[ \sigma_y^2 \sim \mbox{Inv-}\chi^2(n, v). \]
 
 \end{frame}
 
@@ -169,8 +274,11 @@ so
 p(\mySigma_\beta|y,\sigma_y^2,\beta,\mu_\beta) 
 \propto& p(y|\beta,\sigma_y^2)p(\beta|\mu_\beta,\mySigma_\beta)p(\sigma_y^2,\mu_\beta,\mySigma_\beta) \\
 \propto& p(\beta|\mu_\beta,\mySigma_\beta) p(\mu_\beta) \\
-\propto& 
+\propto& \prod_{j=1}^J |\Sigma_\beta|^{-1/2} e^{-(\beta_j-\mu_beta)^\top \Sigma_\beta^{-1}(\beta_j-\mu_beta)/2} \\
+\propto& |\Sigma_\beta|^{-J/2} e^{-\mbox{tr}(\Sigma_\beta^{-1} SS)}
 \end{array} \]
+where 
+\[ SS = \sum_{j=1}^J (\beta_j-\mu_\beta)(\beta_j-\mu_\beta)^\top \]
 }
 
 \end{frame}
