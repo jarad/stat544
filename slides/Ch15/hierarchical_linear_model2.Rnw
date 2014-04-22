@@ -54,7 +54,7 @@ set.seed(20140422)
 
   Let $y_{ij}$ be the observation for individual $i$ of group $j$ with explanatory variable $x_{ij}$ where $i=1,\ldots,n_j$ and $j=1,\ldots,J$ . \pause Then a \alert{random intercept, random slope model} is 
   \[ \begin{array}{rl}
-  y_{ij} &\sim N(\beta_{0,j}+x_{ij}\beta_{1,j} ,\sigma_y^2) \\
+  y_{ij} &\sim N(\beta_{j,0}+x_{ij}\beta_{j,1} ,\sigma_y^2) \\
   \beta_j &\sim N(\mu_\beta,\mySigma_\beta) 
   \end{array} \]
   where $\beta_j=(\beta_{0j},\beta_{1j})^\top$. 
@@ -69,6 +69,7 @@ J = 20
 Sigma_beta = matrix(c(1,.5,.5,1), 2, 2)
 beta = mvrnorm(J, rnorm(2), Sigma_beta)
 plot(beta)
+abline(lm(beta[,2]~beta[,1]))
 @
 
 \end{frame}
@@ -87,8 +88,13 @@ d = data.frame(y=y, group=factor(group), x=x)
 \end{frame}
 
 \begin{frame}[fragile]
-<<plot_data>>=
+<<plot_data, fig.width=8>>=
 (p = ggplot(d, aes(x=x,y=y))+geom_point()+stat_smooth(method="lm", se=FALSE))
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<plot_data2, fig.width=8>>=
 p + facet_wrap(~group)
 @
 \end{frame}
@@ -96,10 +102,22 @@ p + facet_wrap(~group)
 
 
 \begin{frame}[fragile]
-<<>>=
+<<lmer>>=
 m = lmer(y~x+(x|group), d)
-plot(ranef(m)$group)
-points(beta, pch=19)
+summary(m)
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<lmer_plots, fig.width=8>>=
+par(mfrow=c(1,2))
+bhat = ranef(m)$group
+beta_hat = fixef(m)
+plot(beta[,1], bhat[,1]+beta_hat[1], main="Intercepts", xlab="Truth", ylab="Estimate")
+abline(0,1)
+plot(beta[,2], bhat[,2]+beta_hat[2], main="Intercepts", xlab="Truth", ylab="Estimate")
+abline(0,1)
 @
 \end{frame}
 
@@ -111,7 +129,7 @@ points(beta, pch=19)
 
   Let $y_{ij}$ be the observation for individual $i$ of group $j$ with explanatory variable $x_{ij}$ where $i=1,\ldots,n_j$ and $j=1,\ldots,J$ . \pause Then a \alert{random intercept, random slope model} is 
   \[ \begin{array}{rl}
-  y_{ij} &\sim N(\beta_{0,j}+x_{ij}\beta_{1,j} ,\sigma_y^2) \\
+  y_{ij} &\sim N(\beta_{j,0}+x_{ij}\beta_{j,1} ,\sigma_y^2) \\
   \beta_j &\sim N(\mu_\beta,\mySigma_\beta) 
   \end{array} \]
   
@@ -136,7 +154,7 @@ The natural conjugate prior for a covariance matrix is the \alert{inverse-Wishar
 \[ p(\mySigma) \propto |\mySigma|^{-(\nu+d+1)/2}\exp\left(-\frac{1}{2} \mbox{tr}\left(S\mySigma^{-1}\right) \right) \]
 with $\nu>d-1$ and $S$ is a positive definite matrix where 
 \[ E[\mySigma] = \frac{S}{\nu-d-1} \]
-for $\nu>d+1$.
+for $\nu>d+1$. \pause We write $\mySigma \sim IW(\nu, S^{-1})$. 
 
 \vspace{0.2in} \pause 
 
@@ -155,7 +173,7 @@ Special cases:
 
 Consider the random intercept, random slope model
 \[ \begin{array}{rl}
-  y_{ij} &\sim N(\beta_{0,j}+x_{ij}\beta_{1,j} ,\sigma_y^2) \\
+  y_{ij} &\sim N(\beta_{j,0}+x_{ij}\beta_{j,1} ,\sigma_y^2) \\
 \beta_j &\sim N(\mu_\beta,\mySigma_\beta) 
 \end{array} \]
 with independent priors 
@@ -221,7 +239,9 @@ where
 \[ n = \sum_{j=1}^J n_j \qquad nv = \sum_{j=1}^J \sum_{i=1}^{n_j} (y_{ij} - X_j\beta_j)^2 \]
 
 Thus 
-\[ \sigma_y^2 \sim \mbox{Inv-}\chi^2(n, v). \]
+\[ \sigma_y^2|\ldots \sim \mbox{Inv-}\chi^2(n, v) \]
+or, equivalently, 
+\[ \sigma_y^{-2}|\ldots \sim Ga(v/2,nv/2). \]
 
 \end{frame}
 
@@ -235,17 +255,40 @@ p(\mySigma_\beta|\ldots)
 \propto& p(y|\beta,\sigma_y^2)p(\beta|\mu_\beta,\mySigma_\beta)p(\sigma_y^2,\mu_\beta,\mySigma_\beta) \\
 \propto& p(\beta|\mu_\beta,\mySigma_\beta)p(\mySigma_\beta) \\
 \propto& \left[ \prod_{j=1}^J |\mySigma|^{-1/2} e^{-\frac{1}{2}(\beta_j-\mu_\beta)\mySigma_\beta^{-1}(\beta_j-\mu_\beta)} \right] \\
-&\times |\mySigma|^{-(d+1)}e^{-\frac{1}{2} \mbox{tr}\left(\mySigma_\beta^{-1}\right)} \\
-\propto& |\mySigma|^{-(d+1+J/2)} e^{-\frac{1}{2} \mbox{tr}\left(S'\mySigma_\beta^{-1}\right)} 
+&\times |\mySigma|^{-\frac{d+1+d+1}{2}}e^{-\frac{1}{2} \mbox{tr}\left(\mySigma_\beta^{-1}\right)} \\
+\propto& |\mySigma|^{-\frac{d+1+J+d+1}{2}} e^{-\frac{1}{2} \mbox{tr}\left(S_n\mySigma_\beta^{-1}\right)} 
 \end{array} \]
 where 
-\[ S' = \left( \mathrm{I} + \sum_{j=1}^J (\beta_j-\mu_\beta)(\beta_j-\mu_\beta)^\top \right)^{-1} \]
+\[ S_n = \left( \mathrm{I} + \sum_{j=1}^J (\beta_j-\mu_\beta)(\beta_j-\mu_\beta)^\top \right) \]
 }
 
 so 
-\[ \mySigma_\beta|\ldots \sim IW(d+1+J/2, S'). \]
+\[ \mySigma_\beta|\ldots \sim IW(d+1+J, S_n) \]
+or, equivalently, 
+\[ \mySigma_\beta^{-1}|\ldots \sim W(d+1+J, S_n^{-1}).\]
 \end{frame}
 
+
+\begin{frame}
+\frametitle{Reconsider full conditionals from the model}
+
+Reconsider the model 
+\[ \begin{array}{rl}
+  y_{ij} &\sim N(\beta_{j,0}+x_{ij}\beta_{j,1} ,\sigma_y^2) \\
+\beta_j &\sim N(\mu_\beta,\mySigma_\beta) \\
+p(\sigma_y^2/\mu_\beta,\mySigma_\beta) &\propto \frac{1}{\sigma_y^2} IW(\mySigma_\beta|d+1,\mathrm{I}).
+\end{array} \]
+
+\vspace{0.2in}
+
+The full conditionals 
+\begin{enumerate}[<+->]
+\item $p(\beta|\ldots)$: regression with informative prior
+\item $p(\sigma_y^2|\ldots)$: normal with known mean
+\item $p(\mu_\beta|\ldots)$: multivariate normal with known covariance matrix
+\item $p(\mySigma_\beta|\ldots)$: multivariat normal with known mean
+\end{enumerate}
+\end{frame}
 
 
 \begin{frame}
@@ -273,7 +316,7 @@ with
 
 
 \begin{frame}[fragile]
-<<mcmc>>=
+<<mcmc, cache=TRUE>>=
 mcmc = function(n_iter, y, X, group, v, S) {
   J = max(group)
   n = length(y)
@@ -313,9 +356,9 @@ mcmc = function(n_iter, y, X, group, v, S) {
     mu_beta = mvrnorm(1, colSums(beta)/J, Sigma_beta/J)
     
     # Sample Sigma_beta
-    Sp = S
-    for (j in 1:J) Sp = Sp + (beta[j,]-mu_beta)%*%t(beta[j,]-mu_beta)
-    Si = rWishart(1, v+J/2, solve(Sp))[,,1]
+    Sn = S
+    for (j in 1:J) Sn = Sn + (beta[j,]-mu_beta)%*%t(beta[j,]-mu_beta)
+    Si = rWishart(1, v+J, solve(Sn))[,,1]
     Sigma_beta = solve(Si)
     
     # Sample sigma_y
@@ -342,7 +385,7 @@ mcmc = function(n_iter, y, X, group, v, S) {
 
 \begin{frame}[fragile]
 <<run_mcmc, cache=TRUE>>=
-out = mcmc(10000, y, cbind(1,x), group, 3, diag(2))
+out = mcmc(1000, y, cbind(1,x), group, 3, diag(2))
 @
 \end{frame}
 
@@ -390,7 +433,7 @@ abline(v=fixef(m)[1], col="blue", lwd=2)
 
 hist(out$mu_beta[,2], 100, prob=TRUE)
 abline(v=0, col="red", lwd=2)
-abline(v=fixef(m)[1], col="blue", lwd=2)
+abline(v=fixef(m)[2], col="blue", lwd=2)
 legend("topright", c('Truth','REML'), lwd=2, col=c('red','blue'))
 @
 \end{frame}
