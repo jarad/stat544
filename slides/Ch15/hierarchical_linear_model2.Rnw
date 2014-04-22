@@ -38,13 +38,12 @@ opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='
 # Random intercept, random slope             #
 ##############################################
 require(reshape2)
-require(dplyr)
 require(plyr)
 require(ggplot2)
 require(MASS)
 #require(rjags)
 #require(rstan)
-#require(lme4)
+require(lme4)
 set.seed(20140422)
 @
 
@@ -56,11 +55,9 @@ set.seed(20140422)
   Let $y_{ij}$ be the observation for individual $i$ of group $j$ with explanatory variable $x_{ij}$ where $i=1,\ldots,n_j$ and $j=1,\ldots,J$ . \pause Then a \alert{random intercept, random slope model} is 
   \[ \begin{array}{rl}
   y_{ij} &\sim N(\beta_{0,j}+x_{ij}\beta_{1,j} ,\sigma_y^2) \\
-  \beta_j = \left( \begin{array}{c} 
-  \beta_{0,j} \\
-  \beta_{1,j}
-  \end{array} \right) &\sim N(\mu_\beta,\mySigma_\beta) 
+  \beta_j &\sim N(\mu_\beta,\mySigma_\beta) 
   \end{array} \]
+  where $\beta_j=(\beta_{0j},\beta_{1j})^\top$. 
   
 \end{frame}
 
@@ -100,7 +97,7 @@ p + facet_wrap(~group)
 
 \begin{frame}[fragile]
 <<>>=
-m = lmer(y~(x|group), d)
+m = lmer(y~x+(x|group), d)
 plot(ranef(m)$group)
 points(beta, pch=19)
 @
@@ -145,7 +142,7 @@ for $\nu>d+1$.
 
 Special cases:
 \begin{itemize}
-\item If $\nu=d+1$, then each of the correlations in $\Sigma$ has a marginal uniform prior. 
+\item If $\nu=d+1$, then each of the correlations in $\mySigma$ has a marginal uniform prior. 
 \item As $\nu\to-1$ and $|S|\to 0$, we have Jeffreys prior 
 \[ p(\mySigma) = |\mySigma|^{-(d+1)/2} \]
 \end{itemize}
@@ -209,25 +206,6 @@ where
 \end{frame}
 
 
-\begin{frame}[fragile]
-\frametitle{R implementation}
-
-<<>>=
-sample_betas = function(data, prior, params) {
-  J = data$J
-  betaj           = array(NA, dim=c(J,2))
-  for (j in 1:J) {
-    wh = data$group == j
-    X = data$X[wh,]
-    Sigma_betaj_hat = solve(prior$Sigma_beta_inv + t(X)%*%X/params$sigma2_y)
-    betaj_hat = Sigma_betaj_hat %*% (prior$Sigma_beta_inv %*% prior$mu_beta + X%*%data$y[wh])
-    betaj[j,] = rnorm(1, betaj_hat, Sigma_betaj_hat)
-  }
-  return(betaj)
-}
-@
-
-\end{frame}
 
 
 \begin{frame}
@@ -251,6 +229,7 @@ Thus
 \begin{frame}
 \frametitle{Full conditional for $\mySigma_\beta$}
 {\small
+Assume $\mySigma_\beta \sim IW(d+1,\mathrm{I})$, then 
 \[ \begin{array}{rl}
 p(\mySigma_\beta|\ldots) 
 \propto& p(y|\beta,\sigma_y^2)p(\beta|\mu_\beta,\mySigma_\beta)p(\sigma_y^2,\mu_\beta,\mySigma_\beta) \\
@@ -267,20 +246,176 @@ so
 \[ \mySigma_\beta|\ldots \sim IW(d+1+J/2, S'). \]
 \end{frame}
 
+
+
 \begin{frame}
 \frametitle{Full conditional for $\mu_\beta$}
 {\small
 \[ \begin{array}{rl}
-p(\mySigma_\beta|y,\sigma_y^2,\beta,\mu_\beta) 
+p(\mu_\beta|y,\sigma_y^2,\beta,\mu_\beta) 
 \propto& p(y|\beta,\sigma_y^2)p(\beta|\mu_\beta,\mySigma_\beta)p(\sigma_y^2,\mu_\beta,\mySigma_\beta) \\
 \propto& p(\beta|\mu_\beta,\mySigma_\beta) p(\mu_\beta) \\
-\propto& \prod_{j=1}^J |\Sigma_\beta|^{-1/2} e^{-(\beta_j-\mu_beta)^\top \Sigma_\beta^{-1}(\beta_j-\mu_beta)/2} \\
-\propto& |\Sigma_\beta|^{-J/2} e^{-\mbox{tr}(\Sigma_\beta^{-1} SS)}
+\propto& \prod_{j=1}^J e^{-(\beta_j-\mu_\beta)^\top \mySigma_\beta^{-1}(\beta_j-\mu_\beta)/2} \\
+\propto& e^{-[\mu_\beta' (J \mySigma_{\beta}^{-1})\mu_\beta-2\mu_\beta \mySigma_\beta^{-1} \sum_{j=1}^J \beta_j  ]/2}
 \end{array} \]
-where 
-\[ SS = \sum_{j=1}^J (\beta_j-\mu_\beta)(\beta_j-\mu_\beta)^\top \]
+Thus
+\[ \mu_\beta|\ldots ~ N(\hat{\mu}_\beta, \hat{\mySigma}_\mu) \]
+with 
+\[ \begin{array}{rl}
+\hat{\mySigma}_\mu &= \mySigma_\beta/J \\
+\hat{\mu}_\beta &= \frac{1}{J} \sum_{j=1}^J \beta_j
+\end{array} \]
 }
 
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
+<<mcmc>>=
+mcmc = function(n_iter, y, X, group, v, S) {
+  J = max(group)
+  n = length(y)
+  
+  # Precalculate quantities
+  XX = array(NA, dim=c(J,2,2))
+  XY = array(NA, dim=c(J,2  ))
+  for (j in 1:J) {
+    gp = which(group==j)
+    Xj = X[gp,]
+    XX[j,,] = t(Xj)%*%Xj
+    XY[j, ] = t(Xj)%*%y[gp]
+  }
+  
+  # Saving structures
+  beta_keep       = array(NA, dim=c(n_iter, J, 2))
+  mu_beta_keep    = array(NA, dim=c(n_iter,2))
+  Sigma_beta_keep = array(NA, dim=c(n_iter, 2, 2))
+  sigma_y_keep    = array(NA, dim=c(n_iter,1))
+  
+  # Initial values
+  beta    = matrix(0, J, 2)
+  mu_beta = c(0,0)
+  Si      = diag(2) # Sigma_beta inverse
+  sigma_y = 1; sigma2_y = sigma_y^2
+  
+  for (i in 1:n_iter) {
+    # Sample beta's
+    Si_mu = Si%*%mu_beta
+    for (j in 1:J) {
+     Sigma_beta_hat = solve(Si + XX[j,,]/sigma2_y)
+     beta_hat       = Sigma_beta_hat%*%(Si_mu+XY[j,]/sigma2_y)
+     beta[j,] = mvrnorm(1, beta_hat, Sigma_beta_hat)
+    }
+    
+    # Sample mu_beta
+    mu_beta = mvrnorm(1, colSums(beta)/J, Sigma_beta/J)
+    
+    # Sample Sigma_beta
+    Sp = S
+    for (j in 1:J) Sp = Sp + (beta[j,]-mu_beta)%*%t(beta[j,]-mu_beta)
+    Si = rWishart(1, v+J/2, solve(Sp))[,,1]
+    Sigma_beta = solve(Si)
+    
+    # Sample sigma_y
+    nv = 0
+    for (k in 1:n) nv = nv + (y[k]-X[k,]%*%beta[group[k],])^2
+    sigma2_y = 1/rgamma(1, n/2, nv/2)
+    sigma_y = sqrt(sigma2_y)
+    
+    # Record values
+    beta_keep[i,,]       = beta
+    mu_beta_keep[i,]     = mu_beta
+    Sigma_beta_keep[i,,] = Sigma_beta
+    sigma_y_keep[i]      = sigma_y
+  }
+  
+  return(list(beta       = beta_keep, 
+              mu_beta    = mu_beta_keep,
+              Sigma_beta = Sigma_beta_keep, 
+              sigma_y    = sigma_y_keep))
+}
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<run_mcmc, cache=TRUE>>=
+out = mcmc(10000, y, cbind(1,x), group, 3, diag(2))
+@
+\end{frame}
+
+\begin{frame}[fragile]
+<<sigma_y, dependson='run_mcmc'>>=
+hist(out$sigma_y,100, prob=TRUE, main="Posterior for sigma_y")
+abline(v=1, col="red", lwd=2)
+abline(v=summary(m)$sigma, col="blue", lwd=2)
+legend("topright", c("Truth","REML"), lwd=2, col=c("red","blue"))
+@
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
+<<sigma_beta, dependson='run_mcmc', echo=FALSE, cache=TRUE>>=
+rho = adply(out$Sigma_beta, 1, function(x) data.frame(rho=x[1,2]/sqrt(x[1,1]*x[2,2])))
+par(mfrow=c(1,3))
+hist(rho$rho, 100, prob=TRUE, main="Correlation")
+abline(v=0.5, col="red", lwd=2)
+abline(v=as.data.frame(VarCorr(m))[3,5], col="blue", lwd=2)
+
+hist(out$Sigma[,1,1], 100, prob=TRUE)
+abline(v=1, col="red", lwd=2)
+abline(v=as.data.frame(VarCorr(m))[1,4], col="blue", lwd=2)
+
+hist(out$Sigma[,2,2], 100, prob=TRUE)
+abline(v=1, col="red", lwd=2)
+abline(v=as.data.frame(VarCorr(m))[2,4], col="blue", lwd=2)
+legend("topright", c('Truth','REML'), lwd=2, col=c('red','blue'))
+@
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
+<<mu_beta, dependson='run_mcmc', echo=FALSE, cache=TRUE>>=
+par(mfrow=c(1,2))
+
+hist(out$mu_beta[,1], 100, prob=TRUE)
+abline(v=0, col="red", lwd=2)
+abline(v=fixef(m)[1], col="blue", lwd=2)
+
+hist(out$mu_beta[,2], 100, prob=TRUE)
+abline(v=0, col="red", lwd=2)
+abline(v=fixef(m)[1], col="blue", lwd=2)
+legend("topright", c('Truth','REML'), lwd=2, col=c('red','blue'))
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+<<beta, dependson='run_mcmc', echo=FALSE, cache=TRUE>>=
+q = adply(out$beta, 2, function(x) {
+  data.frame(beta0_lb = quantile(x[,1],.025),
+             beta0_ub = quantile(x[,1],.975),
+             beta1_lb = quantile(x[,2],.025),
+             beta1_ub = quantile(x[,2],.975))
+})
+par(mfrow=c(1,2))
+plot(0,0, type="n", xlim=range(q$beta0_lb, q$beta0_ub), ylim=c(0,J+1), main="Intercepts", ylab="Group", xlab="")
+segments(q$beta0_lb, 1:J, q$beta0_ub, 1:J)
+points(beta[,1], 1:J, col="red")
+points(ranef(m)$group[,1]+fixef(m)[1], 1:J, col="blue")
+
+plot(0,0, type="n", xlim=range(q$beta1_lb, q$beta1_ub), ylim=c(0,J+1), main="Slopes", ylab="Group", xlab="")
+segments(q$beta1_lb, 1:J, q$beta1_ub, 1:J)
+points(beta[,2], 1:J, col="red")
+points(ranef(m)$group[,2]+fixef(m)[2], 1:J, col="blue")
+@
 \end{frame}
 
 
