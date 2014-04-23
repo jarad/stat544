@@ -1,0 +1,196 @@
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
+
+
+
+
+\usecolortheme[RGB={0,0,144}]{structure}
+\usetheme{AnnArbor}\usecolortheme{beaver}
+%\usetheme{CambridgeUS}\usecolortheme{crane}
+
+\usepackage{verbatim,xmpmulti,color,multicol,multirow}
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+%\usepackage{beamerthemesplit}
+\setbeamertemplate{navigation symbols}{}
+%\setbeamercolor{alerted text}{fg=red}
+%\setbeamertemplate{block body theorem}{bg=orange}
+\setkeys{Gin}{width=0.6\textwidth}
+
+
+\title{Probit regression}
+\subtitle{Genotypic fungal resistance}
+\author[Jarad Niemi]{Dr. Jarad Niemi}
+\institute[Iowa State]{Iowa State University}
+\date{\today}
+
+\newcommand{\mG}{\mathrm{\Gamma}}
+\newcommand{\I}{\mathrm{I}}
+\newcommand{\mySigma}{\mathrm{\Sigma}}
+\newcommand{\myPhi}{\mathrm{\Phi}}
+
+\begin{document}
+
+<<chunk_options, echo=FALSE, message=FALSE>>=
+require(knitr) # only needed so the following command does not fail when sourcing R code
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+##############################################
+# GLMMs                                      #
+##############################################
+require(reshape2)
+require(plyr)
+require(ggplot2)
+require(rstan)
+set.seed(20140424)
+@
+
+\frame{\maketitle}
+
+\begin{frame}
+\frametitle{Probit regression}
+Consider the model
+\[ Y_i \stackrel{ind}{\sim} Bin(n_i,\theta_i) \]
+where, for the $i$th observation, 
+\begin{itemize}[<+->]
+\item $Y_i$ is the number of successes,
+\item $n_i$ is the number of trials, and
+\item $\theta_i$ is the probability of success.
+\end{itemize}
+
+A probit regression model assumes 
+\[ \theta_i = \myPhi(X_i^\top\beta) \]
+where 
+\begin{itemize}
+\item $X_i$ are the explanatory variables for the $i$th observation,
+\item $\myPhi$ is the standard normal cumulative distribution function, and 
+\item $\beta$ is the vector of parameters to be estimated.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Low birth weight}
+<<birthwt>>=
+library(MASS)
+birthwt$race = factor(birthwt$race)
+summary(birthwt)
+birthwt$age  = with(birthwt, (age-mean(age))/sd(age))
+birthwt$lwt  = with(birthwt, (lwt-mean(lwt))/sd(lwt))
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<non-Bayesian>>=
+m = glm(low~., family=binomial(link=probit), data=birthwt[,-10])
+@
+\end{frame}
+
+\section{Bayesian analysis}
+\begin{frame}
+\frametitle{Probit regression}
+Consider the model
+\[ \begin{array}{rl}
+Y_i &\stackrel{ind}{\sim} Bin(n_i,\theta_i) \\
+\theta_i &= \myPhi(X_i^\top\beta)
+\end{array}  \]
+
+
+\vspace{0.2in} \pause
+
+Prior 
+\[ \beta \sim N(\beta_0,\mySigma_\beta) \]
+
+\vspace{0.2in} \pause
+
+The posterior distribution is 
+\[ \begin{array}{rl}
+p(\beta|y) &\propto p(y|\beta)p(\beta) \\
+&\propto \prod_{i=1}^n \myPhi(X_i'\beta)^{y_i}[1-\myPhi(X_i'\beta)]^{n_i-y_i} e^{-(\beta-\beta_0)^\top\mySigma_\beta^{-1}(\beta-\beta_0)} 
+\end{array} \]
+\pause But neither $p(\beta|y)$ nor $p(\beta_p|y,\beta_{-p})$ are a known distribution.
+\end{frame}
+
+
+
+
+\subsection{Data augmentation}
+\begin{frame}
+\frametitle{Data augmentation}
+An alternative construction of the model is 
+\[ \begin{array}{rl}
+Y_i &= \\I(Z_i>0) \\
+Z_i &\stackrel{ind}{\sim} N(X_i'\beta,1)
+\end{array} \]
+Note that 
+\[ \begin{array}{rll}
+\theta_i 
+&= Pr(Y_i=1) \\
+&= Pr(Z_i>0) \\
+&= Pr(X_i'\beta+\epsilon>0) \\
+&= Pr(\epsilon>X_i'\beta) \\
+&= Pr(\epsilon<X_i'\beta) & \mbox{symmetry of standard normal} \\
+&= \myPhi(X_i'\beta) 
+\end{array} \]
+Thus, this is equivalent to the probit regression model.
+\end{frame}
+
+
+
+
+\begin{frame}
+\frametitle{Posterior distribution}
+
+Now, the full data likelihood is 
+\[ p(y|Z) \propto \prod_{i=1}^n \left[\I(Z_i>0)\I(y_i=1)+\I(Z_i\le 0)\I(y_i=0)\right] \]
+and priors
+\[ Z_i \stackrel{ind}{\sim} N(X_i'\beta,1) \qquad \beta\sim N(\beta_0,\mySigma_\beta) \]
+%and thus the full posterior is 
+%\[ p(\beta,Z|y) \propto \prod_{i=1}^n N(Z_i|X_i'\beta,1)\left[\I(Z_i>0)\I(y_i=1)+\I(Z_i\le 0)\I(y_i=0)\right] \]
+
+Thus the posterior distribution is 
+\[ p(\beta,Z|y) \propto p(y|Z,\beta) p(\beta) = p(y|Z) p(Z|\beta) p(\beta) \]
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Full conditional for $\beta$}
+
+The full conditional for $\beta$ is 
+\[ \begin{array}{rl}
+p(\beta|\ldots) \propto& p(y|Z) p(Z|\beta) p(\beta) \\
+=& \prod_{i=1}^n N(Z_i|X_i'\beta,1)\left[\I(Z_i>0)\I(y_i=1)+\I(Z_i\le 0)\I(y_i=0)\right] \\
+&\times N(\beta|\beta_0,\mySigma_\beta) \\
+\propto& N(Z|X\beta,\I) N(\beta|\beta_0,\mySigma_\beta)  
+\end{array} \]
+and thus 
+$\beta|\ldots \sim N(\hat{\beta},\hat{\mySigma}_\beta)$ with 
+
+\[ \begin{array}{rl}
+\hat{\mySigma}_\beta &= [\mySigma_\beta^{-1} + X^\top X]^{-1} \\
+\hat{\beta} &= \hat{\mySigma}_\beta [\mySigma_\beta^{-1}\beta_0 + X^\top Z]
+\end{array} \]
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Full conditional for $Z$}
+
+The full conditional for $Z$ is 
+\[ \begin{array}{rl}
+p(Z|\ldots) \propto& p(y|Z) p(Z|\beta) p(\beta) \\
+=& \prod_{i=1}^n N(Z_i|X_i'\beta,1)\left[\I(Z_i>0)\I(y_i=1)+\I(Z_i\le 0)\I(y_i=0)\right] \\
+&\times N(\beta|\beta_0,\mySigma_\beta) \\
+\propto& \prod_{i=1}^n N(Z_i|X_i'\beta,1)\left[\I(Z_i>0)\I(y_i=1)+\I(Z_i\le 0)\I(y_i=0)\right]
+\end{array} \]
+Thus the $Z_i$ are conditionally independent with distribution 
+\[ p(Z_i|Y_i,\beta) = \left\{ \begin{array}{rl}
+N(Z_i|X_i'\beta,1)\I(Z_i>0) & \mbox{if } y_i=1 \\
+N(Z_i|X_i'\beta,1)\I(Z_i\le 0) & \mbox{if } y_i=0
+\end{array} \right. \]
+
+\end{frame}
+
+
+\end{document}

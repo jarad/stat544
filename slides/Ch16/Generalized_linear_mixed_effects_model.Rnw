@@ -50,19 +50,19 @@ set.seed(20140417)
 
 \section{Sow culling time}
 \frame{\frametitle{Sow culling time}
-	From Caitlyn Abell:
-	\begin{quote}
-	I have attached the data file with 2,868 records from one farm. The
+From Caitlyn Abell:
+\begin{quote}
+I have attached the data file with 2,868 records from one farm. The
 contemporary group (cg) is farm, year and season. There are
 columns for number born alive (nba), number born dead (nbd), and
 parity.  One thing you could look at would be improvement over time or differences of performance between the
 parities [litters]. I think determining the optimal culling time for a sow given her past
 history would be interesting. 
-	\end{quote}
-	
-	\vspace{0.2in} \pause
-	
-	Primary question of interest: when should a sow be removed from breeding?
+\end{quote}
+
+\vspace{0.2in} \pause
+
+Primary question of interest: when should a sow be removed from breeding?
 }
 
 
@@ -99,60 +99,60 @@ summary(factor(d$parity))
 
 
 \frame{\frametitle{Model}
-  Let 
-	\begin{itemize}
-	\item $y_i$ be the number born alive for the $i^{th}$ litter \pause
-	\item $p[i]$ is the parity for the $i^{th}$ litter \pause
-	\item $d[i]$ is the sow for the $i^{th}$ litter \pause
-	\item $s[i]$ is the grandsire for the $i^{th}$ litter \pause
-	\end{itemize}	
-	Assume
-	\[ \begin{array}{ll@{\qquad}l}
-	y_i &\stackrel{ind}{\sim} Po( e^{\mu_i} ) & i=1,\ldots,n \pause \\
-	\mu_i &= \rho_{p[i]} + \alpha_{d[i]} + \beta_{s[i]} \pause \\
-	\rho_p &\stackrel{iid}{\sim} N(0, 10^6) & p=1,\ldots,7 \pause \\
-	\alpha_d &\stackrel{iid}{\sim} N(0, \sigma^2_\alpha) & d=1,\ldots,n_{sows} \pause \\
-	\beta_s &\stackrel{iid}{\sim} N(0, \sigma^2_\beta) & s=1,\ldots,n_{grandsires} \pause \\
-	\sigma_\alpha &\sim Unif(0,1000) \pause \\
-	\sigma_\beta &\sim Unif(0,1000) \\
-	\end{array} \]
+Let 
+\begin{itemize}
+\item $y_i$ be the number born alive for the $i^{th}$ litter \pause
+\item $p[i]$ is the parity for the $i^{th}$ litter \pause
+\item $d[i]$ is the sow for the $i^{th}$ litter \pause
+\item $s[i]$ is the grandsire for the $i^{th}$ litter \pause
+\end{itemize}	
+Assume
+\[ \begin{array}{ll@{\qquad}l}
+y_i &\stackrel{ind}{\sim} Po( e^{\mu_i} ) & i=1,\ldots,n \pause \\
+\mu_i &= \rho_{p[i]} + \alpha_{d[i]} + \beta_{s[i]} \pause \\
+\rho_p &\stackrel{iid}{\sim} N(0, 10^6) & p=1,\ldots,7 \pause \\
+\alpha_d &\stackrel{iid}{\sim} N(0, \sigma^2_\alpha) & d=1,\ldots,n_{sows} \pause \\
+\beta_s &\stackrel{iid}{\sim} N(0, \sigma^2_\beta) & s=1,\ldots,n_{grandsires} \pause \\
+\sigma_\alpha &\sim Unif(0,1000) \pause \\
+\sigma_\beta &\sim Unif(0,1000) \\
+\end{array} \]
 }
 
 
 
 \begin{frame}[fragile]
-<<stan_model>>=
+<<stan, tidy=FALSE>>=
 model = "
 data {
-  int<lower=1> n;
-  int<lower=1> np;
-  int<lower=1> nd;
-  int<lower=1> ns;
-  int<lower=0> y[n];
-  int<lower=1, upper=np> parity[n];
-  int<lower=1, upper=nd> dam[n];
-  int<lower=1, upper=ns> sire[n];
+int<lower=1> n;
+int<lower=1> np;
+int<lower=1> nd;
+int<lower=1> ns;
+int<lower=0> y[n];
+int<lower=1, upper=np> parity[n];
+int<lower=1, upper=nd> dam[n];
+int<lower=1, upper=ns> sire[n];
 }
 
 parameters {
-  real rho[np];     // implicit prior over whole real line
-  real alpha[nd];
-  real beta[ns];
-  real<lower=0> sigma_alpha;
-  real<lower=0> sigma_beta;
+real rho[np];     // implicit prior over whole real line
+real alpha[nd];
+real beta[ns];
+real<lower=0> sigma_alpha;
+real<lower=0> sigma_beta;
 }
 
 model {
-  for (i in 1:n) {
-    y[i] ~ poisson(exp(rho[parity[i]]+alpha[dam[i]]+beta[sire[i]]));
-  }
+for (i in 1:n) {
+y[i] ~ poisson(exp(rho[parity[i]]+alpha[dam[i]]+beta[sire[i]]));
+}
 
-  # Random effects
-  for (d in 1:nd) { alpha[d]  ~ normal(0, sigma_alpha); }
-  for (s in 1:ns) { beta[s]   ~ normal(0, sigma_beta); }
+# Random effects
+for (d in 1:nd) { alpha[d]  ~ normal(0, sigma_alpha); }
+for (s in 1:ns) { beta[s]   ~ normal(0, sigma_beta); }
 
-  sigma_alpha ~ uniform(0,1000);
-  sigma_beta  ~ uniform(0,1000);
+sigma_alpha ~ uniform(0,1000);
+sigma_beta  ~ uniform(0,1000);
 }"
 
 @
@@ -240,44 +240,44 @@ hist(sigmas$sigma_beta,  prob=TRUE, xlim=c(0,0.1), main="Standard deviation of S
 
 \subsection{Culling time}
 \frame{\frametitle{Culling time}
-  Primary question of interest: when should a sow be removed from breeding?	
-	
-	\vspace{0.2in} \pause
-	
-	Who is expected to have more progeny: \pause
-	\begin{itemize}
-	\item a current sow $d$ \pause
-	\item a new sow
-	\end{itemize}
-	
- \pause
-	
-	{\small
-	Current sow (for $p^{th}$ progeny and average grandsire):
-  \[ \begin{array}{rl}
-  E[\tilde{y}_d|y] &= E\large[E[\tilde{y}_d|\rho,\alpha,\beta]|y \large] \pause \\
-  &= E\left[ \left. e^{\rho_p+\alpha_d+0}\right|y\right] \pause \\
-  &\approx \frac{1}{T} \sum_{t=1}^T e^{\rho_p^t+\alpha_d^t}
-  \end{array} \]
-	\pause New sow (for $1^{st}$ progeny and average grandsire):
-  \[ \begin{array}{rl}
-  E[\tilde{y}_{new}|y] &= \approx \frac{1}{T} \sum_{t=1}^T e^{\rho_1^t+\alpha_{new}^t}
-  \end{array} \]
-  where $\alpha_{new}^t \sim N(0,\sigma_{\alpha}^2)$.
-	}
+Primary question of interest: when should a sow be removed from breeding?	
+
+\vspace{0.2in} \pause
+
+Who is expected to have more progeny: \pause
+\begin{itemize}
+\item a current sow $d$ \pause
+\item a new sow
+\end{itemize}
+
+\pause
+
+{\small
+Current sow (for $p^{th}$ progeny and average grandsire):
+\[ \begin{array}{rl}
+E[\tilde{y}_d|y] &= E\large[E[\tilde{y}_d|\rho,\alpha,\beta]|y \large] \pause \\
+&= E\left[ \left. e^{\rho_p+\alpha_d+0}\right|y\right] \pause \\
+&\approx \frac{1}{T} \sum_{t=1}^T e^{\rho_p^t+\alpha_d^t}
+\end{array} \]
+\pause New sow (for $1^{st}$ progeny and average grandsire):
+\[ \begin{array}{rl}
+E[\tilde{y}_{new}|y] &= \approx \frac{1}{T} \sum_{t=1}^T e^{\rho_1^t+\alpha_{new}^t}
+\end{array} \]
+where $\alpha_{new}^t \sim N(0,\sigma_{\alpha}^2)$.
+}
 }
 
 \frame{\frametitle{Simulated answer}
-	For MCMC iterations $j=1,\ldots,J$, \pause 
-	\begin{enumerate}
-  \item Simulate $\mu^t_{d} = e^{\rho_p^t+\alpha_d^t}$. \pause 
-  \item Simulate $\mu^t_{new} = e^{\rho_p^t+\alpha_{new}^t}$ where $\alpha_{new}^t \sim N\left(0,\sigma^{2^t}_\alpha\right)$. \pause 
-	\item Calculate $\delta^t = \mu_{new}^t - \mu_d^t$.
-	\end{enumerate}
-	
-	\vspace{0.2in} \pause
-	
-	So $\delta^t$ is a realization expected difference in the number of progeny between a new sow and current sow $d$.
+For MCMC iterations $j=1,\ldots,J$, \pause 
+\begin{enumerate}
+\item Simulate $\mu^t_{d} = e^{\rho_p^t+\alpha_d^t}$. \pause 
+\item Simulate $\mu^t_{new} = e^{\rho_p^t+\alpha_{new}^t}$ where $\alpha_{new}^t \sim N\left(0,\sigma^{2^t}_\alpha\right)$. \pause 
+\item Calculate $\delta^t = \mu_{new}^t - \mu_d^t$.
+\end{enumerate}
+
+\vspace{0.2in} \pause
+
+So $\delta^t$ is a realization expected difference in the number of progeny between a new sow and current sow $d$.
 }
 
 
@@ -312,7 +312,7 @@ hist(exp_nba_old1-exp_nba_new, 100, main="Expected difference (Old-New)")
 
 
 \begin{frame}[fragile]
-<<parity_four, dependson="run_mcmc">>=
+<<parity_four, dependson="run_mcmc", fig.width=8>>=
 # Replace sow with 23 born alive after 4 parities?
 wh = which(sow_summary$max_parity==4 & sow_summary$sum_nba==23)
 
@@ -338,45 +338,45 @@ mean(exp_nba_old2-exp_nba_new>0)
 
 \subsection{Cost function}
 \frame{\frametitle{Cost functions}
-	Suppose the only cost difference is in the number of progeny, \pause then $U(\tilde{y}_i) = c_1 \tilde{y}_i$ \pause and want 
-	\[ \max_{i\in \{d, new\}} E[U(\tilde{y}_i)|y] \]
-	\pause or, equivalently, if
-	\[ E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] > 0 \] 
-	\pause pick $new$. \pause 
-	But, since expectation is a linear operator,
-	\[ \begin{array}{ll} 
-	E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] &= E[U(\tilde{y}_{new})-U(\tilde{y}_d)|y] \pause \\
-	&= E[c_1 \tilde{y}_{new} - c_1 \tilde{y}_d|y] \pause \\
-	&= c_1 E[\tilde{y}_{new} - \tilde{y}_d|y] \pause \\
-	&= c_1 E[\delta|y] \\
-	\end{array} \]
-	
-	\pause So $c_1$ just scales our posterior expectation for the difference. 
+Suppose the only cost difference is in the number of progeny, \pause then $U(\tilde{y}_i) = c_1 \tilde{y}_i$ \pause and want 
+\[ \max_{i\in \{d, new\}} E[U(\tilde{y}_i)|y] \]
+\pause or, equivalently, if
+\[ E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] > 0 \] 
+\pause pick $new$. \pause 
+But, since expectation is a linear operator,
+\[ \begin{array}{ll} 
+E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] &= E[U(\tilde{y}_{new})-U(\tilde{y}_d)|y] \pause \\
+&= E[c_1 \tilde{y}_{new} - c_1 \tilde{y}_d|y] \pause \\
+&= c_1 E[\tilde{y}_{new} - \tilde{y}_d|y] \pause \\
+&= c_1 E[\delta|y] \\
+\end{array} \]
+
+\pause So $c_1$ just scales our posterior expectation for the difference. 
 }
 
 
 \frame{\frametitle{Cost functions}
-	Suppose the cost also involves moving a new sow in, \pause then $U(\tilde{y}_i) = c_1 \tilde{y}_i - c_2\I(i=new)$ \pause and want 
-	\[ E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] = c_1 E[\delta|y] -c_2 > 0 \] 
-	to pick $new$. 
-	
-	\vspace{0.2in} \pause 
+Suppose the cost also involves moving a new sow in, \pause then $U(\tilde{y}_i) = c_1 \tilde{y}_i - c_2\I(i=new)$ \pause and want 
+\[ E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] = c_1 E[\delta|y] -c_2 > 0 \] 
+to pick $new$. 
 
-	Alternatively, perhaps an older sow (or this particular sow) needs more medications, \pause then $U(\tilde{y}_i) = c_1 \tilde{y}_i - c_2\I(i=d)$ \pause and want 
-	\[ E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] = c_1 E[\delta|y] +c_2 > 0 \] 
-	to pick $new$.  
-	
-	\vspace{0.2in} \pause
-	
-	The decision will depend on $c_1$ and $c_2$. 
+\vspace{0.2in} \pause 
+
+Alternatively, perhaps an older sow (or this particular sow) needs more medications, \pause then $U(\tilde{y}_i) = c_1 \tilde{y}_i - c_2\I(i=d)$ \pause and want 
+\[ E[U(\tilde{y}_{new})|y] - E[U(\tilde{y}_d)|y] = c_1 E[\delta|y] +c_2 > 0 \] 
+to pick $new$.  
+
+\vspace{0.2in} \pause
+
+The decision will depend on $c_1$ and $c_2$. 
 }
 
 \frame{\frametitle{Cost functions}
-	So far, all cost functions have been linear in $\tilde{y}$\pause, but suppose $U(\tilde{y}_i)$ is a complicated function of $\tilde{y}_i$. \pause Then to pick $new$, we want
-	\[ E[U(\tilde{y}_{new})-U(\tilde{y}_d)|y] > 0 \]
-	\pause This may be analytically intractable, but we can easily simulate from it. \pause Suppose 
-	\[ U(\tilde{y}_i) = \tilde{y}_i + 0.1(\tilde{y}_i-10) \I(\tilde{y}_i>10) - 0.2\I(i=new), \]
-	\pause then
+So far, all cost functions have been linear in $\tilde{y}$\pause, but suppose $U(\tilde{y}_i)$ is a complicated function of $\tilde{y}_i$. \pause Then to pick $new$, we want
+\[ E[U(\tilde{y}_{new})-U(\tilde{y}_d)|y] > 0 \]
+\pause This may be analytically intractable, but we can easily simulate from it. \pause Suppose 
+\[ U(\tilde{y}_i) = \tilde{y}_i + 0.1(\tilde{y}_i-10) \I(\tilde{y}_i>10) - 0.2\I(i=new), \]
+\pause then
 }
 
 \begin{frame}
@@ -399,13 +399,13 @@ where $e^{\rho_p^t+\alpha_d^t}$ and $e^{\rho_1^t+\alpha_{new}^t}$ are simulation
 
 \subsection{Summary}
 \frame{\frametitle{Summary}
-	Lecture demonstrated
-	\begin{itemize}[<+->]
-	\item mixed effect Poisson regression model,
-	\item implementation in JAGS,
-	\item posterior summaries, and
-	\item using the analysis to make a decision regarding sow culling time.
-	\end{itemize}
+Lecture demonstrated
+\begin{itemize}[<+->]
+\item mixed effect Poisson regression model,
+\item implementation in JAGS,
+\item posterior summaries, and
+\item using the analysis to make a decision regarding sow culling time.
+\end{itemize}
 }
 
 
