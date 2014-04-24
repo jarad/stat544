@@ -1,5 +1,5 @@
-%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-\documentclass{beamer}
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
 
 
 
