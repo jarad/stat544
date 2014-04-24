@@ -1,5 +1,5 @@
-%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-\documentclass{beamer}
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
 
 
 
@@ -109,7 +109,7 @@ with prior
 The posterior distribution is 
 \[ \begin{array}{rl}
 p(\beta|y) &\propto p(y|\beta)p(\beta) \\
-&\propto \prod_{i=1}^n \myPhi(X_i'\beta)^{y_i}[1-\myPhi(X_i'\beta)]^{n_i-y_i} e^{-(\beta-\beta_0)^\top\mySigma_\beta^{-1}(\beta-\beta_0)} 
+&\propto \prod_{i=1}^n \myPhi(X_i'\beta)^{y_i}[1-\myPhi(X_i'\beta)]^{1-y_i} e^{-(\beta-\beta_0)^\top\mySigma_\beta^{-1}(\beta-\beta_0)/2} 
 \end{array} \]
 \pause But neither $p(\beta|y)$ nor $p(\beta_p|y,\beta_{-p})$ are a known distribution.
 \end{frame}
@@ -165,8 +165,8 @@ Thus the posterior distribution is
 The full conditional for $\beta$ is 
 \[ \begin{array}{rl}
 p(\beta|\ldots) \propto& p(y|Z) p(Z|\beta) p(\beta) \pause \\
-=& \prod_{i=1}^n N(Z_i|X_i'\beta,1)\left[\I(Z_i>0)\I(y_i=1)+\I(Z_i\le 0)\I(y_i=0)\right] \pause \\
-&\times N(\beta|\beta_0,\mySigma_\beta) \pause \\
+\propto& p(Z|\beta)p(\beta) \\
+=& \prod_{i=1}^n N(Z_i|X_i'\beta,1) N(\beta|\beta_0,\mySigma_\beta) \pause \\
 \propto& N(Z|X\beta,\I) N(\beta|\beta_0,\mySigma_\beta)  
 \end{array} \]
 \pause and thus 
@@ -185,9 +185,8 @@ $\beta|\ldots \sim N(\hat{\beta},\hat{\mySigma}_\beta)$ \pause with
 The full conditional for $Z$ is 
 \[ \begin{array}{rl}
 p(Z|\ldots) \propto& p(y|Z) p(Z|\beta) p(\beta) \pause \\
-=& \prod_{i=1}^n N(Z_i|X_i'\beta,1)\left[\I(Z_i>0)\I(y_i=1)+\I(Z_i\le 0)\I(y_i=0)\right] \pause \\
-&\times N(\beta|\beta_0,\mySigma_\beta) \pause \\
-\propto& \prod_{i=1}^n N(Z_i|X_i'\beta,1)\left[\I(Z_i>0)\I(y_i=1)+\I(Z_i\le 0)\I(y_i=0)\right]
+\propto& p(y|Z)p(Z|\beta) \\
+=& \prod_{i=1}^n N(Z_i|X_i'\beta,1)\left[\I(Z_i>0)\I(y_i=1)+\I(Z_i\le 0)\I(y_i=0)\right] 
 \end{array} \]
 \pause  Thus the $Z_i$ are conditionally independent with distribution 
 \[ p(Z_i|Y_i,\beta) = \left\{ \begin{array}{rl}
@@ -250,7 +249,7 @@ mcmc = function(n_iter, y, X, beta0, Sigma_beta) {
 <<run_mcmc, dependson="mcmc", cache=TRUE>>=
 X = model.matrix(m) # Constructs the design matrix
 p = ncol(X)
-out = mcmc(1000, birthwt$low, X, rep(0,p), 3*diag(p))
+out = mcmc(10000, birthwt$low, X, rep(0,p), 3*diag(p))
 colnames(out$beta) = colnames(X)
 @
 \end{frame}
@@ -297,8 +296,9 @@ Y_i &= \I(Z_i>0) \\
 Z &\sim N(\tilde{X}\tilde{\beta}, 1)
 \end{array} \]
 \pause where 
-\[ \tilde{X} = [X\quad Z] \qquad \tilde{\beta} = (\beta, u)^\top \]
-\pause and $u\sim N(0,\sigma^2 \I)$ and $\sigma\sim Unif(0,10)$. \pause Thus the prior on $\tilde{\beta}$ is 
+\[ \tilde{X} = [X\quad Zm] \qquad \tilde{\beta} = (\beta, u)^\top \]
+where $X$ is the design matrix for fixed effects and $Zm$ is the design matrix for the random effects. 
+\pause A common assumption is that the random effects are $u\sim N(0,\sigma^2 \I)$. \pause And the prior $\sigma\sim Unif(0,10)$ can be specified. \pause Thus the prior on $\tilde{\beta}$ is 
 \[ \tilde{\beta} = 
 \left( \begin{array}{c} \beta \\ u 
 \end{array} \right) \sim 
@@ -339,12 +339,13 @@ but we need the full conditional for $\sigma^2$ to implement a Gibbs sampler.
 \[ \begin{array}{rl}
 p(\sigma^2|\ldots) &\propto p(y|Z)p(Z|\tilde{\beta})p(\tilde{\beta}|\sigma^2)p(\sigma^2) \pause \\
 &= p(\tilde{\beta}|\sigma^2)p(\sigma^2) \pause \\
+&= p(\tilde{\beta})p(u|\sigma^2)p(\sigma^2) \\
 &\propto p(u|\sigma^2)p(\sigma^2) \pause \\
-&\propto \prod_{u=1}^U N(u_i|0,\sigma^2) \frac{1}{\sigma}\I(0,100) \pause \\
-&\propto (\sigma^2)^{-U/2} e^{-\frac{1}{2\sigma^2}u'u} (\sigma^2)^{-1/2}\I(0,100)  \pause \\
-&= (\sigma^2)^{-\frac{U-1}{2}-1}e^{-\frac{1}{2\sigma^2}u'u}\I(0,100) 
+&\propto \prod_{u=1}^U N(u_i|0,\sigma^2) \frac{1}{\sigma}\I(0<\sigma^2<100) \pause \\
+&\propto (\sigma^2)^{-U/2} e^{-\frac{1}{2\sigma^2}u'u} (\sigma^2)^{-1/2}\I(0<\sigma^2<100)  \pause \\
+&= (\sigma^2)^{-\frac{U-1}{2}-1}e^{-\frac{u'u}{2\sigma^2}}\I(0<\sigma^2<100) 
 \end{array} \]
-\pause Thus $\sigma^2 \sim IG([U-1]/2, -u'u/2)$ truncated to be smaller than 100. 
+\pause Thus $\sigma^2 \sim IG([U-1]/2, u'u/2)$ truncated to be smaller than 100. 
 
 \end{frame}
 
@@ -446,7 +447,7 @@ m = glmer(y~genotype+block+(1|pot), family=binomial(probit), dd)
 X = model.matrix(m)
 Z = as.matrix(getME(m,"Z"))
 p = ncol(X)
-out <- mcmc(1000, dd$y, X, Z, rep(0,p), 10*diag(p))
+out <- mcmc(10000, dd$y, X, Z, rep(0,p), 10*diag(p))
 colnames(out$beta) = colnames(X)
 burnin = 1:100
 @
@@ -490,7 +491,7 @@ adply(out$beta[-burnin,], 2, function(x) {
 par(mfrow=c(1,1))
 curve(dnorm(x,1), -3, 3, main="Latent variable for binary response", 
       xlab="Z", ylab="density")
-segments(1,0,1,dnorm(0))
+segments(1,0,1,dnorm(0), lty=2)
 text(1,0,expression(mu),pos=4)
 abline(v=0, lwd=2)
 text(-2,0.2, "0", cex=2)
