@@ -86,11 +86,7 @@ for (i in 2:n) {
            dcauchy(lambda[i-1], mu, si, log=TRUE)-
            dcauchy(l_prop     , mu, si, log=TRUE)
   
-  if ( log(runif(1)) < log_mh ) {
-    lambda[i] = l_prop
-  } else {
-    lambda[i] = lambda[i-1]
-  }
+  lambda[i] = ifelse( log(runif(1))< log_mh, l_prop, lambda[i-1])
 }
 par(mfrow=c(1,2))
 plot(lambda, type="l", main="traceplot")
@@ -112,11 +108,7 @@ for (i in 2:n) {
   log_mh = dgamma(l_prop,      0.5+sy, sx, log=TRUE)-
            dgamma(lambda[i-1], 0.5+sy, sx, log=TRUE)
   
-  if ( log(runif(1)) < log_mh ) {
-    lambda[i] = l_prop
-  } else {
-    lambda[i] = lambda[i-1]
-  }
+  lambda[i] = ifelse( log(runif(1))< log_mh, l_prop, lambda[i-1])
 }
 par(mfrow=c(1,2))
 plot(lambda, type="l", main="traceplot")
@@ -151,11 +143,7 @@ for (i in 2:n) {
            dcauchy(lambda[i-1], mu, si, log=TRUE)-
            dcauchy(l_prop     , mu, si, log=TRUE)
   
-  if ( log(runif(1)) < log_mh ) {
-    lambda[i] = l_prop
-  } else {
-    lambda[i] = lambda[i-1]
-  }
+  lambda[i] = ifelse( log(runif(1))< log_mh, l_prop, lambda[i-1])
 }
 par(mfrow=c(1,2))
 plot(lambda, type="l", main="traceplot")
@@ -177,11 +165,7 @@ for (i in 2:n) {
   log_mh = target(l_prop, log=TRUE)+-
            target(lambda[i-1], log=TRUE)
   
-  if ( log(runif(1)) < log_mh ) {
-    lambda[i] = l_prop
-  } else {
-    lambda[i] = lambda[i-1]
-  }
+  lambda[i] = ifelse( log(runif(1))< log_mh, l_prop, lambda[i-1])
 }
 par(mfrow=c(1,2))
 plot(lambda, type="l", main="traceplot")
@@ -190,9 +174,6 @@ length(unique(lambda))/length(lambda) # acceptance rate
 @
 
 \end{enumerate}
-
-
-
 
 \end{enumerate}
 
