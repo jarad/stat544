@@ -340,12 +340,13 @@ Thus $\sigma^2 \sim IG([U-1]/2, -u'u/2)$ truncated to be smaller than 100.
 
 
 
-
+\subsection{Data}
 \begin{frame}[fragile]
 <<corn_fungus, fig.width=8>>=
 d = read.csv("cornFungus.csv")
+d = d[d$leaf==1,]
 d$block = factor(d$block)
-ggplot(d, aes(y=hypha/spore, x=genotype, col=block))+geom_point()
+ggplot(d, aes(y=hypha/spore, x=block, col=genotype))+geom_point()
 @
 \end{frame}
 
@@ -426,7 +427,7 @@ mcmc = function(n_iter, y, X, Zm, beta0, Sigma_beta) {
 \begin{frame}[fragile]
 <<run_mcmc_random, cache=TRUE>>=
 # Turn into binary data
-dd = ddply(d, .(genotype,block,leaf,pot), function(x) {
+dd = ddply(d, .(genotype,block,pot), function(x) {
   data.frame(y=c(rep(1,x$hypha),rep(0,x$spore-x$hypha)))
 })
 
@@ -435,7 +436,7 @@ m = glmer(y~genotype+block+(1|pot), family=binomial(probit), dd)
 X = model.matrix(m)
 Z = as.matrix(getME(m,"Z"))
 p = ncol(X)
-system.time(out <- mcmc(1000, dd$y, X, Z, rep(0,p), diag(p)))
+out <- mcmc(1000, dd$y, X, Z, rep(0,p), diag(p))
 colnames(out$beta) = colnames(X)
 @
 \end{frame}
@@ -471,7 +472,52 @@ adply(out$beta, 2, function(x) {
 @
 \end{frame}
 
+\section{Additional uses for data augmentation}
+\begin{frame}[fragile]
+\frametitle{Binary response}
+<<data_augmentation, fig.width=8, echo=FALSE>>=
+par(mfrow=c(1,1))
+curve(dnorm(x,1), -3, 3, main="Latent variable for binary response", 
+      xlab="Z", ylab="density")
+segments(1,0,1,dnorm(0))
+text(1,0,expression(mu),pos=4)
+abline(v=0, lwd=2)
+text(-2,0.2, "0", cex=2)
+text(0.7,0.2, "1", cex=2)
+@
+\end{frame}
 
+
+\begin{frame}[fragile]
+\frametitle{Ordinal response with 3 categories}
+<<data_augmentation2, fig.width=8, echo=FALSE>>=
+par(mfrow=c(1,1))
+curve(dnorm(x,1), -3, 3, main="Latent variable for ordinal response", 
+      xlab="Z", ylab="density")
+segments(1,0,1,dnorm(0), lty=2)
+text(1,0,expression(mu),pos=4)
+abline(v=0, lwd=2)
+text(-2,0.2, "0", cex=2)
+text(0.7,0.2, "1", cex=2)
+abline(v=1.5, lwd=2)
+text(2.5,0.2, "2", cex=2)
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{Unordered categorical response}
+
+Suppose $Y_i$ is random variable with support $1,\ldots,K$ and 
+\[ Pr(Y_i=k) = \theta_{ik} \]
+where $\theta_{ik}$ may depend on explanatory variables for both $i$ and $k$. \pause For example, an individual is shopping for fruit then perhaps the age of the individual and the price of the fruits will affect the shopper's choice. 
+
+\vspace{0.2in} \pause 
+
+We can model this using data augmentation by introducing a latent utility $Z_{ik}$ for each shopper-fruit combination. Then the response is 
+\[ Y_i = \mbox{argmax}_k Z_{ik} \]
+and there is great flexibility in how the $Z_{ik}$ are modeled. 
+\end{frame}
 
 
 
