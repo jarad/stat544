@@ -34,7 +34,7 @@
 
 <<chunk_options, echo=FALSE, message=FALSE>>=
 require(knitr) # only needed so the following command does not fail when sourcing R code
-opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny')
+opts_chunk$set(fig.width=6, fig.height=5, out.width='.8\\linewidth', fig.align='center', size='tiny', message=FALSE)
 ##############################################
 # GLMMs                                      #
 ##############################################
@@ -50,11 +50,10 @@ set.seed(20140424)
 \begin{frame}
 \frametitle{Probit regression}
 Consider the model
-\[ Y_i \stackrel{ind}{\sim} Bin(n_i,\theta_i) \]
+\[ Y_i \stackrel{ind}{\sim} Ber(\theta_i) \]
 where, for the $i$th observation, 
 \begin{itemize}[<+->]
-\item $Y_i$ is the number of successes,
-\item $n_i$ is the number of trials, and
+\item $Y_i$ is binary indicating \emph{success} and
 \item $\theta_i$ is the probability of success.
 \end{itemize}
 
@@ -84,6 +83,7 @@ birthwt$lwt  = with(birthwt, (lwt-mean(lwt))/sd(lwt))
 \begin{frame}[fragile]
 <<non-Bayesian>>=
 m = glm(low~., family=binomial(link=probit), data=birthwt[,-10])
+summary(m)
 @
 \end{frame}
 
@@ -96,13 +96,12 @@ Y_i &\stackrel{ind}{\sim} Bin(n_i,\theta_i) \\
 \theta_i &= \myPhi(X_i^\top\beta)
 \end{array}  \]
 
+ \pause
 
-\vspace{0.2in} \pause
-
-Prior 
+with prior 
 \[ \beta \sim N(\beta_0,\mySigma_\beta) \]
 
-\vspace{0.2in} \pause
+\pause
 
 The posterior distribution is 
 \[ \begin{array}{rl}
@@ -120,7 +119,7 @@ p(\beta|y) &\propto p(y|\beta)p(\beta) \\
 \frametitle{Data augmentation}
 An alternative construction of the model is 
 \[ \begin{array}{rl}
-Y_i &= \\I(Z_i>0) \\
+Y_i &= \I(Z_i>0) \\
 Z_i &\stackrel{ind}{\sim} N(X_i'\beta,1)
 \end{array} \]
 Note that 
@@ -128,7 +127,7 @@ Note that
 \theta_i 
 &= Pr(Y_i=1) \\
 &= Pr(Z_i>0) \\
-&= Pr(X_i'\beta+\epsilon>0) \\
+&= Pr(X_i'\beta+\epsilon>0) & \epsilon \sim N(0,1) \\
 &= Pr(\epsilon>X_i'\beta) \\
 &= Pr(\epsilon<X_i'\beta) & \mbox{symmetry of standard normal} \\
 &= \myPhi(X_i'\beta) 
@@ -151,6 +150,7 @@ and priors
 
 Thus the posterior distribution is 
 \[ p(\beta,Z|y) \propto p(y|Z,\beta) p(\beta) = p(y|Z) p(Z|\beta) p(\beta) \]
+and we will derive the full conditionals for $p(\beta|Z,y)$ and $p(Z|\beta,y)$. 
 \end{frame}
 
 
@@ -191,6 +191,288 @@ N(Z_i|X_i'\beta,1)\I(Z_i\le 0) & \mbox{if } y_i=0
 \end{array} \right. \]
 
 \end{frame}
+
+
+
+\begin{frame}[fragile]
+<<mcmc, cache=TRUE>>=
+mcmc = function(n_iter, y, X, beta0, Sigma_beta) {
+  n = nrow(X)
+  p = ncol(X)
+  
+  # Precalculate quantities
+  y = (as.numeric(y)==1)
+  n1 = sum( y)
+  n0 = sum(!y)
+  XX = t(X)%*%X
+  Si = solve(Sigma_beta)
+  Sib = Si%*%beta0
+  
+  # Saving structures
+  beta_keep       = matrix(NA, n_iter, p)
+  Z_keep          = matrix(NA, n_iter, n)
+  
+  # Initial values
+  m = glm(y~X-1, family=binomial(probit))
+  beta = coef(m)
+  Z = rep(NA,n)
+  
+  for (i in 1:n_iter) {
+    # Sample Z
+    Xb = X%*%beta
+    cut = pnorm(0,Xb)
+    Z[ y] = qnorm(runif(n1, cut[ y], 1), Xb[ y], 1)
+    Z[!y] = qnorm(runif(n0, 0, cut[!y]), Xb[!y], 1)
+    
+    # Sample beta
+    S_hat = solve(Si+XX)
+    b_hat = S_hat %*% (Sib+t(X)%*%Z)
+    beta = mvrnorm(1, b_hat, S_hat)
+    
+    # Record values
+    beta_keep[i,] = beta
+    Z_keep[i,]    = Z
+  }
+  
+  return(list(beta = beta_keep, Z = Z_keep))
+}
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+<<run_mcmc, dependson="mcmc", cache=TRUE>>=
+X = model.matrix(m) # Constructs the design matrix
+p = ncol(X)
+out = mcmc(1000, birthwt$low, X, rep(0,p), 3*diag(p))
+colnames(out$beta) = colnames(X)
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<traceplots, dependson="run_mcmc">>=
+par(mfrow=c(2,5))
+for (i in 1:p) plot(out$beta[,i], main=colnames(X)[i],xlab='iteration', type='l')
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<acf, dependson="run_mcmc">>=
+par(mfrow=c(2,5))
+for (i in 1:p) acf(out$beta[,i], main=colnames(X)[i])
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<ess, dependson="run_mcmc">>=
+require(coda)
+require(mcmcse)
+adply(out$beta, 2, function(x) {
+  data.frame(ess_coda = round(effectiveSize(x)),
+             ess_mcmcse = round(ess(x)),
+             lb = round(quantile(x, .025),2),
+             ub = round(quantile(x, .975),2))
+})
+@
+\end{frame}
+
+
+
+
+\section{Probit regression with random effects}
+\begin{frame}
+\frametitle{Probit regression with random effects}
+Consider the probit regression model 
+\[ \begin{array}{rl}
+Y_i &= \I(Z_i>0) \\
+Z &\sim N(\tilde{X}\tilde{\beta}, 1)
+\end{array} \]
+where 
+\[ \tilde{X} = [X\quad Z] \qquad \tilde{\beta} = (\beta, u)^\top \]
+and $u\sim N(0,\sigma^2 \I)$ and $\sigma\sim Unif(0,10)$. \pause Thus the prior on $\tilde{\beta}$ is 
+\[ \tilde{\beta} = \left( \begin{array}{c} \beta \\ u 
+\end{array} \right) \sim N\left(\left[\begin{array}{c} \beta_0 \\ 0   \end{array} \right], \left[ \begin{array}{cc} \mySigma_\beta & 0 \\ 0 & \sigma^2 \I
+\end{array} \right] \right) \]
+\pause 
+where the precision of the prior is 
+\[ \left[ \begin{array}{cc} \mySigma_\beta^{-1} & 0 \\ 0 & \frac{1}{\sigma^2} \I
+\end{array} \right] \]
+\end{frame}
+
+\begin{frame}
+\frametitle{Full posterior}
+
+The full posterior is 
+\[ 
+p(Z,\beta,y,\sigma^2|y) \propto p(y|Z)p(Z|\tilde{\beta})p(\tilde{\beta}|\sigma^2)p(\sigma^2) 
+\]
+
+\pause
+
+We have already derived the full conditionals 
+\begin{itemize}
+\item $p(\tilde{\beta}|\ldots)$
+\item $p(Z|\ldots)$
+\end{itemize}
+\pause 
+but we need the full conditional for $\sigma^2$. 
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Full conditional for $\sigma^2$}
+
+\[ \begin{array}{rl}
+p(\sigma^2|\ldots) &\propto p(y|Z)p(Z|\tilde{\beta})p(\tilde{\beta}|\sigma^2)p(\sigma^2) \\
+&= p(\tilde{\beta}|\sigma^2)p(\sigma^2) \\
+&\propto p(u|\sigma^2)p(\sigma^2) \\
+&\propto \prod_{u=1}^U N(u_i|0,\sigma^2) \frac{1}{\sigma}\I(0,100) \\
+&\propto (\sigma^2)^{-U/2} e^{-\frac{1}{2\sigma^2}u'u} (\sigma^2)^{-1/2}\I(0,100)  \\
+&= (\sigma^2)^{-\frac{U-1}{2}-1}e^{-\frac{1}{2\sigma^2}u'u}\I(0,100) 
+\end{array} \]
+Thus $\sigma^2 \sim IG([U-1]/2, -u'u/2)$ truncated to be smaller than 100. 
+
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
+<<corn_fungus, fig.width=8>>=
+d = read.csv("cornFungus.csv")
+d$block = factor(d$block)
+ggplot(d, aes(y=hypha/spore, x=genotype, col=block))+geom_point()
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<corn_fungus_glmer>>=
+require(lme4)
+m = glmer(cbind(hypha,spore-hypha)~block+genotype+(1|pot), 
+          family=binomial(probit), d,
+          control=glmerControl(optimizer="bobyqa")) # Avoids convergence warning
+summary(m)
+@
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
+<<mcmc_random_effects>>=
+mcmc = function(n_iter, y, X, Zm, beta0, Sigma_beta) {
+  require(Matrix)
+  n = nrow(X)
+  p = ncol(X)
+  q = ncol(Z)
+  
+  # Initial values
+  m = glm(y~X-1, family=binomial(probit))
+  beta = c(coef(m),rep(0,q))
+  Z = rep(NA,n)
+  
+  # Precalculate quantities
+  y = (as.numeric(y)==1)
+  n1 = sum( y)
+  n0 = sum(!y)
+  X  = cbind(X,Zm)
+  XX = t(X)%*%X
+  Si = solve(Sigma_beta)
+  Sib = Si%*%beta0
+  a = (q-1)/2
+  
+  # Saving structures
+  beta_keep  = matrix(NA, n_iter, p)
+  u_keep     = matrix(NA, n_iter, q)
+  sigma_keep = rep(NA, n_iter)
+  
+  for (i in 1:n_iter) {
+    # Sample Z
+    Xb = X%*%beta
+    cut = pnorm(0,as.numeric(Xb))
+    Z[ y] = qnorm(runif(n1, cut[ y], 1), Xb[ y], 1)
+    Z[!y] = qnorm(runif(n0, 0, cut[!y]), Xb[!y], 1)
+    
+    # Sample sigma
+    u = beta[p+1:q]
+    b = sum(u^2)/2
+    sigma2 = 1/qgamma(runif(1,0,pgamma(100,a,b)),a,b)
+    
+    # Sample beta
+    SSi = bdiag(Si,diag(q)/sigma2)
+    S_hat = solve(SSi+XX)
+    b_hat = S_hat %*% (rbind(Sib,matrix(0,q,1))+t(X)%*%Z)
+    beta = mvrnorm(1, b_hat, S_hat)
+    
+    # Record values
+    beta_keep[i,]  = beta[1:p]
+    u_keep[i,]     = u
+    sigma_keep[i] = sqrt(sigma2)
+  }
+  
+  return(list(beta  = beta_keep,  
+              sigma = sigma_keep, 
+              u = u_keep))
+}
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<run_mcmc_random, cache=TRUE>>=
+# Turn into binary data
+dd = ddply(d, .(genotype,block,leaf,pot), function(x) {
+  data.frame(y=c(rep(1,x$hypha),rep(0,x$spore-x$hypha)))
+})
+
+m = glmer(y~genotype+block+(1|pot), family=binomial(probit), dd)
+
+X = model.matrix(m)
+Z = as.matrix(getME(m,"Z"))
+p = ncol(X)
+system.time(out <- mcmc(1000, dd$y, X, Z, rep(0,p), diag(p)))
+colnames(out$beta) = colnames(X)
+@
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+<<traceplots2, dependson="run_mcmc_random">>=
+par(mfrow=c(2,3))
+for (i in 1:p) plot(out$beta[,i], main=colnames(X)[i],xlab='iteration', type='l')
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<acf2, dependson="run_mcmc_random">>=
+par(mfrow=c(2,3))
+for (i in 1:p) acf(out$beta[,i], main=colnames(X)[i])
+@
+\end{frame}
+
+
+\begin{frame}[fragile]
+<<ess2, dependson="run_mcmc_random">>=
+require(coda)
+require(mcmcse)
+adply(out$beta, 2, function(x) {
+  data.frame(ess_coda = round(effectiveSize(x)),
+             ess_mcmcse = round(ess(x)),
+             lb = round(quantile(x, .025),2),
+             ub = round(quantile(x, .975),2))
+})
+@
+\end{frame}
+
+
+
 
 
 \end{document}
