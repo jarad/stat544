@@ -1,0 +1,201 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,mathrsfs,fancyhdr,syntonly,lastpage,hyperref,enumitem,graphicx,verbatim}
+
+\hypersetup{colorlinks=true,urlcolor=black}
+
+\topmargin      -1.5cm   % read Lamport p.163
+\oddsidemargin  -0.04cm  % read Lamport p.163
+\evensidemargin -0.04cm  % same as oddsidemargin but for left-hand pages
+\textwidth      16.59cm
+\textheight     23.94cm
+\parskip         7.2pt   % sets spacing between paragraphs
+\parindent         0pt   % sets leading space for paragraphs
+\pagestyle{empty}        % Uncomment if don't want page numbers
+\pagestyle{fancyplain}
+
+
+
+\begin{document}
+\lhead{Homework 9 solutions}
+\chead{PSTAT 544 - Bayesian statistics}
+\rhead{Page \thepage\ of \pageref{LastPage}}
+
+\begin{enumerate}
+\item Reconsider the model $Y_i\stackrel{ind}{\sim} Po(\lambda x_i)$ with $\lambda\propto 1/\sqrt{\lambda}$ used in the airline fatality data. 
+
+\begin{enumerate}
+\item Write your own code to run an independence Metropolis-Hastings chain for the posterior $p(\lambda|y)$.
+  \begin{enumerate}
+  \item Please make clear what your proposal is.
+  \item Provide the code.
+  \item Compare to the true posterior.
+  \end{enumerate}
+\item Repeat 1a for a random-walk Metropolis chain.
+\end{enumerate}
+
+\item Repeat 1, i.e. both independence Metropolis-Hastings and random-walk Metropolis, with $\lambda\sim Ca^+(0,1)$, a half-Cauchy distribution with density 
+\[ p(\lambda) = \frac{2}{\pi(1+\lambda^2)}\mathrm{I}(\lambda>0). \]
+\end{enumerate}
+
+\paragraph{Solution}
+
+\begin{enumerate}
+\item The posterior is 
+
+\begin{align*} 
+p(\lambda) &\propto \left[ \prod_{i=1}^n \lambda^{y_i} e^{-\lambda x_i}\right] \lambda^{-1/2} \\
+&= \lambda^{\frac{1}{2}+n\overline{y}-1}e^{-\lambda[n\overline{x}]}
+\end{align*}
+which is $Ga(0.5+n\overline{y},n\overline{x})$.
+
+\begin{enumerate}
+\item Independence proposal
+
+As a proposal, I will use a Cauchy distribution with location $\mu=E[\lambda|y] = \frac{0.5+n\overline{y}}{n\overline{x}}$ and scale $\sigma=\sqrt{V[\lambda|y]} = \sqrt{\frac{0.5+n\overline{y}}{n\overline{x}}}$. The ratio of the proposal to the target, up to normalizing constants, is 
+\begin{align*} r(\lambda) = \frac{p(\lambda|y)}{g(\lambda)} = \lambda^{\frac{1}{2}+n\overline{y}-1}e^{-\lambda[n\overline{x}]}\left[ 1+\left(\frac{\lambda-\mu}{\sigma} \right)^2\right].  
+\end{align*}
+As $\lambda\to\infty$, $r(\lambda)\to 0$ as it is dominated by the $e^{-\lambda}$ term. As $\lambda\to 0$, $r(\lambda)\to 0$ as the ratio is dominated by the $\lambda^{\frac{1}{2}+n\overline{y}-1}$.
+
+
+<<airline_fatalities>>=
+d = data.frame(year=1976:1985, 
+              fatal_accidents = c(24,25,31,31,22,21,26,20,16,22),
+              passenger_deaths = c(734,516,754,877,814,362,764,809,223,1066),
+              death_rate = c(0.19,0.12,0.15,0.16,0.14,0.06,0.13,0.13,0.03,0.15))
+d$miles_flown = d$passenger_deaths/d$death_rate # 100 million miles
+@
+
+<<proposal>>=
+sy = sum(d$fatal_accidents)
+sx = sum(d$miles_flown)
+mu = (0.5+sy)/sx
+si = sqrt((0.5+sy)/sx^2)
+curve(dgamma(x, sy, sx), mu-4*si, mu+4*si, lwd=2, col="red")
+curve(dcauchy(x, mu, si), lwd=2, col="black", add=TRUE)
+legend("topright", c("target","proposal"), lwd=2, col=c("red","black"))
+@
+
+<<ind_mh_cauchy>>=
+n = 10000
+lambda = rep(mu, n)
+for (i in 2:n) {
+  l_prop = rcauchy(1, mu, si)
+  
+  log_mh = dgamma(l_prop,      0.5+sy, sx, log=TRUE)-
+           dgamma(lambda[i-1], 0.5+sy, sx, log=TRUE)+
+           dcauchy(lambda[i-1], mu, si, log=TRUE)-
+           dcauchy(l_prop     , mu, si, log=TRUE)
+  
+  if ( log(runif(1)) < log_mh ) {
+    lambda[i] = l_prop
+  } else {
+    lambda[i] = lambda[i-1]
+  }
+}
+par(mfrow=c(1,2))
+plot(lambda, type="l", main="traceplot")
+hist(lambda, 100, prob=TRUE)
+curve(dgamma(x,sy,sx), lwd=2, add=TRUE, col="red")
+length(unique(lambda))/length(lambda) # acceptance rate
+@
+
+\item Random-walk proposal
+
+For a proposal, I will use a Cauchy centered at the true value with scale equal to $2.4\sigma$.
+
+<<rw_mh_cauchy>>=
+n = 10000
+lambda = rep(mu, n)
+for (i in 2:n) {
+  l_prop = rcauchy(1, lambda[i], 2.4*si)
+  
+  log_mh = dgamma(l_prop,      0.5+sy, sx, log=TRUE)-
+           dgamma(lambda[i-1], 0.5+sy, sx, log=TRUE)
+  
+  if ( log(runif(1)) < log_mh ) {
+    lambda[i] = l_prop
+  } else {
+    lambda[i] = lambda[i-1]
+  }
+}
+par(mfrow=c(1,2))
+plot(lambda, type="l", main="traceplot")
+hist(lambda, 100, prob=TRUE)
+curve(dgamma(x,sy,sx), lwd=2, add=TRUE, col="red")
+length(unique(lambda))/length(lambda) # acceptance rate
+@
+
+\end{enumerate}
+
+\item The posterior is 
+
+\begin{align*} 
+p(\lambda) &\propto \left[ \prod_{i=1}^n \lambda^{y_i} e^{-\lambda x_i}\right] \frac{1}{1+\mu^2} 
+\end{align*}
+which does not have any known form. 
+
+\begin{enumerate}
+\item Independence proposal
+
+As a proposal, I will use a Cauchy distribution with location $\mu=E[\lambda|y] = \frac{0.5+n\overline{y}}{n\overline{x}}$ and scale $\sigma=\sqrt{V[\lambda|y]} = \sqrt{\frac{0.5+n\overline{y}}{n\overline{x}}}$. This proposal has heavier tails than the target. 
+
+<<ind_mh_cauchy2>>=
+n = 10000
+lambda = rep(mu, n)
+target = function(lambda,...) dgamma(lambda,1+sy, sx, ...) + dcauchy(lambda, ...)
+for (i in 2:n) {
+  l_prop = rcauchy(1, mu, si)
+  
+  log_mh = target(l_prop, log=TRUE)+-
+           target(lambda[i-1], log=TRUE)+
+           dcauchy(lambda[i-1], mu, si, log=TRUE)-
+           dcauchy(l_prop     , mu, si, log=TRUE)
+  
+  if ( log(runif(1)) < log_mh ) {
+    lambda[i] = l_prop
+  } else {
+    lambda[i] = lambda[i-1]
+  }
+}
+par(mfrow=c(1,2))
+plot(lambda, type="l", main="traceplot")
+hist(lambda, 100, prob=TRUE)
+length(unique(lambda))/length(lambda) # acceptance rate
+@
+
+\item Random-walk proposal
+
+For a proposal, I will use a Cauchy centered at the true value with scale equal to $2.4\sigma$.
+
+<<rw_mh_cauchy2>>=
+n = 10000
+lambda = rep(mu, n)
+target = function(lambda,...) dgamma(lambda,1+sy, sx, ...) + dcauchy(lambda, ...)
+for (i in 2:n) {
+  l_prop = rcauchy(1, lambda[i-1], 2.4*si)
+  
+  log_mh = target(l_prop, log=TRUE)+-
+           target(lambda[i-1], log=TRUE)
+  
+  if ( log(runif(1)) < log_mh ) {
+    lambda[i] = l_prop
+  } else {
+    lambda[i] = lambda[i-1]
+  }
+}
+par(mfrow=c(1,2))
+plot(lambda, type="l", main="traceplot")
+hist(lambda, 100, prob=TRUE)
+length(unique(lambda))/length(lambda) # acceptance rate
+@
+
+\end{enumerate}
+
+
+
+
+\end{enumerate}
+
+
+
+\end{document}
