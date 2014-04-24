@@ -14,3 +14,4 @@ Follow the text more closely and in order (possibly with Ch 14 still out of orde
 - [ ] in L9, make it a completely objective Bayesian regression lecture
 - [ ] in HW5, provide more direction, i.e. perform the complete pooling and no pooling models
 - [ ] reorganize slides based on chapter of BDA3 (started doing this in Ch10)
+- [ ] HW10, prior is too informative
