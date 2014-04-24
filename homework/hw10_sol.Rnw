@@ -123,6 +123,7 @@ mcmc = function(n_sims, dat, inits, tune) {
 
 <<run>>=
 # Find reasonable starting values
+# These end up not being very reasonable because the prior is too informative
 dat    = data.frame(y=d$fatal_accidents, x=d$miles_flown)
 lambda = dat$y/dat$x
 mn     = mean(lambda); vr = var(lambda)
@@ -130,7 +131,7 @@ inits  = list(beta=mn/vr, alpha=mn^2/vr)
 tune   = list(alpha=0.2)
 
 r = mcmc(1000, dat, inits, tune)
-qplot(iteration, value, data=r[r$iteration>200,])+facet_wrap(~parameter, scales="free")
+qplot(iteration, value, data=r[r$iteration>200,],geom="line")+facet_wrap(~parameter, scales="free")
 @
 
 
