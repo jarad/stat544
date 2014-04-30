@@ -26,6 +26,7 @@
 
 \newcommand{\mG}{\mathrm{\Gamma}}
 \newcommand{\I}{\mathrm{I}}
+\newcommand{\J}{\mathrm{J}}
 \newcommand{\mySigma}{\mathrm{\Sigma}}
 \newcommand{\myPhi}{\mathrm{\Phi}}
 
@@ -244,9 +245,23 @@ legend("bottomright", c("Truth","MLE","Posterior mean"), col=c("black","black","
 \section{Asymptotic normality}
 \begin{frame}
 \frametitle{Asymptotic normality}
+{\small
 
+Consider the Taylor series expansion of the log posterior
+{\tiny 
+\[ \log p(\theta|y) = \log p(\hat{\theta}|y) + \frac{1}{2} (\theta-\hat{\theta})^2 \frac{d^2}{d\theta^2} [\log p(\theta|y)]_{\theta=\hat{\theta}} + \frac{1}{6} (\theta-\hat{\theta})^3 [\log p(\theta|y)]_{\theta=\hat{\theta}} + \cdots \]
+}
 
+where the linear term is zero because the derivative at the posterior mode $\hat{\theta}$ is zero. 
 
+\vspace{0.2in} \pause
+
+The coefficient for the quadratic term can be written as 
+\[ \frac{d^2}{d\theta^2} [\log p(\theta|y)]_{\theta=\hat{\theta}} = \frac{d^2}{d\theta^2} \log p(\hat{\theta}) + \sum_{i=1}^n \frac{d^2}{d\theta^2} [\log p(y_i|\theta)]_{\theta=\hat{\theta}}\]
+where 
+\[ E\left[ \frac{d^2}{d\theta^2} [\log p(y_i|\theta)]_{\theta=\hat{\theta}}\right] = -\J(\theta_0) \]
+where $\J(\theta_0)$ is the expected Fisher information and thus, by the LLN, the second term converges to $-n\J(\theta_0)$. 
+}
 \end{frame}
 
 \end{document}
