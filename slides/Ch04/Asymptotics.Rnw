@@ -316,5 +316,32 @@ for (n in 10^(1:3)) {
 
 
 
+\begin{frame}
+\frametitle{What can go wrong?}
+
+\begin{itemize}
+\item Not unique to Bayesian statistics
+  \begin{itemize}
+  \item Unidentified parameters
+  \item Number of parameters increase with sample size
+  \item Aliasing
+  \item Unbounded likelihoods
+  \item Tails of the distribution
+  \item True sampling distribution is not $p(y|\theta)$
+  \end{itemize}
+\item Unique to Bayesian statistics
+  \begin{itemize}
+  \item Improper posterior 
+  \item Prior distributions that exclude the point of convergence
+  \item Convergence to the edge of the parameter space
+  \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+
+
+
+
 
 \end{document}
