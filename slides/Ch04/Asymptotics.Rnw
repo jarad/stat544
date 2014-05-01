@@ -1,5 +1,5 @@
-%\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
-\documentclass{beamer}
+\documentclass[handout,xcolor=pdftex,dvipsnames,table]{beamer} % for handouts
+%\documentclass{beamer}
 
 
 
@@ -273,7 +273,7 @@ Consider the Taylor series expansion of the log posterior
 \[ 
 \log p(\theta|y) = 
 \log p(\hat{\theta}|y) + 
-\frac{1}{2} (\theta-\hat{\theta})^2 \frac{d^2}{d\theta^2} [\log p(\theta|y)]_{\theta=\hat{\theta}} + 
+\frac{1}{2} (\theta-\hat{\theta})^\top \frac{d^2}{d\theta^2} [\log p(\theta|y)]_{\theta=\hat{\theta}}(\theta-\hat{\theta}) + 
 R \]
 }
 
@@ -284,7 +284,7 @@ R \]
 The coefficient for the quadratic term can be written as 
 \[ 
 \frac{d^2}{d\theta^2} [\log p(\theta|y)]_{\theta=\hat{\theta}} = 
-\frac{d^2}{d\theta^2} \log p(\hat{\theta}) + 
+\frac{d^2}{d\theta^2} \log p(\theta)_{\theta=\hat{\theta}} + 
 \sum_{i=1}^n \frac{d^2}{d\theta^2} [\log p(y_i|\theta)]_{\theta=\hat{\theta}}\]
 \pause 
 where 
@@ -303,10 +303,10 @@ Since for large $n$
 \[ 
 \log p(\theta|y) \approx
 \log p(\hat{\theta}|y) + 
-\frac{1}{2} (\theta-\hat{\theta})^2 \left[ -n\J(\theta_0) \right]  \]
+\frac{1}{2} (\theta-\hat{\theta})^\top \left[ -n\J(\theta_0) \right](\theta-\hat{\theta})  \]
 \pause 
 and since $\hat{\theta}\to\theta_0$, we have 
-\[ p(\theta|y) \propto \exp\left(-\frac{1}{2 \frac{1}{n} \J(\hat{\theta})^{-1}} (\theta-\hat{\theta})^2 \right) \]
+\[ p(\theta|y) \propto \exp\left(-\frac{1}{2} (\theta-\hat{\theta})^\top \left[ n\J(\hat{\theta}) \right](\theta-\hat{\theta}) \right) \]
 \pause 
 and thus, as $n\to\infty$
 \[ \theta|y \stackrel{d}{\to} N\left(\hat{\theta}, \frac{1}{n}\J(\hat{\theta})^{-1}\right) \]
