@@ -17,7 +17,7 @@
 
 \begin{document}
 \lhead{Homework 5}
-\chead{PSTAT 544 - Bayesian statistics}
+\chead{STAT 544 - Bayesian statistics}
 \rhead{Page \thepage\ of \pageref{LastPage}}
 
 <<chunk_options, echo=FALSE, message=FALSE>>=

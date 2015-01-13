@@ -17,7 +17,7 @@
 
 \begin{document}
 \lhead{Homework 7}
-\chead{PSTAT 544 - Bayesian statistics}
+\chead{STAT 544 - Bayesian statistics}
 \rhead{Page \thepage\ of \pageref{LastPage}}
 
 This homework is due on Blackboard Learn by 8:00am on 6 March 2014. There will be a total of 10 points available. 
